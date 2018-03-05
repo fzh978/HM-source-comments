@@ -586,7 +586,7 @@ UInt64 g_nSymbolCounter = 0;
 // scanning order table
 UInt* g_scanOrder[SCAN_NUMBER_OF_GROUP_TYPES][SCAN_NUMBER_OF_TYPES][ MAX_CU_DEPTH ][ MAX_CU_DEPTH ];
 
-const UInt ctxIndMap4x4[4*4] =
+const UInt ctxIndMap4x4[4*4] = //4*4 TBs sig_coeff_flag 的上下文索引
 {
   0, 1, 4, 5,
   2, 3, 4, 5,
@@ -689,7 +689,7 @@ const Int g_quantInterDefault8x8[8*8] =
   24,25,28,33,41,54,71,91
 };
 
-const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {16,64,256,1024};
-const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32};
+const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {16,64,256,1024};//量化矩阵系数总数
+const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32};//量化矩阵系数每行系数个数
 
 //! \}

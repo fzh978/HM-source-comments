@@ -2051,17 +2051,17 @@ Bool TComScalingList::xParseScalingList(Char* pchFile)
  * \returns pointer of quantization matrix
  */
 const Int* TComScalingList::getScalingListDefaultAddress(UInt sizeId, UInt listId)
-{
+{//返回默认量化矩阵地址
   const Int *src = 0;
-  switch(sizeId)
+  switch(sizeId)//判断量化矩阵大小
   {
-    case SCALING_LIST_4x4:
+    case SCALING_LIST_4x4://4*4大小直接得到
       src = g_quantTSDefault4x4;
       break;
     case SCALING_LIST_8x8:
     case SCALING_LIST_16x16:
     case SCALING_LIST_32x32:
-      src = (listId < (SCALING_LIST_NUM/NUMBER_OF_PREDICTION_MODES) ) ? g_quantIntraDefault8x8 : g_quantInterDefault8x8;
+      src = (listId < (SCALING_LIST_NUM/NUMBER_OF_PREDICTION_MODES) ) ? g_quantIntraDefault8x8 : g_quantInterDefault8x8;//其他大小则选择对应模式8*8量化矩阵 16*16 32*32由8*8上采样得到
       break;
     default:
       assert(0);
