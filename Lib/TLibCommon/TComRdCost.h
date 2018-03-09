@@ -57,7 +57,11 @@ class TComPattern;
 // ====================================================================================================================
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 // for function pointer//定义FpDistFunc为函数指针
+=======
+// for function pointer
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 // for function pointer
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2

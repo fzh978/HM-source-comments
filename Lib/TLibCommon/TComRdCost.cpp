@@ -55,7 +55,11 @@ TComRdCost::~TComRdCost()
 
 // Calculate RD functions
 <<<<<<< HEAD
+<<<<<<< HEAD
 Double TComRdCost::calcRdCost( UInt uiBits, Distortion uiDistortion, Bool bFlag, DFunc eDFunc )//计算率失真损耗
+=======
+Double TComRdCost::calcRdCost( UInt uiBits, Distortion uiDistortion, Bool bFlag, DFunc eDFunc )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Double TComRdCost::calcRdCost( UInt uiBits, Distortion uiDistortion, Bool bFlag, DFunc eDFunc )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -64,7 +68,11 @@ Double TComRdCost::calcRdCost( UInt uiBits, Distortion uiDistortion, Bool bFlag,
   Double dLambda = 0.0;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   switch ( eDFunc )//根据不同的失真度量选择对应的lambda
+=======
+  switch ( eDFunc )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
   switch ( eDFunc )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -105,9 +113,15 @@ Double TComRdCost::calcRdCost( UInt uiBits, Distortion uiDistortion, Bool bFlag,
   else
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
     if (eDFunc == DF_SAD)//SAD　//失真度量函数为SAD 则存在65536的缩放因子　原因SAD下获取的lambda先前以乘65536来保证计算精度
     {
       if (m_costMode != COST_STANDARD_LOSSY)//lossless模式下　失真一定为０　所以率失真函数可以这样表示(只与R有关)
+=======
+    if (eDFunc == DF_SAD)
+    {
+      if (m_costMode != COST_STANDARD_LOSSY)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
     if (eDFunc == DF_SAD)
     {
@@ -119,7 +133,11 @@ Double TComRdCost::calcRdCost( UInt uiBits, Distortion uiDistortion, Bool bFlag,
       else
       {
 <<<<<<< HEAD
+<<<<<<< HEAD
         dRdCost = floor(Double(uiDistortion) + (floor((Double(uiBits) * dLambda) + 0.5) / 65536.0));//cost=D+lambda*R
+=======
+        dRdCost = floor(Double(uiDistortion) + (floor((Double(uiBits) * dLambda) + 0.5) / 65536.0));
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
         dRdCost = floor(Double(uiDistortion) + (floor((Double(uiBits) * dLambda) + 0.5) / 65536.0));
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -143,7 +161,11 @@ Double TComRdCost::calcRdCost( UInt uiBits, Distortion uiDistortion, Bool bFlag,
 
 Double TComRdCost::calcRdCost64( UInt64 uiBits, UInt64 uiDistortion, Bool bFlag, DFunc eDFunc )
 <<<<<<< HEAD
+<<<<<<< HEAD
 {//同上　64位版
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 {
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -188,9 +210,15 @@ Double TComRdCost::calcRdCost64( UInt64 uiBits, UInt64 uiDistortion, Bool bFlag,
   else
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
     if (eDFunc == DF_SAD)//失真度量函数为SAD 则存在65536的缩放因子　原因SAD下获取的lambda先前以乘65536
     {
       if (m_costMode != COST_STANDARD_LOSSY)//lossless模式下　失真一定为０　所以率失真函数可以这样表示(只与R有关)
+=======
+    if (eDFunc == DF_SAD)
+    {
+      if (m_costMode != COST_STANDARD_LOSSY)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
     if (eDFunc == DF_SAD)
     {
@@ -202,7 +230,11 @@ Double TComRdCost::calcRdCost64( UInt64 uiBits, UInt64 uiDistortion, Bool bFlag,
       else
       {
 <<<<<<< HEAD
+<<<<<<< HEAD
         dRdCost = floor(Double(uiDistortion) + (floor((Double(uiBits) * dLambda) + 0.5) / 65536.0));//cost=D+lambda*R
+=======
+        dRdCost = floor(Double(uiDistortion) + (floor((Double(uiBits) * dLambda) + 0.5) / 65536.0));
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
         dRdCost = floor(Double(uiDistortion) + (floor((Double(uiBits) * dLambda) + 0.5) / 65536.0));
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -225,7 +257,11 @@ Double TComRdCost::calcRdCost64( UInt64 uiBits, UInt64 uiDistortion, Bool bFlag,
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Void TComRdCost::setLambda( Double dLambda, const BitDepths &bitDepths )//设置lambda的值
+=======
+Void TComRdCost::setLambda( Double dLambda, const BitDepths &bitDepths )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Void TComRdCost::setLambda( Double dLambda, const BitDepths &bitDepths )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -244,6 +280,7 @@ Void TComRdCost::setLambda( Double dLambda, const BitDepths &bitDepths )
   m_dLambdaMotionSSE[1] = 65536.0 * dLambda;
 #else
 <<<<<<< HEAD
+<<<<<<< HEAD
   m_uiLambdaMotionSAD[0] = (UInt)floor(65536.0 * m_sqrtLambda);//0=standard 标准模式下Lambda值　SAD为差值的和　故SAD下的lambda需较SSD下的lambda开放
   m_uiLambdaMotionSSE[0] = (UInt)floor(65536.0 * m_dLambda   );//0=standard 标准模式下Lambda值  SSD为差值平方的和
 #if FULL_NBIT
@@ -253,6 +290,8 @@ Void TComRdCost::setLambda( Double dLambda, const BitDepths &bitDepths )
 #endif
   m_uiLambdaMotionSAD[1] = (UInt)floor(65536.0 * sqrt(dLambda));//1=for transquant bypass when mixed-lossless cost evaluation enabled*
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   m_uiLambdaMotionSAD[0] = (UInt)floor(65536.0 * m_sqrtLambda);
   m_uiLambdaMotionSSE[0] = (UInt)floor(65536.0 * m_dLambda   );
 #if FULL_NBIT
@@ -261,6 +300,9 @@ Void TComRdCost::setLambda( Double dLambda, const BitDepths &bitDepths )
   dLambda = 0.57 * pow(2.0, ((LOSSLESS_AND_MIXED_LOSSLESS_RD_COST_TEST_QP_PRIME - 12 - 6 * (bitDepths.recon[CHANNEL_TYPE_LUMA] - 8)) / 3.0));
 #endif
   m_uiLambdaMotionSAD[1] = (UInt)floor(65536.0 * sqrt(dLambda));
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   m_uiLambdaMotionSSE[1] = (UInt)floor(65536.0 * dLambda   );
 #endif
@@ -269,7 +311,11 @@ Void TComRdCost::setLambda( Double dLambda, const BitDepths &bitDepths )
 
 // Initalize Function Pointer by [eDFunc]
 <<<<<<< HEAD
+<<<<<<< HEAD
 Void TComRdCost::init()//将失真度量函数赋给对应m_afpDistortFunc
+=======
+Void TComRdCost::init()
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Void TComRdCost::init()
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -309,7 +355,11 @@ Void TComRdCost::init()
   m_afpDistortFunc[DF_SADS48 ] = TComRdCost::xGetSAD48;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   m_afpDistortFunc[DF_HADS   ] = TComRdCost::xGetHADs;// HADAMARD变化主要用于快速模式判断
+=======
+  m_afpDistortFunc[DF_HADS   ] = TComRdCost::xGetHADs;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
   m_afpDistortFunc[DF_HADS   ] = TComRdCost::xGetHADs;
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -332,7 +382,11 @@ Void TComRdCost::init()
 
 // Static member function
 <<<<<<< HEAD
+<<<<<<< HEAD
 UInt TComRdCost::xGetExpGolombNumberOfBits( Int iVal )//对于给定的符号数ival　求其零阶指数哥伦布码的长度（计算过程的来源可查看指数哥伦布码相关资料）
+=======
+UInt TComRdCost::xGetExpGolombNumberOfBits( Int iVal )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 UInt TComRdCost::xGetExpGolombNumberOfBits( Int iVal )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -350,7 +404,11 @@ UInt TComRdCost::xGetExpGolombNumberOfBits( Int iVal )
   return uiLength;
 }
 <<<<<<< HEAD
+<<<<<<< HEAD
 //设置与失真计算相关的参数
+=======
+
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -370,8 +428,13 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
 {
   // set Original & Curr Pointer / Stride
 <<<<<<< HEAD
+<<<<<<< HEAD
   rcDistParam.pOrg = pcPatternKey->getROIY();//原像素
   rcDistParam.pCur = piRefY;//重建像素
+=======
+  rcDistParam.pOrg = pcPatternKey->getROIY();
+  rcDistParam.pCur = piRefY;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
   rcDistParam.pOrg = pcPatternKey->getROIY();
   rcDistParam.pCur = piRefY;
@@ -384,9 +447,15 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
   rcDistParam.iCols    = pcPatternKey->getROIYWidth();
   rcDistParam.iRows    = pcPatternKey->getROIYHeight();
 <<<<<<< HEAD
+<<<<<<< HEAD
   rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];//失真度量函数选择对应宽度的SAD
 
   if (rcDistParam.iCols == 12)//失真度量函数选择对应宽度的SAD
+=======
+  rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
+
+  if (rcDistParam.iCols == 12)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
   rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
 
@@ -427,9 +496,15 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
 
   // set distortion function
 <<<<<<< HEAD
+<<<<<<< HEAD
   if ( !bHADME )//如果不使用Hadamard为失真度量函数
   {
     rcDistParam.DistFunc = m_afpDistortFunc[DF_SADS + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];//失真度量函数选择对应宽度的SAD
+=======
+  if ( !bHADME )
+  {
+    rcDistParam.DistFunc = m_afpDistortFunc[DF_SADS + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
   if ( !bHADME )
   {
@@ -449,9 +524,15 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
     }
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
   else//使用Hadamard计算失真
   {
     rcDistParam.DistFunc = m_afpDistortFunc[DF_HADS + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];//选择对应宽度的HADs
+=======
+  else
+  {
+    rcDistParam.DistFunc = m_afpDistortFunc[DF_HADS + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
   else
   {
@@ -464,7 +545,11 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Void TComRdCost::setDistParam( DistParam& rcDP, Int bitDepth, Pel* p1, Int iStride1, Pel* p2, Int iStride2, Int iWidth, Int iHeight, Bool bHadamard )//重载失真参数设置
+=======
+Void TComRdCost::setDistParam( DistParam& rcDP, Int bitDepth, Pel* p1, Int iStride1, Pel* p2, Int iStride2, Int iWidth, Int iHeight, Bool bHadamard )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Void TComRdCost::setDistParam( DistParam& rcDP, Int bitDepth, Pel* p1, Int iStride1, Pel* p2, Int iStride2, Int iWidth, Int iHeight, Bool bHadamard )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -482,6 +567,7 @@ Void TComRdCost::setDistParam( DistParam& rcDP, Int bitDepth, Pel* p1, Int iStri
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::calcHAD( Int bitDepth, Pel* pi0, Int iStride0, Pel* pi1, Int iStride1, Int iWidth, Int iHeight )//对给定大小原像素块和重建像素块　计算残差 做HAD 并计算元素之和
 {//iStride可理解为像素块的宽
   Distortion uiSum = 0;
@@ -489,12 +575,17 @@ Distortion TComRdCost::calcHAD( Int bitDepth, Pel* pi0, Int iStride0, Pel* pi1, 
 
   if ( ( (iWidth % 8) == 0 ) && ( (iHeight % 8) == 0 ) )//宽高是否为８的倍数
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 Distortion TComRdCost::calcHAD( Int bitDepth, Pel* pi0, Int iStride0, Pel* pi1, Int iStride1, Int iWidth, Int iHeight )
 {
   Distortion uiSum = 0;
   Int x, y;
 
   if ( ( (iWidth % 8) == 0 ) && ( (iHeight % 8) == 0 ) )
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   {
     for ( y=0; y<iHeight; y+= 8 )
@@ -502,9 +593,15 @@ Distortion TComRdCost::calcHAD( Int bitDepth, Pel* pi0, Int iStride0, Pel* pi1, 
       for ( x=0; x<iWidth; x+= 8 )
       {
 <<<<<<< HEAD
+<<<<<<< HEAD
         uiSum += xCalcHADs8x8( &pi0[x], &pi1[x], iStride0, iStride1, 1 );//以8*8的块对残差做HAD 并计算元素之和
       }
       pi0 += iStride0*8;//下一行8*8的块
+=======
+        uiSum += xCalcHADs8x8( &pi0[x], &pi1[x], iStride0, iStride1, 1 );
+      }
+      pi0 += iStride0*8;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
         uiSum += xCalcHADs8x8( &pi0[x], &pi1[x], iStride0, iStride1, 1 );
       }
@@ -516,9 +613,15 @@ Distortion TComRdCost::calcHAD( Int bitDepth, Pel* pi0, Int iStride0, Pel* pi1, 
   else
   {
 <<<<<<< HEAD
+<<<<<<< HEAD
     assert ( ( (iWidth % 4) == 0 ) && ( (iHeight % 4) == 0 ) );//宽高不为８的倍数　必为４的倍数
 
     for ( y=0; y<iHeight; y+= 4 )//计算同上
+=======
+    assert ( ( (iWidth % 4) == 0 ) && ( (iHeight % 4) == 0 ) );
+
+    for ( y=0; y<iHeight; y+= 4 )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
     assert ( ( (iWidth % 4) == 0 ) && ( (iHeight % 4) == 0 ) );
 
@@ -535,15 +638,21 @@ Distortion TComRdCost::calcHAD( Int bitDepth, Pel* pi0, Int iStride0, Pel* pi1, 
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(bitDepth-8) );//返回元素之和
 }
 
 Distortion TComRdCost::getDistPart( Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piOrg, Int iOrgStride, UInt uiBlkWidth, UInt uiBlkHeight, const ComponentID compID, DFunc eDFunc )//不同分量计算失真度量
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(bitDepth-8) );
 }
 
 Distortion TComRdCost::getDistPart( Int bitDepth, Pel* piCur, Int iCurStride,  Pel* piOrg, Int iOrgStride, UInt uiBlkWidth, UInt uiBlkHeight, const ComponentID compID, DFunc eDFunc )
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 {
   DistParam cDtParam;
@@ -577,7 +686,11 @@ Distortion TComRdCost::getDistPart( Int bitDepth, Pel* piCur, Int iCurStride,  P
 // --------------------------------------------------------------------------------------------------------------------
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSAD( DistParam* pcDtParam )//计算整个像素块的SAD=sum(abs(Sa(i,j)-Sb(i,j)))
+=======
+Distortion TComRdCost::xGetSAD( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSAD( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -596,7 +709,11 @@ Distortion TComRdCost::xGetSAD( DistParam* pcDtParam )
   Distortion uiSum = 0;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   for( ; iRows != 0; iRows-- )//依次遍历每一整行
+=======
+  for( ; iRows != 0; iRows-- )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
   for( ; iRows != 0; iRows-- )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -610,15 +727,21 @@ Distortion TComRdCost::xGetSAD( DistParam* pcDtParam )
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8) );//返回SAD计算结果
 }
 
 Distortion TComRdCost::xGetSAD4( DistParam* pcDtParam )//只计算４＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8) );
 }
 
 Distortion TComRdCost::xGetSAD4( DistParam* pcDtParam )
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 {
   if ( pcDtParam->bApplyWeight )
@@ -643,7 +766,11 @@ Distortion TComRdCost::xGetSAD4( DistParam* pcDtParam )
     uiSum += abs( piOrg[3] - piCur[3] );
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     piOrg += iStrideOrg;//下一行
+=======
+    piOrg += iStrideOrg;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
     piOrg += iStrideOrg;
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -655,7 +782,11 @@ Distortion TComRdCost::xGetSAD4( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSAD8( DistParam* pcDtParam )//只计算8＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+=======
+Distortion TComRdCost::xGetSAD8( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSAD8( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -694,7 +825,11 @@ Distortion TComRdCost::xGetSAD8( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSAD16( DistParam* pcDtParam )////只计算16＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+=======
+Distortion TComRdCost::xGetSAD16( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSAD16( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -741,7 +876,11 @@ Distortion TComRdCost::xGetSAD16( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSAD12( DistParam* pcDtParam )//只计算12＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+=======
+Distortion TComRdCost::xGetSAD12( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSAD12( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -784,7 +923,11 @@ Distortion TComRdCost::xGetSAD12( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSAD16N( DistParam* pcDtParam )//只计算16N＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)N由像素块的宽决定
+=======
+Distortion TComRdCost::xGetSAD16N( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSAD16N( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -830,7 +973,11 @@ Distortion TComRdCost::xGetSAD16N( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSAD32( DistParam* pcDtParam )//只计算32＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+=======
+Distortion TComRdCost::xGetSAD32( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSAD32( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -893,7 +1040,11 @@ Distortion TComRdCost::xGetSAD32( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSAD24( DistParam* pcDtParam )//只计算24＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+=======
+Distortion TComRdCost::xGetSAD24( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSAD24( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -948,7 +1099,11 @@ Distortion TComRdCost::xGetSAD24( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSAD64( DistParam* pcDtParam )//只计算64＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+=======
+Distortion TComRdCost::xGetSAD64( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSAD64( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -1043,7 +1198,11 @@ Distortion TComRdCost::xGetSAD64( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSAD48( DistParam* pcDtParam )//只计算48＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+=======
+Distortion TComRdCost::xGetSAD48( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSAD48( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -1126,7 +1285,11 @@ Distortion TComRdCost::xGetSAD48( DistParam* pcDtParam )
 // --------------------------------------------------------------------------------------------------------------------
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSSE( DistParam* pcDtParam )//计算整个像素块的SSE=sum((Sa(i,j)-Sb(i,j))^2)
+=======
+Distortion TComRdCost::xGetSSE( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSSE( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -1148,7 +1311,11 @@ Distortion TComRdCost::xGetSSE( DistParam* pcDtParam )
   Intermediate_Int iTemp;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   for( ; iRows != 0; iRows-- )//遍历像素块内所有像素
+=======
+  for( ; iRows != 0; iRows-- )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
   for( ; iRows != 0; iRows-- )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -1159,6 +1326,7 @@ Distortion TComRdCost::xGetSSE( DistParam* pcDtParam )
       uiSum += Distortion(( iTemp * iTemp ) >> uiShift);
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
     piOrg += iStrideOrg;//下一行
     piCur += iStrideCur;
   }
@@ -1168,6 +1336,8 @@ Distortion TComRdCost::xGetSSE( DistParam* pcDtParam )
 
 Distortion TComRdCost::xGetSSE4( DistParam* pcDtParam )//只计算4＊M内的SSE(M为像素块的高)
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     piOrg += iStrideOrg;
     piCur += iStrideCur;
   }
@@ -1176,6 +1346,9 @@ Distortion TComRdCost::xGetSSE4( DistParam* pcDtParam )//只计算4＊M内的SSE
 }
 
 Distortion TComRdCost::xGetSSE4( DistParam* pcDtParam )
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 {
   if ( pcDtParam->bApplyWeight )
@@ -1210,7 +1383,11 @@ Distortion TComRdCost::xGetSSE4( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSSE8( DistParam* pcDtParam )//只计算8＊M内的SSE(M为像素块的高)
+=======
+Distortion TComRdCost::xGetSSE8( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSSE8( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -1250,7 +1427,11 @@ Distortion TComRdCost::xGetSSE8( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSSE16( DistParam* pcDtParam )//只计算16＊M内的SSE(M为像素块的高)
+=======
+Distortion TComRdCost::xGetSSE16( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSSE16( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -1299,7 +1480,11 @@ Distortion TComRdCost::xGetSSE16( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSSE16N( DistParam* pcDtParam )//只计算16N＊M内的SSE(M为像素块的高)N取决于像素快递的宽
+=======
+Distortion TComRdCost::xGetSSE16N( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSSE16N( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -1351,7 +1536,11 @@ Distortion TComRdCost::xGetSSE16N( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSSE32( DistParam* pcDtParam )//只计算32＊M内的SSE(M为像素块的高)
+=======
+Distortion TComRdCost::xGetSSE32( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSSE32( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -1416,7 +1605,11 @@ Distortion TComRdCost::xGetSSE32( DistParam* pcDtParam )
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetSSE64( DistParam* pcDtParam )//只计算64＊M内的SSE(M为像素块的高)
+=======
+Distortion TComRdCost::xGetSSE64( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetSSE64( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -1513,17 +1706,23 @@ Distortion TComRdCost::xGetSSE64( DistParam* pcDtParam )
 
 // --------------------------------------------------------------------------------------------------------------------
 <<<<<<< HEAD
+<<<<<<< HEAD
 // HADAMARD with step (used in fractional search)//用于帧间编码亚像素精度运动估计　相比于整像素估计　亚像素估计各个搜索点匹配误差不会太大
 // --------------------------------------------------------------------------------------------------------------------
 // HADAMARD变换的计算可查阅相关资料　较为简单satd=sum(abs(HXH))H为Hadamard矩阵　X为残差方阵　
 Distortion TComRdCost::xCalcHADs2x2( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )//计算2*2像素块的残差　并做HAD变换　计算satd(hadamard变换后各元素绝对值之和)
 {//2*2的Hadamard矩阵为[1,1;1,-1]
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 // HADAMARD with step (used in fractional search)
 // --------------------------------------------------------------------------------------------------------------------
 
 Distortion TComRdCost::xCalcHADs2x2( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )
 {
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   Distortion satd = 0;
   TCoeff diff[4], m[4];
@@ -1546,8 +1745,13 @@ Distortion TComRdCost::xCalcHADs2x2( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xCalcHADs4x4( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )//对4*4的块做HAD变换　并计算satd
 {//4*4的Hadamard矩阵为1/sqrt(2)*[1,1,1,1;1,-1,1,-1;1,1,-1,-1;1,-1,-1,1]
+=======
+Distortion TComRdCost::xCalcHADs4x4( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xCalcHADs4x4( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )
 {
@@ -1647,8 +1851,13 @@ Distortion TComRdCost::xCalcHADs4x4( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xCalcHADs8x8( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )//对4*4的块做HAD变换　并计算satd
 {//Hm=1/sqrt(2)*[Hm-1,Hm-1;Hm-1,-Hm-1]
+=======
+Distortion TComRdCost::xCalcHADs8x8( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xCalcHADs8x8( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )
 {
@@ -1750,7 +1959,11 @@ Distortion TComRdCost::xCalcHADs8x8( Pel *piOrg, Pel *piCur, Int iStrideOrg, Int
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Distortion TComRdCost::xGetHADs( DistParam* pcDtParam )//对符合条件的任意大小块做HAD变换　并计算satd
+=======
+Distortion TComRdCost::xGetHADs( DistParam* pcDtParam )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Distortion TComRdCost::xGetHADs( DistParam* pcDtParam )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -1772,17 +1985,23 @@ Distortion TComRdCost::xGetHADs( DistParam* pcDtParam )
   Distortion uiSum = 0;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   if( ( iRows % 8 == 0) && (iCols % 8 == 0) )//像素块行列数为８的倍数
   {
     Int  iOffsetOrg = iStrideOrg<<3;
     Int  iOffsetCur = iStrideCur<<3;
     for ( y=0; y<iRows; y+= 8 )//则以8*8的块为单位对该像素块做HAD变换
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   if( ( iRows % 8 == 0) && (iCols % 8 == 0) )
   {
     Int  iOffsetOrg = iStrideOrg<<3;
     Int  iOffsetCur = iStrideCur<<3;
     for ( y=0; y<iRows; y+= 8 )
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     {
       for ( x=0; x<iCols; x+= 8 )
@@ -1794,7 +2013,11 @@ Distortion TComRdCost::xGetHADs( DistParam* pcDtParam )
     }
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
   else if( ( iRows % 4 == 0) && (iCols % 4 == 0) )//若像素块行列数不为８的倍数　则判断是否为４的倍数
+=======
+  else if( ( iRows % 4 == 0) && (iCols % 4 == 0) )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
   else if( ( iRows % 4 == 0) && (iCols % 4 == 0) )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -1803,7 +2026,11 @@ Distortion TComRdCost::xGetHADs( DistParam* pcDtParam )
     Int  iOffsetCur = iStrideCur<<2;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     for ( y=0; y<iRows; y+= 4 )//则以４*４的块为单位对该像素块做HAD变换
+=======
+    for ( y=0; y<iRows; y+= 4 )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
     for ( y=0; y<iRows; y+= 4 )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -1817,17 +2044,23 @@ Distortion TComRdCost::xGetHADs( DistParam* pcDtParam )
     }
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
   else if( ( iRows % 2 == 0) && (iCols % 2 == 0) )//若像素块行列数不为４的倍数　则判断是否为２的倍数
   {
     Int  iOffsetOrg = iStrideOrg<<1;
     Int  iOffsetCur = iStrideCur<<1;
     for ( y=0; y<iRows; y+=2 )//则以２*２的块为单位对该像素块做HAD变换
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   else if( ( iRows % 2 == 0) && (iCols % 2 == 0) )
   {
     Int  iOffsetOrg = iStrideOrg<<1;
     Int  iOffsetCur = iStrideCur<<1;
     for ( y=0; y<iRows; y+=2 )
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     {
       for ( x=0; x<iCols; x+=2 )

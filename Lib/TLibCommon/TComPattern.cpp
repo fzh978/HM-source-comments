@@ -72,7 +72,11 @@ Int   isAboveRightAvailable ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdx
 Int   isBelowLeftAvailable  ( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool* bValidFlags );
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 //该类的功能是求得用于帧内预测的参考像素值　包括符合条件（Tu块大小和帧内预测模式）的参考像素滤波　参考像素的获取（根据情况分为直接获取和用最邻近像素填充）
+=======
+
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -119,6 +123,7 @@ Void TComPattern::initPattern (Pel* piY,
 Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID compID, const Bool bFilterRefSamples DEBUG_STRING_FN_DECLARE(sDebug))
 {
 <<<<<<< HEAD
+<<<<<<< HEAD
   const ChannelType chType    = toChannelType(compID);//通道类型
 
   TComDataCU *pcCU=rTu.getCU();//Tu块所在Cu块信息
@@ -161,6 +166,8 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 
   assert(uiROIWidth*uiROIHeight <= m_iYuvExtSize);//覆盖参考像素的范围一定小于图像范围
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   const ChannelType chType    = toChannelType(compID);
 
   TComDataCU *pcCU=rTu.getCU();
@@ -202,6 +209,9 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
   const UInt         uiROIHeight = uiTuHeight2+1;
 
   assert(uiROIWidth*uiROIHeight <= m_iYuvExtSize);
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 
 #if DEBUG_STRING
@@ -211,7 +221,11 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
   {
     Pel *piIntraTemp   = m_piYuvExt[compID][PRED_BUF_UNFILTERED];
 <<<<<<< HEAD
+<<<<<<< HEAD
     Pel *piRoiOrigin = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu()+uiZorderIdxInPart);//Tu起始像素值在图像中的位置
+=======
+    Pel *piRoiOrigin = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu()+uiZorderIdxInPart);
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
     Pel *piRoiOrigin = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu()+uiZorderIdxInPart);
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -223,7 +237,11 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 #endif
                           piRoiOrigin, piIntraTemp, bNeighborFlags, iNumIntraNeighbor,  iUnitWidth, iUnitHeight, iAboveUnits, iLeftUnits,
 <<<<<<< HEAD
+<<<<<<< HEAD
                           uiROIWidth, uiROIHeight, iPicStride);//得到帧内预测所需的参考像素值
+=======
+                          uiROIWidth, uiROIHeight, iPicStride);
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
                           uiROIWidth, uiROIHeight, iPicStride);
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -250,7 +268,11 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 #endif
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     if (bFilterRefSamples)//如果参考像素需要滤波
+=======
+    if (bFilterRefSamples)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
     if (bFilterRefSamples)
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -264,6 +286,7 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       //------------------------------------------------
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       Bool useStrongIntraSmoothing = isLuma(chType) && sps.getUseStrongIntraSmoothing();//参考像素强滤波的前提条件是　亮度分量且允许强滤波
 
       const Pel bottomLeft = piIntraTemp[stride * uiTuHeight2];//左下参考像素值
@@ -272,6 +295,8 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 
       if (useStrongIntraSmoothing)//若满足强滤波的前提条件　则判断参考像素是否需要强滤波
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
       Bool useStrongIntraSmoothing = isLuma(chType) && sps.getUseStrongIntraSmoothing();
 
       const Pel bottomLeft = piIntraTemp[stride * uiTuHeight2];
@@ -279,11 +304,15 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       const Pel topRight   = piIntraTemp[uiTuWidth2];
 
       if (useStrongIntraSmoothing)
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
       {
 #if O0043_BEST_EFFORT_DECODING
         const Int  threshold     = 1 << (bitDepthForChannelInStream - 5);
 #else
+<<<<<<< HEAD
 <<<<<<< HEAD
         const Int  threshold     = 1 << (bitDepthForChannel - 5);//用于判断的阈值
 #endif
@@ -291,11 +320,16 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
         const Bool bilinearAbove = abs((topLeft    + topRight) - (2 * piIntraTemp[         uiTuWidth ])) < threshold; //ends and the middle     abs(A+C-2B)<threshold
         if ((uiTuWidth < 32) || (!bilinearLeft) || (!bilinearAbove))//Tu大小为32*32并且参考像素满足阈值判断条件　才进行强滤波
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
         const Int  threshold     = 1 << (bitDepthForChannel - 5);
 #endif
         const Bool bilinearLeft  = abs((bottomLeft + topLeft ) - (2 * piIntraTemp[stride * uiTuHeight])) < threshold; //difference between the
         const Bool bilinearAbove = abs((topLeft    + topRight) - (2 * piIntraTemp[         uiTuWidth ])) < threshold; //ends and the middle
         if ((uiTuWidth < 32) || (!bilinearLeft) || (!bilinearAbove))
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
         {
           useStrongIntraSmoothing = false;
@@ -303,7 +337,11 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       *piDestPtr = *piSrcPtr; // bottom left is not filtered　//左下像素不需要滤波　跳过该点
+=======
+      *piDestPtr = *piSrcPtr; // bottom left is not filtered
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
       *piDestPtr = *piSrcPtr; // bottom left is not filtered
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -314,6 +352,7 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 
       //left column (bottom to top)
 
+<<<<<<< HEAD
 <<<<<<< HEAD
       if (useStrongIntraSmoothing)//如果对参考像素进行强滤波
       {
@@ -332,6 +371,8 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
         {
           *piDestPtr = ( piSrcPtr[stride] + 2*piSrcPtr[0] + piSrcPtr[-stride] + 2 ) >> 2;//RF(0,y)=(R(0,y-1)+2R(0,y)+R(0,y+1)+2)>>2
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
       if (useStrongIntraSmoothing)
       {
         const Int shift = g_aucConvertToBit[uiTuHeight] + 3; //log2(uiTuHeight2)
@@ -348,6 +389,9 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
         for(UInt i=1; i<uiTuHeight2; i++, piDestPtr-=stride, piSrcPtr-=stride)
         {
           *piDestPtr = ( piSrcPtr[stride] + 2*piSrcPtr[0] + piSrcPtr[-stride] + 2 ) >> 2;
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
         }
       }
@@ -356,6 +400,7 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 
       //top-left
 
+<<<<<<< HEAD
 <<<<<<< HEAD
       if (useStrongIntraSmoothing)//强滤波下不需要对左上参考像素滤波
       {
@@ -367,6 +412,8 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       }
       piDestPtr += 1;//移动到下一点
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
       if (useStrongIntraSmoothing)
       {
         *piDestPtr = piSrcPtr[0];
@@ -376,6 +423,9 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
         *piDestPtr = ( piSrcPtr[stride] + 2*piSrcPtr[0] + piSrcPtr[1] + 2 ) >> 2;
       }
       piDestPtr += 1;
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
       piSrcPtr  += 1;
 
@@ -383,7 +433,11 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
 
       //top row (left-to-right)
 <<<<<<< HEAD
+<<<<<<< HEAD
       //对上方参考像素滤波（从left-to-right）　同上　不在叙述
+=======
+
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -409,7 +463,11 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
       //------------------------------------------------
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       *piDestPtr=*piSrcPtr; // far right is not filtered//右上参考像素不需要滤波
+=======
+      *piDestPtr=*piSrcPtr; // far right is not filtered
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
       *piDestPtr=*piSrcPtr; // far right is not filtered
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -456,7 +514,11 @@ Void fillReferenceSamples( const Int bitDepth,
                            const UInt uiHeight, 
                            const Int iPicStride )
 <<<<<<< HEAD
+<<<<<<< HEAD
 {//得到帧间预测参考像素
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 {
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -465,6 +527,7 @@ Void fillReferenceSamples( const Int bitDepth,
   Int  iDCValue = 1 << (bitDepth - 1);
   const Int iTotalUnits = iAboveUnits + iLeftUnits + 1; //+1 for top-left
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   if (iNumIntraNeighbor == 0)//若所有区域的参考像素都不可得到　则参考像素都用DC值填充
   {
@@ -475,6 +538,8 @@ Void fillReferenceSamples( const Int bitDepth,
     }
     for (i=1; i<uiHeight; i++)//左侧参考像素
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   if (iNumIntraNeighbor == 0)
   {
     // Fill border with DC value
@@ -483,13 +548,20 @@ Void fillReferenceSamples( const Int bitDepth,
       piIntraTemp[i] = iDCValue;
     }
     for (i=1; i<uiHeight; i++)
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     {
       piIntraTemp[i*uiWidth] = iDCValue;
     }
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
   else if (iNumIntraNeighbor == iTotalUnits)//所有区域参考像素都可获得　则用图中对应位置的像素值填充
+=======
+  else if (iNumIntraNeighbor == iTotalUnits)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
   else if (iNumIntraNeighbor == iTotalUnits)
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -498,7 +570,11 @@ Void fillReferenceSamples( const Int bitDepth,
     piRoiTemp = piRoiOrigin - iPicStride - 1;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     for (i=0; i<uiWidth; i++)//上方参考像素
+=======
+    for (i=0; i<uiWidth; i++)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
     for (i=0; i<uiWidth; i++)
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -514,7 +590,11 @@ Void fillReferenceSamples( const Int bitDepth,
     piRoiTemp = piRoiOrigin - 1;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     for (i=1; i<uiHeight; i++)//左侧参考像素
+=======
+    for (i=1; i<uiHeight; i++)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
     for (i=1; i<uiHeight; i++)
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -528,17 +608,23 @@ Void fillReferenceSamples( const Int bitDepth,
     }
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
   else // reference samples are partially available//部分区域参考像素可以获得
   {
     // all above units have "unitWidth" samples each, all left/below-left units have "unitHeight" samples each
     const Int  iTotalSamples = (iLeftUnits * unitHeight) + ((iAboveUnits + 1) * unitWidth);
     Pel  piIntraLine[5 * MAX_CU_SIZE];//5 * MAX_CU_SIZE为可能的最大的iTotalSamples
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   else // reference samples are partially available
   {
     // all above units have "unitWidth" samples each, all left/below-left units have "unitHeight" samples each
     const Int  iTotalSamples = (iLeftUnits * unitHeight) + ((iAboveUnits + 1) * unitWidth);
     Pel  piIntraLine[5 * MAX_CU_SIZE];
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     Pel  *piIntraLineTemp;
     const Bool *pbNeighborFlags;
@@ -553,9 +639,15 @@ Void fillReferenceSamples( const Int bitDepth,
     // Fill top-left sample
     piRoiTemp = piRoiOrigin - iPicStride - 1;
 <<<<<<< HEAD
+<<<<<<< HEAD
     piIntraLineTemp = piIntraLine + (iLeftUnits * unitHeight);//储存左上参考像素位置
     pbNeighborFlags = bNeighborFlags + iLeftUnits;//左上参考像素可否获得
     if (*pbNeighborFlags)//左上参考像素可以获得
+=======
+    piIntraLineTemp = piIntraLine + (iLeftUnits * unitHeight);
+    pbNeighborFlags = bNeighborFlags + iLeftUnits;
+    if (*pbNeighborFlags)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
     piIntraLineTemp = piIntraLine + (iLeftUnits * unitHeight);
     pbNeighborFlags = bNeighborFlags + iLeftUnits;
@@ -570,7 +662,11 @@ Void fillReferenceSamples( const Int bitDepth,
       for (i=0; i<unitWidth; i++)
       {
 <<<<<<< HEAD
+<<<<<<< HEAD
         piIntraLineTemp[i] = topLeftVal;//获取左上参考像素值　
+=======
+        piIntraLineTemp[i] = topLeftVal;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
         piIntraLineTemp[i] = topLeftVal;
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -578,6 +674,7 @@ Void fillReferenceSamples( const Int bitDepth,
     }
 
     // Fill left & below-left samples (downwards)
+<<<<<<< HEAD
 <<<<<<< HEAD
     piRoiTemp += iPicStride;//从左上移动到左侧位置
     piIntraLineTemp--;
@@ -589,6 +686,8 @@ Void fillReferenceSamples( const Int bitDepth,
       {
         for (i=0; i<unitHeight; i++)//将相邻的像素　赋值给参考像素
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     piRoiTemp += iPicStride;
     piIntraLineTemp--;
     pbNeighborFlags--;
@@ -598,6 +697,9 @@ Void fillReferenceSamples( const Int bitDepth,
       if (*pbNeighborFlags)
       {
         for (i=0; i<unitHeight; i++)
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
         {
 #if O0043_BEST_EFFORT_DECODING
@@ -608,7 +710,11 @@ Void fillReferenceSamples( const Int bitDepth,
         }
       }
 <<<<<<< HEAD
+<<<<<<< HEAD
       piRoiTemp += unitHeight*iPicStride;//处理下一个单位块的参考像素
+=======
+      piRoiTemp += unitHeight*iPicStride;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
       piRoiTemp += unitHeight*iPicStride;
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -617,6 +723,7 @@ Void fillReferenceSamples( const Int bitDepth,
     }
 
     // Fill above & above-right samples (left-to-right) (each unit has "unitWidth" samples)
+<<<<<<< HEAD
 <<<<<<< HEAD
     piRoiTemp = piRoiOrigin - iPicStride;//从左上移动到上方位置
     // offset line buffer by iNumUints2*unitHeight (for left/below-left) + unitWidth (for above-left)
@@ -628,6 +735,8 @@ Void fillReferenceSamples( const Int bitDepth,
       {
         for (i=0; i<unitWidth; i++)//将相邻的像素　赋值给参考像素
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     piRoiTemp = piRoiOrigin - iPicStride;
     // offset line buffer by iNumUints2*unitHeight (for left/below-left) + unitWidth (for above-left)
     piIntraLineTemp = piIntraLine + (iLeftUnits * unitHeight) + unitWidth;
@@ -637,6 +746,9 @@ Void fillReferenceSamples( const Int bitDepth,
       if (*pbNeighborFlags)
       {
         for (i=0; i<unitWidth; i++)
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
         {
 #if O0043_BEST_EFFORT_DECODING
@@ -647,7 +759,11 @@ Void fillReferenceSamples( const Int bitDepth,
         }
       }
 <<<<<<< HEAD
+<<<<<<< HEAD
       piRoiTemp += unitWidth;//处理下一个单位块的参考像素
+=======
+      piRoiTemp += unitWidth;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
       piRoiTemp += unitWidth;
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -657,22 +773,29 @@ Void fillReferenceSamples( const Int bitDepth,
 
     // Pad reference samples when necessary
 <<<<<<< HEAD
+<<<<<<< HEAD
     Int iCurrJnit = 0;//当前已填充到的参考像素位置（以单位块为单位）
     Pel  *piIntraLineCur   = piIntraLine;
     const UInt piIntraLineTopRowOffset = iLeftUnits * (unitHeight - unitWidth);//用于计算piIntraLineNext的位置　左侧参考像素产生的补偿量
 
     if (!bNeighborFlags[0])//不可获得参考像素左下小块
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     Int iCurrJnit = 0;
     Pel  *piIntraLineCur   = piIntraLine;
     const UInt piIntraLineTopRowOffset = iLeftUnits * (unitHeight - unitWidth);
 
     if (!bNeighborFlags[0])
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     {
       // very bottom unit of bottom-left; at least one unit will be valid.
       {
         Int   iNext = 1;
+<<<<<<< HEAD
 <<<<<<< HEAD
         while (iNext < iTotalUnits && !bNeighborFlags[iNext])//从左下到左上到右上找到第一个可获得的参考像素小块
         {
@@ -685,6 +808,8 @@ Void fillReferenceSamples( const Int bitDepth,
         // fill left column
         while (iCurrJnit < iNextOrTop)//从左下用第一个可直接获得的参考像素值填充左侧参考像素值（直到第一个可直接获得的参考像素值）
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
         while (iNext < iTotalUnits && !bNeighborFlags[iNext])
         {
           iNext++;
@@ -695,6 +820,9 @@ Void fillReferenceSamples( const Int bitDepth,
         Int iNextOrTop = std::min<Int>(iNext, iLeftUnits);
         // fill left column
         while (iCurrJnit < iNextOrTop)
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
         {
           for (i=0; i<unitHeight; i++)
@@ -706,7 +834,11 @@ Void fillReferenceSamples( const Int bitDepth,
         }
         // fill top row
 <<<<<<< HEAD
+<<<<<<< HEAD
         while (iCurrJnit < iNext)//从左上用第一个可直接获得的参考像素值填充上方参考像素值（直到第一个可直接获得的参考像素值）
+=======
+        while (iCurrJnit < iNext)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
         while (iCurrJnit < iNext)
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -723,6 +855,7 @@ Void fillReferenceSamples( const Int bitDepth,
 
     // pad all other reference samples.
 <<<<<<< HEAD
+<<<<<<< HEAD
     while (iCurrJnit < iTotalUnits)//填充所有参考像素值（以单位块为单位）
     {
       if (!bNeighborFlags[iCurrJnit]) // samples not available//该小块不存在相邻小块
@@ -732,6 +865,8 @@ Void fillReferenceSamples( const Int bitDepth,
           const Pel refSample = *(piIntraLineCur-1);//用邻近的可获得的参考像素 (-1方向)
           for (i=0; i<numSamplesInCurrUnit; i++)//用邻近的可获得的参考像素填充
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     while (iCurrJnit < iTotalUnits)
     {
       if (!bNeighborFlags[iCurrJnit]) // samples not available
@@ -740,6 +875,9 @@ Void fillReferenceSamples( const Int bitDepth,
           const Int numSamplesInCurrUnit = (iCurrJnit >= iLeftUnits) ? unitWidth : unitHeight;
           const Pel refSample = *(piIntraLineCur-1);
           for (i=0; i<numSamplesInCurrUnit; i++)
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
           {
             piIntraLineCur[i] = refSample;
@@ -749,7 +887,11 @@ Void fillReferenceSamples( const Int bitDepth,
         }
       }
 <<<<<<< HEAD
+<<<<<<< HEAD
       else//否则直接处理下一小块
+=======
+      else
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
       else
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -761,7 +903,11 @@ Void fillReferenceSamples( const Int bitDepth,
 
     // Copy processed samples
 <<<<<<< HEAD
+<<<<<<< HEAD
     //将处理好的参考像素值赋给 piIntraTemp
+=======
+
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -782,15 +928,21 @@ Void fillReferenceSamples( const Int bitDepth,
 
 Bool TComPrediction::filteringIntraReferenceSamples(const ComponentID compID, UInt uiDirMode, UInt uiTuChWidth, UInt uiTuChHeight, const ChromaFormat chFmt, const Bool intraReferenceSmoothingDisabled)
 <<<<<<< HEAD
+<<<<<<< HEAD
 {//根据帧内预测模式和Tu大小判断是否需要对参考像素滤波
   Bool bFilter;
 
   if (!filterIntraReferenceSamples(toChannelType(compID), chFmt, intraReferenceSmoothingDisabled))//为亮度分量或色度格式为４４４　且intraReferenceSmoothingDisabled为０才进一步判断
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 {
   Bool bFilter;
 
   if (!filterIntraReferenceSamples(toChannelType(compID), chFmt, intraReferenceSmoothingDisabled))
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   {
     bFilter=false;
@@ -800,17 +952,23 @@ Bool TComPrediction::filteringIntraReferenceSamples(const ComponentID compID, UI
     assert(uiTuChWidth>=4 && uiTuChHeight>=4 && uiTuChWidth<128 && uiTuChHeight<128);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     if (uiDirMode == DC_IDX)//DC模式不需要对参考像素滤波
     {
       bFilter=false; //no smoothing for DC or LM chroma
     }
     else//根据Tu块大小　选取符合条件的帧内预测模式对参考像素滤波　（32*32除去10,26 16*16除去９,11,25,27 8*8仅对2,18,34及planar)
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     if (uiDirMode == DC_IDX)
     {
       bFilter=false; //no smoothing for DC or LM chroma
     }
     else
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     {
       Int diff = min<Int>(abs((Int) uiDirMode - HOR_IDX), abs((Int)uiDirMode - VER_IDX));
@@ -823,7 +981,11 @@ Bool TComPrediction::filteringIntraReferenceSamples(const ComponentID compID, UI
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Bool isAboveLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT )//位置为uiPartIdxLT的小块左上小块是否可获得
+=======
+Bool isAboveLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 Bool isAboveLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT )
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -832,7 +994,11 @@ Bool isAboveLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT )
   UInt uiPartAboveLeft;
   TComDataCU* pcCUAboveLeft = pcCU->getPUAboveLeft( uiPartAboveLeft, uiPartIdxLT );
 <<<<<<< HEAD
+<<<<<<< HEAD
   if(pcCU->getSlice()->getPPS()->getConstrainedIntraPred())//约束为帧内
+=======
+  if(pcCU->getSlice()->getPPS()->getConstrainedIntraPred())
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
   if(pcCU->getSlice()->getPPS()->getConstrainedIntraPred())
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -848,9 +1014,15 @@ Bool isAboveLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT )
 
 Int isAboveAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool *bValidFlags )
 <<<<<<< HEAD
+<<<<<<< HEAD
 {//判断从uiPartIdxLT到uiPartIdxRT位置的小块上方是否存在相邻小块并标识　并返回相邻小块个数
   const UInt uiRasterPartBegin = g_auiZscanToRaster[uiPartIdxLT];//Pu左上位置
   const UInt uiRasterPartEnd = g_auiZscanToRaster[uiPartIdxRT]+1;// Pu右上位置
+=======
+{
+  const UInt uiRasterPartBegin = g_auiZscanToRaster[uiPartIdxLT];
+  const UInt uiRasterPartEnd = g_auiZscanToRaster[uiPartIdxRT]+1;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 {
   const UInt uiRasterPartBegin = g_auiZscanToRaster[uiPartIdxLT];
@@ -860,6 +1032,7 @@ Int isAboveAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool
   Bool *pbValidFlags = bValidFlags;
   Int iNumIntra = 0;
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   for ( UInt uiRasterPart = uiRasterPartBegin; uiRasterPart < uiRasterPartEnd; uiRasterPart += uiIdxStep )//遍历Pu内上方所有小块
   {
@@ -874,6 +1047,8 @@ Int isAboveAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool
       }
       else//反之　置为加
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   for ( UInt uiRasterPart = uiRasterPartBegin; uiRasterPart < uiRasterPartEnd; uiRasterPart += uiIdxStep )
   {
     UInt uiPartAbove;
@@ -886,13 +1061,20 @@ Int isAboveAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool
         *pbValidFlags = true;
       }
       else
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
       {
         *pbValidFlags = false;
       }
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
     else//不要求为帧内
+=======
+    else
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
     else
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -908,7 +1090,11 @@ Int isAboveAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool
       }
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
     pbValidFlags++;//若以左上参考像素为０位置点　则左侧参考像素为负　上方参考像素为正
+=======
+    pbValidFlags++;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
     pbValidFlags++;
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -918,7 +1104,11 @@ Int isAboveAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool
 
 Int isLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool *bValidFlags )
 <<<<<<< HEAD
+<<<<<<< HEAD
 {//同上　不在叙述
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 {
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
@@ -964,6 +1154,7 @@ Int isLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool 
 
 Int isAboveRightAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT, Bool *bValidFlags )
 <<<<<<< HEAD
+<<<<<<< HEAD
 {//基本同上　不在详述
   const UInt uiNumUnitsInPU = g_auiZscanToRaster[uiPartIdxRT] - g_auiZscanToRaster[uiPartIdxLT] + 1;//该PU一行的宽（以单位块为单位）
   Bool *pbValidFlags = bValidFlags;
@@ -971,12 +1162,17 @@ Int isAboveRightAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT,
 
   for ( UInt uiOffset = 1; uiOffset <= uiNumUnitsInPU; uiOffset++ )//该PU块外右上块距离PU块内右上块的水平距离（以单位块为单位）
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 {
   const UInt uiNumUnitsInPU = g_auiZscanToRaster[uiPartIdxRT] - g_auiZscanToRaster[uiPartIdxLT] + 1;
   Bool *pbValidFlags = bValidFlags;
   Int iNumIntra = 0;
 
   for ( UInt uiOffset = 1; uiOffset <= uiNumUnitsInPU; uiOffset++ )
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   {
     UInt uiPartAboveRight;
@@ -1013,7 +1209,11 @@ Int isAboveRightAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxRT,
 
 Int isBelowLeftAvailable( TComDataCU* pcCU, UInt uiPartIdxLT, UInt uiPartIdxLB, Bool *bValidFlags )
 <<<<<<< HEAD
+<<<<<<< HEAD
 {//同上　不在叙述
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 {
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2

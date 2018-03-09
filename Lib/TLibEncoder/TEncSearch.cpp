@@ -1886,9 +1886,15 @@ TEncSearch::xCalcCrossComponentPredictionAlpha(       TComTU &rTu,
                                                 const Int         strideL,
                                                 const Int         strideC )
 <<<<<<< HEAD
+<<<<<<< HEAD
 {//计算ccp的alpha值　ccp用于帧内／帧间预测中消除颜色组成间的相关性　提高编码效率　（从HM16中开始并入到主线）
   const Pel *pResiL = piResiL;//初始化亮度残差
   const Pel *pResiC = piResiC;//初始化色度残差
+=======
+{
+  const Pel *pResiL = piResiL;
+  const Pel *pResiC = piResiC;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
 {
   const Pel *pResiL = piResiL;
@@ -1904,6 +1910,7 @@ TEncSearch::xCalcCrossComponentPredictionAlpha(       TComTU &rTu,
   Int SSxx  = 0;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   for( UInt uiY = 0; uiY < height; uiY++ )//遍历所有残差
   {
     for( UInt uiX = 0; uiX < width; uiX++ )
@@ -1912,6 +1919,8 @@ TEncSearch::xCalcCrossComponentPredictionAlpha(       TComTU &rTu,
       SSxy += ( scaledResiL * pResiC[ uiX ] );//计算亮度残差和色度残差的乘积和sum(x*y)
       SSxx += ( scaledResiL * scaledResiL   );//计算亮度残差的平方和sum(x*x)
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   for( UInt uiY = 0; uiY < height; uiY++ )
   {
     for( UInt uiX = 0; uiX < width; uiX++ )
@@ -1919,6 +1928,9 @@ TEncSearch::xCalcCrossComponentPredictionAlpha(       TComTU &rTu,
       const Pel scaledResiL = rightShift( pResiL[ uiX ], diffBitDepth );
       SSxy += ( scaledResiL * pResiC[ uiX ] );
       SSxx += ( scaledResiL * scaledResiL   );
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     }
 
@@ -1926,6 +1938,7 @@ TEncSearch::xCalcCrossComponentPredictionAlpha(       TComTU &rTu,
     pResiC += strideC;
   }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   if( SSxx != 0 )//当亮度残差的平方不为０时，计算alpha＝sum(x*y)/sum(x*x)
   {
@@ -1936,6 +1949,8 @@ TEncSearch::xCalcCrossComponentPredictionAlpha(       TComTU &rTu,
 
     alpha = (alpha < 0) ? -alphaQuant[Int(-alpha)] : alphaQuant[Int(alpha)];//最终的alpha
 =======
+=======
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   if( SSxx != 0 )
   {
     Double dAlpha = SSxy / Double( SSxx );
@@ -1944,6 +1959,9 @@ TEncSearch::xCalcCrossComponentPredictionAlpha(       TComTU &rTu,
     static const Char alphaQuant[17] = {0, 1, 1, 2, 2, 2, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8};
 
     alpha = (alpha < 0) ? -alphaQuant[Int(-alpha)] : alphaQuant[Int(alpha)];
+<<<<<<< HEAD
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+=======
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   }
   pCU->setCrossComponentPredictionAlphaPartRange( alpha, compID, absPartIdx, rTu.GetAbsPartIdxNumParts( compID ) );

@@ -2,8 +2,12 @@
     "files.associations": {
         "*.tcc": "cpp",
 <<<<<<< HEAD
+<<<<<<< HEAD
         "array": "cpp",
         "functional": "cpp"
+=======
+        "array": "cpp"
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 =======
         "array": "cpp"
 >>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
