@@ -41,11 +41,7 @@
 //! \{
 
 const UChar TComCABACTables::sm_aucLPSTable[1 << CONTEXT_STATE_BITS][4] =
-<<<<<<< HEAD
 {//rangeTabLps表　根据给定的概率模型变量对当前区间进行细分
-=======
-{
->>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   { 128, 176, 208, 240},
   { 128, 167, 197, 227},
   { 128, 158, 187, 216},
@@ -113,11 +109,7 @@ const UChar TComCABACTables::sm_aucLPSTable[1 << CONTEXT_STATE_BITS][4] =
 };
 
 const UChar TComCABACTables::sm_aucRenormTable[32] =
-<<<<<<< HEAD
 {//归一化表　　用于对新的编码区间重新归一化
-=======
-{
->>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   6,  5,  4,  4,
   3,  3,  3,  3,
   2,  2,  2,  2,

@@ -52,11 +52,7 @@ static Distortion xCalcHADs8x8w( const WPScalingParam &wpCur, const Pel *piOrg, 
  * \param pcDtParam
  * \returns Distortion
  */
-<<<<<<< HEAD
 Distortion TComRdCostWeightPrediction::xGetSADw( DistParam* pcDtParam )//重建图像带权重的SAD计算
-=======
-Distortion TComRdCostWeightPrediction::xGetSADw( DistParam* pcDtParam )
->>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 {
   const Pel            *piOrg      = pcDtParam->pOrg;
   const Pel            *piCur      = pcDtParam->pCur;
@@ -72,11 +68,7 @@ Distortion TComRdCostWeightPrediction::xGetSADw( DistParam* pcDtParam )
   const Int             w0         = wpCur.w;
   const Int             offset     = wpCur.offset;
   const Int             shift      = wpCur.shift;
-<<<<<<< HEAD
   const Int             round      = wpCur.round;//shift对应的舍入偏移量
-=======
-  const Int             round      = wpCur.round;
->>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 
   Distortion uiSum = 0;
 
@@ -105,11 +97,7 @@ Distortion TComRdCostWeightPrediction::xGetSADw( DistParam* pcDtParam )
  * \param pcDtParam
  * \returns Distortion
  */
-<<<<<<< HEAD
 Distortion TComRdCostWeightPrediction::xGetSSEw( DistParam* pcDtParam )//重建图像带权重的SAD计算
-=======
-Distortion TComRdCostWeightPrediction::xGetSSEw( DistParam* pcDtParam )
->>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 {
   const Pel            *piOrg           = pcDtParam->pOrg;
   const Pel            *piCur           = pcDtParam->pCur;
@@ -152,11 +140,7 @@ Distortion TComRdCostWeightPrediction::xGetSSEw( DistParam* pcDtParam )
 // HADAMARD with step (used in fractional search)
 // --------------------------------------------------------------------------------------------------------------------
 //! get weighted Hadamard cost for 2x2 block
-<<<<<<< HEAD
 Distortion xCalcHADs2x2w( const WPScalingParam &wpCur, const Pel *piOrg, const Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )//重建图像带权重的2*2HAD变换的satd计算
-=======
-Distortion xCalcHADs2x2w( const WPScalingParam &wpCur, const Pel *piOrg, const Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )
->>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 {
   const Int round  = wpCur.round;
   const Int shift  = wpCur.shift;
@@ -193,11 +177,7 @@ Distortion xCalcHADs2x2w( const WPScalingParam &wpCur, const Pel *piOrg, const P
 
 
 //! get weighted Hadamard cost for 4x4 block
-<<<<<<< HEAD
 Distortion xCalcHADs4x4w( const WPScalingParam &wpCur, const Pel *piOrg, const Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )//重建图像带权重的4*4HAD变换的satd计算
-=======
-Distortion xCalcHADs4x4w( const WPScalingParam &wpCur, const Pel *piOrg, const Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )
->>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 {
   const Int round  = wpCur.round;
   const Int shift  = wpCur.shift;
@@ -306,11 +286,7 @@ Distortion xCalcHADs4x4w( const WPScalingParam &wpCur, const Pel *piOrg, const P
 
 
 //! get weighted Hadamard cost for 8x8 block
-<<<<<<< HEAD
 Distortion xCalcHADs8x8w( const WPScalingParam &wpCur, const Pel *piOrg, const Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )//重建图像带权重的8*8HAD变换的satd计算
-=======
-Distortion xCalcHADs8x8w( const WPScalingParam &wpCur, const Pel *piOrg, const Pel *piCur, Int iStrideOrg, Int iStrideCur, Int iStep )
->>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 {
   Distortion sad=0;
   TCoeff diff[64], m1[8][8], m2[8][8], m3[8][8];
@@ -427,12 +403,8 @@ Distortion xCalcHADs8x8w( const WPScalingParam &wpCur, const Pel *piOrg, const P
 }
 
 
-//! get weighted Hadamard cost
-<<<<<<< HEAD
+//! get weighted Hadamard costAD
 Distortion TComRdCostWeightPrediction::xGetHADsw( DistParam* pcDtParam )//对符合条件的任意大小块做带权重的HAD变换　并计算satd
-=======
-Distortion TComRdCostWeightPrediction::xGetHADsw( DistParam* pcDtParam )
->>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 {
   const Pel        *piOrg      = pcDtParam->pOrg;
   const Pel        *piCur      = pcDtParam->pCur;
