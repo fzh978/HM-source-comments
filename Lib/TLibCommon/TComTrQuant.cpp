@@ -1,0 +1,4805 @@
+/* The copyright in this software is being made available under the BSD
+ * License, included below. This software may be subject to other third party
+ * and contributor rights, including patent rights, and no such rights are
+ * granted under this license.
+ *
+ * Copyright (c) 2010-2015, ITU/ISO/IEC
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *  * Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *  * Neither the name of the ITU/ISO/IEC nor the names of its contributors may
+ *    be used to endorse or promote products derived from this software without
+ *    specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/** \file     TComTrQuant.cpp
+    \brief    transform and quantization class
+*/
+
+#include <stdlib.h>
+#include <math.h>
+#include <limits>
+#include <memory.h>
+#include "TComTrQuant.h"
+#include "TComPic.h"
+#include "ContextTables.h"
+#include "TComTU.h"
+#include "Debug.h"
+
+typedef struct
+{
+  Int    iNNZbeforePos0;
+  Double d64CodedLevelandDist; // distortion and level cost only
+  Double d64UncodedDist;    // all zero coded block distortion
+  Double d64SigCost;
+  Double d64SigCost_0;
+<<<<<<< HEAD
+} coeffGroupRDStats;//coeffGroupRDStatsÁªìÊûÑ‰Ωì„ÄÄÁî®‰∫éÁéáÂ§±Áúü‰ºòÂåñÈáèÂåñ‰∏≠ËÆ∞ÂΩïÂêÑÁßçÊçüËÄóÔºàÂÖ∑‰ΩìÂê´‰πâËßÅxRateDistOptQuantÊñπÊ≥ïÊ≥®Ëß£Ôºâ
+=======
+} coeffGroupRDStats;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+//! \ingroup TLibCommon
+//! \{
+
+// ====================================================================================================================
+// Constants
+// ====================================================================================================================
+
+<<<<<<< HEAD
+#define RDOQ_CHROMA                 1           ///< use of RDOQ in chroma„ÄÄËâ≤Â∫¶ÂàÜÈáè‰πü‰ΩøÁî®ÁéáÂ§±Áúü‰ºòÂåñÈáèÂåñ
+=======
+#define RDOQ_CHROMA                 1           ///< use of RDOQ in chroma
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+
+// ====================================================================================================================
+// QpParam constructor
+// ====================================================================================================================
+
+QpParam::QpParam(const Int           qpy,
+                 const ChannelType   chType,
+                 const Int           qpBdOffset,
+                 const Int           chromaQPOffset,
+<<<<<<< HEAD
+                 const ChromaFormat  chFmt )//QpÊûÑÈÄ†Âô®„ÄÄÂàùÂßãÂåñÁªôÂÆöÂèÇÊï∞ÁöÑQPÂÄº
+=======
+                 const ChromaFormat  chFmt )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+{
+  Int baseQp;
+
+  if(isLuma(chType))
+  {
+    baseQp = qpy + qpBdOffset;
+  }
+  else
+  {
+    baseQp = Clip3( -qpBdOffset, (chromaQPMappingTableSize - 1), qpy + chromaQPOffset );
+
+    if(baseQp < 0)
+    {
+      baseQp = baseQp + qpBdOffset;
+    }
+    else
+    {
+      baseQp = getScaledChromaQP(baseQp, chFmt) + qpBdOffset;
+    }
+  }
+
+  Qp =baseQp;
+  per=baseQp/6;
+  rem=baseQp%6;
+}
+
+<<<<<<< HEAD
+QpParam::QpParam(const TComDataCU &cu, const ComponentID compID)//ÈáçËΩΩ„ÄÄ‰ΩøÁî®Âè¶‰∏ÄÁßçÂèÇÊï∞ÂàùÂßãÂåñQP
+=======
+QpParam::QpParam(const TComDataCU &cu, const ComponentID compID)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+{
+  Int chromaQpOffset = 0;
+
+  if (isChroma(compID))
+  {
+    chromaQpOffset += cu.getSlice()->getPPS()->getQpOffset(compID);
+    chromaQpOffset += cu.getSlice()->getSliceChromaQpDelta(compID);
+
+    chromaQpOffset += cu.getSlice()->getPPS()->getPpsRangeExtension().getChromaQpOffsetListEntry(cu.getChromaQpAdj(0)).u.offset[Int(compID)-1];
+  }
+
+  *this = QpParam(cu.getQP( 0 ),
+                  toChannelType(compID),
+                  cu.getSlice()->getSPS()->getQpBDOffset(toChannelType(compID)),
+                  chromaQpOffset,
+                  cu.getPic()->getChromaFormat());
+}
+
+
+// ====================================================================================================================
+// TComTrQuant class member functions
+// ====================================================================================================================
+
+<<<<<<< HEAD
+TComTrQuant::TComTrQuant()//ÊûÑÈÄ†ÂáΩÊï∞
+=======
+TComTrQuant::TComTrQuant()
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+{
+  // allocate temporary buffers
+  m_plTempCoeff  = new TCoeff[ MAX_CU_SIZE*MAX_CU_SIZE ];
+
+  // allocate bit estimation class  (for RDOQ)
+  m_pcEstBitsSbac = new estBitsSbacStruct;
+  initScalingList();
+}
+
+<<<<<<< HEAD
+TComTrQuant::~TComTrQuant()//ÊûêÊûÑÂáΩÊï∞
+=======
+TComTrQuant::~TComTrQuant()
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+{
+  // delete temporary buffers
+  if ( m_plTempCoeff )
+  {
+    delete [] m_plTempCoeff;
+    m_plTempCoeff = NULL;
+  }
+
+  // delete bit estimation class
+  if ( m_pcEstBitsSbac )
+  {
+    delete m_pcEstBitsSbac;
+  }
+  destroyScalingList();
+}
+
+<<<<<<< HEAD
+#if ADAPTIVE_QP_SELECTION//Â¶ÇÊûú‰∏∫Ëá™ÈÄÇÂ∫îQPÈÄâÊã©„ÄÄ‰∏ã‰∏Ä‰∏™sliceÁöÑQPÂÄºÂèØ‰ª•ÈÄöËøáÂΩìÂâçSliceÂæóÂà∞
+=======
+#if ADAPTIVE_QP_SELECTION
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+Void TComTrQuant::storeSliceQpNext(TComSlice* pcSlice)
+{
+  // NOTE: does this work with negative QPs or when some blocks are transquant-bypass enabled?
+
+  Int qpBase = pcSlice->getSliceQpBase();
+  Int sliceQpused = pcSlice->getSliceQp();
+  Int sliceQpnext;
+  Double alpha = qpBase < 17 ? 0.5 : 1;
+
+  Int cnt=0;
+  for(Int u=1; u<=LEVEL_RANGE; u++)
+  {
+    cnt += m_sliceNsamples[u] ;
+  }
+
+  if( !m_useRDOQ )
+  {
+    sliceQpused = qpBase;
+    alpha = 0.5;
+  }
+
+  if( cnt > 120 )
+  {
+    Double sum = 0;
+    Int k = 0;
+    for(Int u=1; u<LEVEL_RANGE; u++)
+    {
+      sum += u*m_sliceSumC[u];
+      k += u*u*m_sliceNsamples[u];
+    }
+
+    Int v;
+    Double q[MAX_QP+1] ;
+    for(v=0; v<=MAX_QP; v++)
+    {
+<<<<<<< HEAD
+      q[v] = (Double)(g_invQuantScales[v%6] * (1<<(v/6)))/64 ;//Áî®QPÂÄºËÆ°ÁÆóQstep(ÈáèÂåñÊ≠•Èïø)
+=======
+      q[v] = (Double)(g_invQuantScales[v%6] * (1<<(v/6)))/64 ;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    }
+
+    Double qnext = sum/k * q[sliceQpused] / (1<<ARL_C_PRECISION);
+
+    for(v=0; v<MAX_QP; v++)
+    {
+      if(qnext < alpha * q[v] + (1 - alpha) * q[v+1] )
+      {
+        break;
+      }
+    }
+    sliceQpnext = Clip3(sliceQpused - 3, sliceQpused + 3, v);
+  }
+  else
+  {
+    sliceQpnext = sliceQpused;
+  }
+
+  m_qpDelta[qpBase] = sliceQpnext - qpBase;
+}
+
+Void TComTrQuant::initSliceQpDelta()
+{
+  for(Int qp=0; qp<=MAX_QP; qp++)
+  {
+    m_qpDelta[qp] = qp < 17 ? 0 : 1;
+  }
+}
+
+Void TComTrQuant::clearSliceARLCnt()
+{
+  memset(m_sliceSumC, 0, sizeof(Double)*(LEVEL_RANGE+1));
+  memset(m_sliceNsamples, 0, sizeof(Int)*(LEVEL_RANGE+1));
+}
+#endif
+
+
+
+#if MATRIX_MULT
+/** NxN forward transform (2D) using brute force matrix multiplication (3 nested loops)
+ *  \param block pointer to input data (residual)
+ *  \param coeff pointer to output data (transform coefficients)
+ *  \param uiStride stride of input data
+ *  \param uiTrSize transform size (uiTrSize x uiTrSize)
+ *  \param uiMode is Intra Prediction mode used in Mode-Dependent DCT/DST only
+ */
+Void xTr(Int bitDepth, Pel *block, TCoeff *coeff, UInt uiStride, UInt uiTrSize, Bool useDST, const Int maxLog2TrDynamicRange)
+{
+  UInt i,j,k;
+  TCoeff iSum;
+  TCoeff tmp[MAX_TU_SIZE * MAX_TU_SIZE];
+  const TMatrixCoeff *iT;
+  UInt uiLog2TrSize = g_aucConvertToBit[ uiTrSize ] + 2;
+
+  if (uiTrSize==4)
+  {
+    iT  = (useDST ? g_as_DST_MAT_4[TRANSFORM_FORWARD][0] : g_aiT4[TRANSFORM_FORWARD][0]);
+  }
+  else if (uiTrSize==8)
+  {
+    iT = g_aiT8[TRANSFORM_FORWARD][0];
+  }
+  else if (uiTrSize==16)
+  {
+    iT = g_aiT16[TRANSFORM_FORWARD][0];
+  }
+  else if (uiTrSize==32)
+  {
+    iT = g_aiT32[TRANSFORM_FORWARD][0];
+  }
+  else
+  {
+    assert(0);
+  }
+
+  const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_FORWARD];
+
+  const Int shift_1st = (uiLog2TrSize +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange;
+  const Int shift_2nd = uiLog2TrSize + TRANSFORM_MATRIX_SHIFT;
+  const Int add_1st = (shift_1st>0) ? (1<<(shift_1st-1)) : 0;
+  const Int add_2nd = 1<<(shift_2nd-1);
+
+  /* Horizontal transform */
+
+  for (i=0; i<uiTrSize; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[i*uiTrSize+k]*block[j*uiStride+k];
+      }
+      tmp[i*uiTrSize+j] = (iSum + add_1st)>>shift_1st;
+    }
+  }
+
+  /* Vertical transform */
+  for (i=0; i<uiTrSize; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[i*uiTrSize+k]*tmp[j*uiTrSize+k];
+      }
+      coeff[i*uiTrSize+j] = (iSum + add_2nd)>>shift_2nd;
+    }
+  }
+}
+
+/** NxN inverse transform (2D) using brute force matrix multiplication (3 nested loops)
+ *  \param coeff pointer to input data (transform coefficients)
+ *  \param block pointer to output data (residual)
+ *  \param uiStride stride of output data
+ *  \param uiTrSize transform size (uiTrSize x uiTrSize)
+ *  \param uiMode is Intra Prediction mode used in Mode-Dependent DCT/DST only
+ */
+Void xITr(Int bitDepth, TCoeff *coeff, Pel *block, UInt uiStride, UInt uiTrSize, Bool useDST, const Int maxLog2TrDynamicRange)
+{
+  UInt i,j,k;
+  TCoeff iSum;
+  TCoeff tmp[MAX_TU_SIZE * MAX_TU_SIZE];
+  const TMatrixCoeff *iT;
+
+  if (uiTrSize==4)
+  {
+    iT  = (useDST ? g_as_DST_MAT_4[TRANSFORM_INVERSE][0] : g_aiT4[TRANSFORM_INVERSE][0]);
+  }
+  else if (uiTrSize==8)
+  {
+    iT = g_aiT8[TRANSFORM_INVERSE][0];
+  }
+  else if (uiTrSize==16)
+  {
+    iT = g_aiT16[TRANSFORM_INVERSE][0];
+  }
+  else if (uiTrSize==32)
+  {
+    iT = g_aiT32[TRANSFORM_INVERSE][0];
+  }
+  else
+  {
+    assert(0);
+  }
+
+  const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_INVERSE];
+
+  const Int shift_1st = TRANSFORM_MATRIX_SHIFT + 1; //1 has been added to shift_1st at the expense of shift_2nd
+  const Int shift_2nd = (TRANSFORM_MATRIX_SHIFT + maxLog2TrDynamicRange - 1) - bitDepth;
+  const TCoeff clipMinimum = -(1 << maxLog2TrDynamicRange);
+  const TCoeff clipMaximum =  (1 << maxLog2TrDynamicRange) - 1;
+  assert(shift_2nd>=0);
+  const Int add_1st = 1<<(shift_1st-1);
+  const Int add_2nd = (shift_2nd>0) ? (1<<(shift_2nd-1)) : 0;
+
+  /* Horizontal transform */
+  for (i=0; i<uiTrSize; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+i]*coeff[k*uiTrSize+j];
+      }
+
+      // Clipping here is not in the standard, but is used to protect the "Pel" data type into which the inverse-transformed samples will be copied
+      tmp[i*uiTrSize+j] = Clip3<TCoeff>(clipMinimum, clipMaximum, (iSum + add_1st)>>shift_1st);
+    }
+  }
+
+  /* Vertical transform */
+  for (i=0; i<uiTrSize; i++)
+  {
+    for (j=0; j<uiTrSize; j++)
+    {
+      iSum = 0;
+      for (k=0; k<uiTrSize; k++)
+      {
+        iSum += iT[k*uiTrSize+j]*tmp[i*uiTrSize+k];
+      }
+
+      block[i*uiStride+j] = Clip3<TCoeff>(std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max(), (iSum + add_2nd)>>shift_2nd);
+    }
+  }
+}
+
+#endif //MATRIX_MULT
+
+
+/** 4x4 forward transform implemented using partial butterfly structure (1D)
+ *  \param src   input data (residual)
+ *  \param dst   output data (transform coefficients)
+ *  \param shift specifies right shift after 1D transform
+ *  \param line
+ */
+Void partialButterfly4(TCoeff *src, TCoeff *dst, Int shift, Int line)
+{
+  Int j;
+  TCoeff E[2],O[2];
+  TCoeff add = (shift > 0) ? (1<<(shift-1)) : 0;
+
+  for (j=0; j<line; j++)
+  {
+    /* E and O */
+    E[0] = src[0] + src[3];
+    O[0] = src[0] - src[3];
+    E[1] = src[1] + src[2];
+    O[1] = src[1] - src[2];
+
+    dst[0]      = (g_aiT4[TRANSFORM_FORWARD][0][0]*E[0] + g_aiT4[TRANSFORM_FORWARD][0][1]*E[1] + add)>>shift;
+    dst[2*line] = (g_aiT4[TRANSFORM_FORWARD][2][0]*E[0] + g_aiT4[TRANSFORM_FORWARD][2][1]*E[1] + add)>>shift;
+    dst[line]   = (g_aiT4[TRANSFORM_FORWARD][1][0]*O[0] + g_aiT4[TRANSFORM_FORWARD][1][1]*O[1] + add)>>shift;
+    dst[3*line] = (g_aiT4[TRANSFORM_FORWARD][3][0]*O[0] + g_aiT4[TRANSFORM_FORWARD][3][1]*O[1] + add)>>shift;
+
+    src += 4;
+    dst ++;
+  }
+}
+
+// Fast DST Algorithm. Full matrix multiplication for DST and Fast DST algorithm
+// give identical results
+Void fastForwardDst(TCoeff *block, TCoeff *coeff, Int shift)  // input block, output coeff
+<<<<<<< HEAD
+{//Âø´ÈÄüDSTÂèòÊç¢
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  Int i;
+  TCoeff c[4];
+  TCoeff rnd_factor = (shift > 0) ? (1<<(shift-1)) : 0;
+  for (i=0; i<4; i++)
+  {
+    // Intermediate Variables
+    c[0] = block[4*i+0];
+    c[1] = block[4*i+1];
+    c[2] = block[4*i+2];
+    c[3] = block[4*i+3];
+
+    for (Int row = 0; row < 4; row++)
+    {
+      TCoeff result = 0;
+      for (Int column = 0; column < 4; column++)
+      {
+        result += c[column] * g_as_DST_MAT_4[TRANSFORM_FORWARD][row][column]; // use the defined matrix, rather than hard-wired numbers
+      }
+
+      coeff[(row * 4) + i] = rightShift((result + rnd_factor), shift);
+    }
+  }
+}
+
+Void fastInverseDst(TCoeff *tmp, TCoeff *block, Int shift, const TCoeff outputMinimum, const TCoeff outputMaximum)  // input tmp, output block
+<<<<<<< HEAD
+{//Âø´ÈÄüDSTÂèçÂèòÊç¢
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  Int i;
+  TCoeff c[4];
+  TCoeff rnd_factor = (shift > 0) ? (1<<(shift-1)) : 0;
+  for (i=0; i<4; i++)
+  {
+    // Intermediate Variables
+    c[0] = tmp[   i];
+    c[1] = tmp[4 +i];
+    c[2] = tmp[8 +i];
+    c[3] = tmp[12+i];
+
+    for (Int column = 0; column < 4; column++)
+    {
+      TCoeff &result = block[(i * 4) + column];
+
+      result = 0;
+      for (Int row = 0; row < 4; row++)
+      {
+        result += c[row] * g_as_DST_MAT_4[TRANSFORM_INVERSE][row][column]; // use the defined matrix, rather than hard-wired numbers
+      }
+
+      result = Clip3( outputMinimum, outputMaximum, rightShift((result + rnd_factor), shift));
+    }
+  }
+}
+
+/** 4x4 inverse transform implemented using partial butterfly structure (1D)
+ *  \param src   input data (transform coefficients)
+ *  \param dst   output data (residual)
+ *  \param shift specifies right shift after 1D transform
+ *  \param line
+ *  \param outputMinimum  minimum for clipping
+ *  \param outputMaximum  maximum for clipping
+ */
+Void partialButterflyInverse4(TCoeff *src, TCoeff *dst, Int shift, Int line, const TCoeff outputMinimum, const TCoeff outputMaximum)
+<<<<<<< HEAD
+{//ÔºîÁ≥ªÊï∞ÂèçÂèòÊç¢„ÄÄÊïôÁßë‰π¶‰∏äÁªèÂÖ∏ÁöÑËù∂ÂΩ¢Âø´ÈÄüÁÆóÊ≥ïÂÆûÁé∞„ÄÄ‰∏çÂú®ÂèôËø∞
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  Int j;
+  TCoeff E[2],O[2];
+  TCoeff add = (shift > 0) ? (1<<(shift-1)) : 0;
+
+  for (j=0; j<line; j++)
+  {
+    /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+    O[0] = g_aiT4[TRANSFORM_INVERSE][1][0]*src[line] + g_aiT4[TRANSFORM_INVERSE][3][0]*src[3*line];
+    O[1] = g_aiT4[TRANSFORM_INVERSE][1][1]*src[line] + g_aiT4[TRANSFORM_INVERSE][3][1]*src[3*line];
+    E[0] = g_aiT4[TRANSFORM_INVERSE][0][0]*src[0]    + g_aiT4[TRANSFORM_INVERSE][2][0]*src[2*line];
+    E[1] = g_aiT4[TRANSFORM_INVERSE][0][1]*src[0]    + g_aiT4[TRANSFORM_INVERSE][2][1]*src[2*line];
+
+    /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+    dst[0] = Clip3( outputMinimum, outputMaximum, (E[0] + O[0] + add)>>shift );
+    dst[1] = Clip3( outputMinimum, outputMaximum, (E[1] + O[1] + add)>>shift );
+    dst[2] = Clip3( outputMinimum, outputMaximum, (E[1] - O[1] + add)>>shift );
+    dst[3] = Clip3( outputMinimum, outputMaximum, (E[0] - O[0] + add)>>shift );
+
+    src   ++;
+    dst += 4;
+  }
+}
+
+/** 8x8 forward transform implemented using partial butterfly structure (1D)
+ *  \param src   input data (residual)
+ *  \param dst   output data (transform coefficients)
+ *  \param shift specifies right shift after 1D transform
+ *  \param line
+ */
+Void partialButterfly8(TCoeff *src, TCoeff *dst, Int shift, Int line)
+<<<<<<< HEAD
+{//ÔºòÁ≥ªÊï∞„ÄÄÊïôÁßë‰π¶‰∏äÁªèÂÖ∏ÁöÑËù∂ÂΩ¢Âø´ÈÄüÁÆóÊ≥ïÂÆûÁé∞„ÄÄ‰∏çÂú®ÂèôËø∞
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  Int j,k;
+  TCoeff E[4],O[4];
+  TCoeff EE[2],EO[2];
+  TCoeff add = (shift > 0) ? (1<<(shift-1)) : 0;
+
+  for (j=0; j<line; j++)
+  {
+    /* E and O*/
+    for (k=0;k<4;k++)
+    {
+      E[k] = src[k] + src[7-k];
+      O[k] = src[k] - src[7-k];
+    }
+    /* EE and EO */
+    EE[0] = E[0] + E[3];
+    EO[0] = E[0] - E[3];
+    EE[1] = E[1] + E[2];
+    EO[1] = E[1] - E[2];
+
+    dst[0]      = (g_aiT8[TRANSFORM_FORWARD][0][0]*EE[0] + g_aiT8[TRANSFORM_FORWARD][0][1]*EE[1] + add)>>shift;
+    dst[4*line] = (g_aiT8[TRANSFORM_FORWARD][4][0]*EE[0] + g_aiT8[TRANSFORM_FORWARD][4][1]*EE[1] + add)>>shift;
+    dst[2*line] = (g_aiT8[TRANSFORM_FORWARD][2][0]*EO[0] + g_aiT8[TRANSFORM_FORWARD][2][1]*EO[1] + add)>>shift;
+    dst[6*line] = (g_aiT8[TRANSFORM_FORWARD][6][0]*EO[0] + g_aiT8[TRANSFORM_FORWARD][6][1]*EO[1] + add)>>shift;
+
+    dst[line]   = (g_aiT8[TRANSFORM_FORWARD][1][0]*O[0] + g_aiT8[TRANSFORM_FORWARD][1][1]*O[1] + g_aiT8[TRANSFORM_FORWARD][1][2]*O[2] + g_aiT8[TRANSFORM_FORWARD][1][3]*O[3] + add)>>shift;
+    dst[3*line] = (g_aiT8[TRANSFORM_FORWARD][3][0]*O[0] + g_aiT8[TRANSFORM_FORWARD][3][1]*O[1] + g_aiT8[TRANSFORM_FORWARD][3][2]*O[2] + g_aiT8[TRANSFORM_FORWARD][3][3]*O[3] + add)>>shift;
+    dst[5*line] = (g_aiT8[TRANSFORM_FORWARD][5][0]*O[0] + g_aiT8[TRANSFORM_FORWARD][5][1]*O[1] + g_aiT8[TRANSFORM_FORWARD][5][2]*O[2] + g_aiT8[TRANSFORM_FORWARD][5][3]*O[3] + add)>>shift;
+    dst[7*line] = (g_aiT8[TRANSFORM_FORWARD][7][0]*O[0] + g_aiT8[TRANSFORM_FORWARD][7][1]*O[1] + g_aiT8[TRANSFORM_FORWARD][7][2]*O[2] + g_aiT8[TRANSFORM_FORWARD][7][3]*O[3] + add)>>shift;
+
+    src += 8;
+    dst ++;
+  }
+}
+
+/** 8x8 inverse transform implemented using partial butterfly structure (1D)
+ *  \param src   input data (transform coefficients)
+ *  \param dst   output data (residual)
+ *  \param shift specifies right shift after 1D transform
+ *  \param line
+ *  \param outputMinimum  minimum for clipping
+ *  \param outputMaximum  maximum for clipping
+ */
+Void partialButterflyInverse8(TCoeff *src, TCoeff *dst, Int shift, Int line, const TCoeff outputMinimum, const TCoeff outputMaximum)
+<<<<<<< HEAD
+{//8Á≥ªÊï∞ÂèçÂèòÊç¢„ÄÄÊïôÁßë‰π¶‰∏äÁªèÂÖ∏ÁöÑËù∂ÂΩ¢Âø´ÈÄüÁÆóÊ≥ïÂÆûÁé∞„ÄÄ‰∏çÂú®ÂèôËø∞
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  Int j,k;
+  TCoeff E[4],O[4];
+  TCoeff EE[2],EO[2];
+  TCoeff add = (shift > 0) ? (1<<(shift-1)) : 0;
+
+  for (j=0; j<line; j++)
+  {
+    /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+    for (k=0;k<4;k++)
+    {
+      O[k] = g_aiT8[TRANSFORM_INVERSE][ 1][k]*src[line]   + g_aiT8[TRANSFORM_INVERSE][ 3][k]*src[3*line] +
+             g_aiT8[TRANSFORM_INVERSE][ 5][k]*src[5*line] + g_aiT8[TRANSFORM_INVERSE][ 7][k]*src[7*line];
+    }
+
+    EO[0] = g_aiT8[TRANSFORM_INVERSE][2][0]*src[ 2*line ] + g_aiT8[TRANSFORM_INVERSE][6][0]*src[ 6*line ];
+    EO[1] = g_aiT8[TRANSFORM_INVERSE][2][1]*src[ 2*line ] + g_aiT8[TRANSFORM_INVERSE][6][1]*src[ 6*line ];
+    EE[0] = g_aiT8[TRANSFORM_INVERSE][0][0]*src[ 0      ] + g_aiT8[TRANSFORM_INVERSE][4][0]*src[ 4*line ];
+    EE[1] = g_aiT8[TRANSFORM_INVERSE][0][1]*src[ 0      ] + g_aiT8[TRANSFORM_INVERSE][4][1]*src[ 4*line ];
+
+    /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+    E[0] = EE[0] + EO[0];
+    E[3] = EE[0] - EO[0];
+    E[1] = EE[1] + EO[1];
+    E[2] = EE[1] - EO[1];
+    for (k=0;k<4;k++)
+    {
+      dst[ k   ] = Clip3( outputMinimum, outputMaximum, (E[k] + O[k] + add)>>shift );
+      dst[ k+4 ] = Clip3( outputMinimum, outputMaximum, (E[3-k] - O[3-k] + add)>>shift );
+    }
+    src ++;
+    dst += 8;
+  }
+}
+
+/** 16x16 forward transform implemented using partial butterfly structure (1D)
+ *  \param src   input data (residual)
+ *  \param dst   output data (transform coefficients)
+ *  \param shift specifies right shift after 1D transform
+ *  \param line
+ */
+Void partialButterfly16(TCoeff *src, TCoeff *dst, Int shift, Int line)
+<<<<<<< HEAD
+{//16Á≥ªÊï∞„ÄÄÊïôÁßë‰π¶‰∏äÁªèÂÖ∏ÁöÑËù∂ÂΩ¢Âø´ÈÄüÁÆóÊ≥ïÂÆûÁé∞„ÄÄ‰∏çÂú®ÂèôËø∞
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  Int j,k;
+  TCoeff E[8],O[8];
+  TCoeff EE[4],EO[4];
+  TCoeff EEE[2],EEO[2];
+  TCoeff add = (shift > 0) ? (1<<(shift-1)) : 0;
+
+  for (j=0; j<line; j++)
+  {
+    /* E and O*/
+    for (k=0;k<8;k++)
+    {
+      E[k] = src[k] + src[15-k];
+      O[k] = src[k] - src[15-k];
+    }
+    /* EE and EO */
+    for (k=0;k<4;k++)
+    {
+      EE[k] = E[k] + E[7-k];
+      EO[k] = E[k] - E[7-k];
+    }
+    /* EEE and EEO */
+    EEE[0] = EE[0] + EE[3];
+    EEO[0] = EE[0] - EE[3];
+    EEE[1] = EE[1] + EE[2];
+    EEO[1] = EE[1] - EE[2];
+
+    dst[ 0      ] = (g_aiT16[TRANSFORM_FORWARD][ 0][0]*EEE[0] + g_aiT16[TRANSFORM_FORWARD][ 0][1]*EEE[1] + add)>>shift;
+    dst[ 8*line ] = (g_aiT16[TRANSFORM_FORWARD][ 8][0]*EEE[0] + g_aiT16[TRANSFORM_FORWARD][ 8][1]*EEE[1] + add)>>shift;
+    dst[ 4*line ] = (g_aiT16[TRANSFORM_FORWARD][ 4][0]*EEO[0] + g_aiT16[TRANSFORM_FORWARD][ 4][1]*EEO[1] + add)>>shift;
+    dst[ 12*line] = (g_aiT16[TRANSFORM_FORWARD][12][0]*EEO[0] + g_aiT16[TRANSFORM_FORWARD][12][1]*EEO[1] + add)>>shift;
+
+    for (k=2;k<16;k+=4)
+    {
+      dst[ k*line ] = (g_aiT16[TRANSFORM_FORWARD][k][0]*EO[0] + g_aiT16[TRANSFORM_FORWARD][k][1]*EO[1] +
+                       g_aiT16[TRANSFORM_FORWARD][k][2]*EO[2] + g_aiT16[TRANSFORM_FORWARD][k][3]*EO[3] + add)>>shift;
+    }
+
+    for (k=1;k<16;k+=2)
+    {
+      dst[ k*line ] = (g_aiT16[TRANSFORM_FORWARD][k][0]*O[0] + g_aiT16[TRANSFORM_FORWARD][k][1]*O[1] +
+                       g_aiT16[TRANSFORM_FORWARD][k][2]*O[2] + g_aiT16[TRANSFORM_FORWARD][k][3]*O[3] +
+                       g_aiT16[TRANSFORM_FORWARD][k][4]*O[4] + g_aiT16[TRANSFORM_FORWARD][k][5]*O[5] +
+                       g_aiT16[TRANSFORM_FORWARD][k][6]*O[6] + g_aiT16[TRANSFORM_FORWARD][k][7]*O[7] + add)>>shift;
+    }
+
+    src += 16;
+    dst ++;
+
+  }
+}
+
+/** 16x16 inverse transform implemented using partial butterfly structure (1D)
+ *  \param src            input data (transform coefficients)
+ *  \param dst            output data (residual)
+ *  \param shift          specifies right shift after 1D transform
+ *  \param line
+ *  \param outputMinimum  minimum for clipping
+ *  \param outputMaximum  maximum for clipping
+ */
+Void partialButterflyInverse16(TCoeff *src, TCoeff *dst, Int shift, Int line, const TCoeff outputMinimum, const TCoeff outputMaximum)
+<<<<<<< HEAD
+{//ÔºëÔºñÁ≥ªÊï∞ÂèçÂèòÊç¢„ÄÄÊïôÁßë‰π¶‰∏äÁªèÂÖ∏ÁöÑËù∂ÂΩ¢Âø´ÈÄüÁÆóÊ≥ïÂÆûÁé∞„ÄÄ‰∏çÂú®ÂèôËø∞
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  Int j,k;
+  TCoeff E[8],O[8];
+  TCoeff EE[4],EO[4];
+  TCoeff EEE[2],EEO[2];
+  TCoeff add = (shift > 0) ? (1<<(shift-1)) : 0;
+
+  for (j=0; j<line; j++)
+  {
+    /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+    for (k=0;k<8;k++)
+    {
+      O[k] = g_aiT16[TRANSFORM_INVERSE][ 1][k]*src[ line]   + g_aiT16[TRANSFORM_INVERSE][ 3][k]*src[ 3*line] +
+             g_aiT16[TRANSFORM_INVERSE][ 5][k]*src[ 5*line] + g_aiT16[TRANSFORM_INVERSE][ 7][k]*src[ 7*line] +
+             g_aiT16[TRANSFORM_INVERSE][ 9][k]*src[ 9*line] + g_aiT16[TRANSFORM_INVERSE][11][k]*src[11*line] +
+             g_aiT16[TRANSFORM_INVERSE][13][k]*src[13*line] + g_aiT16[TRANSFORM_INVERSE][15][k]*src[15*line];
+    }
+    for (k=0;k<4;k++)
+    {
+      EO[k] = g_aiT16[TRANSFORM_INVERSE][ 2][k]*src[ 2*line] + g_aiT16[TRANSFORM_INVERSE][ 6][k]*src[ 6*line] +
+              g_aiT16[TRANSFORM_INVERSE][10][k]*src[10*line] + g_aiT16[TRANSFORM_INVERSE][14][k]*src[14*line];
+    }
+    EEO[0] = g_aiT16[TRANSFORM_INVERSE][4][0]*src[ 4*line ] + g_aiT16[TRANSFORM_INVERSE][12][0]*src[ 12*line ];
+    EEE[0] = g_aiT16[TRANSFORM_INVERSE][0][0]*src[ 0      ] + g_aiT16[TRANSFORM_INVERSE][ 8][0]*src[ 8*line  ];
+    EEO[1] = g_aiT16[TRANSFORM_INVERSE][4][1]*src[ 4*line ] + g_aiT16[TRANSFORM_INVERSE][12][1]*src[ 12*line ];
+    EEE[1] = g_aiT16[TRANSFORM_INVERSE][0][1]*src[ 0      ] + g_aiT16[TRANSFORM_INVERSE][ 8][1]*src[ 8*line  ];
+
+    /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+    for (k=0;k<2;k++)
+    {
+      EE[k] = EEE[k] + EEO[k];
+      EE[k+2] = EEE[1-k] - EEO[1-k];
+    }
+    for (k=0;k<4;k++)
+    {
+      E[k] = EE[k] + EO[k];
+      E[k+4] = EE[3-k] - EO[3-k];
+    }
+    for (k=0;k<8;k++)
+    {
+      dst[k]   = Clip3( outputMinimum, outputMaximum, (E[k] + O[k] + add)>>shift );
+      dst[k+8] = Clip3( outputMinimum, outputMaximum, (E[7-k] - O[7-k] + add)>>shift );
+    }
+    src ++;
+    dst += 16;
+  }
+}
+
+/** 32x32 forward transform implemented using partial butterfly structure (1D)
+ *  \param src   input data (residual)
+ *  \param dst   output data (transform coefficients)
+ *  \param shift specifies right shift after 1D transform
+ *  \param line
+ */
+Void partialButterfly32(TCoeff *src, TCoeff *dst, Int shift, Int line)
+<<<<<<< HEAD
+{//32Á≥ªÊï∞„ÄÄÊïôÁßë‰π¶‰∏äÁªèÂÖ∏ÁöÑËù∂ÂΩ¢Âø´ÈÄüÁÆóÊ≥ïÂÆûÁé∞„ÄÄ‰∏çÂú®ÂèôËø∞
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  Int j,k;
+  TCoeff E[16],O[16];
+  TCoeff EE[8],EO[8];
+  TCoeff EEE[4],EEO[4];
+  TCoeff EEEE[2],EEEO[2];
+  TCoeff add = (shift > 0) ? (1<<(shift-1)) : 0;
+
+  for (j=0; j<line; j++)
+  {
+    /* E and O*/
+    for (k=0;k<16;k++)
+    {
+      E[k] = src[k] + src[31-k];
+      O[k] = src[k] - src[31-k];
+    }
+    /* EE and EO */
+    for (k=0;k<8;k++)
+    {
+      EE[k] = E[k] + E[15-k];
+      EO[k] = E[k] - E[15-k];
+    }
+    /* EEE and EEO */
+    for (k=0;k<4;k++)
+    {
+      EEE[k] = EE[k] + EE[7-k];
+      EEO[k] = EE[k] - EE[7-k];
+    }
+    /* EEEE and EEEO */
+    EEEE[0] = EEE[0] + EEE[3];
+    EEEO[0] = EEE[0] - EEE[3];
+    EEEE[1] = EEE[1] + EEE[2];
+    EEEO[1] = EEE[1] - EEE[2];
+
+    dst[ 0       ] = (g_aiT32[TRANSFORM_FORWARD][ 0][0]*EEEE[0] + g_aiT32[TRANSFORM_FORWARD][ 0][1]*EEEE[1] + add)>>shift;
+    dst[ 16*line ] = (g_aiT32[TRANSFORM_FORWARD][16][0]*EEEE[0] + g_aiT32[TRANSFORM_FORWARD][16][1]*EEEE[1] + add)>>shift;
+    dst[ 8*line  ] = (g_aiT32[TRANSFORM_FORWARD][ 8][0]*EEEO[0] + g_aiT32[TRANSFORM_FORWARD][ 8][1]*EEEO[1] + add)>>shift;
+    dst[ 24*line ] = (g_aiT32[TRANSFORM_FORWARD][24][0]*EEEO[0] + g_aiT32[TRANSFORM_FORWARD][24][1]*EEEO[1] + add)>>shift;
+    for (k=4;k<32;k+=8)
+    {
+      dst[ k*line ] = (g_aiT32[TRANSFORM_FORWARD][k][0]*EEO[0] + g_aiT32[TRANSFORM_FORWARD][k][1]*EEO[1] +
+                       g_aiT32[TRANSFORM_FORWARD][k][2]*EEO[2] + g_aiT32[TRANSFORM_FORWARD][k][3]*EEO[3] + add)>>shift;
+    }
+    for (k=2;k<32;k+=4)
+    {
+      dst[ k*line ] = (g_aiT32[TRANSFORM_FORWARD][k][0]*EO[0] + g_aiT32[TRANSFORM_FORWARD][k][1]*EO[1] +
+                       g_aiT32[TRANSFORM_FORWARD][k][2]*EO[2] + g_aiT32[TRANSFORM_FORWARD][k][3]*EO[3] +
+                       g_aiT32[TRANSFORM_FORWARD][k][4]*EO[4] + g_aiT32[TRANSFORM_FORWARD][k][5]*EO[5] +
+                       g_aiT32[TRANSFORM_FORWARD][k][6]*EO[6] + g_aiT32[TRANSFORM_FORWARD][k][7]*EO[7] + add)>>shift;
+    }
+    for (k=1;k<32;k+=2)
+    {
+      dst[ k*line ] = (g_aiT32[TRANSFORM_FORWARD][k][ 0]*O[ 0] + g_aiT32[TRANSFORM_FORWARD][k][ 1]*O[ 1] +
+                       g_aiT32[TRANSFORM_FORWARD][k][ 2]*O[ 2] + g_aiT32[TRANSFORM_FORWARD][k][ 3]*O[ 3] +
+                       g_aiT32[TRANSFORM_FORWARD][k][ 4]*O[ 4] + g_aiT32[TRANSFORM_FORWARD][k][ 5]*O[ 5] +
+                       g_aiT32[TRANSFORM_FORWARD][k][ 6]*O[ 6] + g_aiT32[TRANSFORM_FORWARD][k][ 7]*O[ 7] +
+                       g_aiT32[TRANSFORM_FORWARD][k][ 8]*O[ 8] + g_aiT32[TRANSFORM_FORWARD][k][ 9]*O[ 9] +
+                       g_aiT32[TRANSFORM_FORWARD][k][10]*O[10] + g_aiT32[TRANSFORM_FORWARD][k][11]*O[11] +
+                       g_aiT32[TRANSFORM_FORWARD][k][12]*O[12] + g_aiT32[TRANSFORM_FORWARD][k][13]*O[13] +
+                       g_aiT32[TRANSFORM_FORWARD][k][14]*O[14] + g_aiT32[TRANSFORM_FORWARD][k][15]*O[15] + add)>>shift;
+    }
+
+    src += 32;
+    dst ++;
+  }
+}
+
+/** 32x32 inverse transform implemented using partial butterfly structure (1D)
+ *  \param src   input data (transform coefficients)
+ *  \param dst   output data (residual)
+ *  \param shift specifies right shift after 1D transform
+ *  \param line
+ *  \param outputMinimum  minimum for clipping
+ *  \param outputMaximum  maximum for clipping
+ */
+Void partialButterflyInverse32(TCoeff *src, TCoeff *dst, Int shift, Int line, const TCoeff outputMinimum, const TCoeff outputMaximum)
+<<<<<<< HEAD
+{//32Á≥ªÊï∞„ÄÄÂèçÂèòÊç¢Ëù∂ÂΩ¢Âø´ÈÄüÁÆóÊ≥ï
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  Int j,k;
+  TCoeff E[16],O[16];
+  TCoeff EE[8],EO[8];
+  TCoeff EEE[4],EEO[4];
+  TCoeff EEEE[2],EEEO[2];
+  TCoeff add = (shift > 0) ? (1<<(shift-1)) : 0;
+
+  for (j=0; j<line; j++)
+  {
+    /* Utilizing symmetry properties to the maximum to minimize the number of multiplications */
+    for (k=0;k<16;k++)
+    {
+      O[k] = g_aiT32[TRANSFORM_INVERSE][ 1][k]*src[ line    ] + g_aiT32[TRANSFORM_INVERSE][ 3][k]*src[ 3*line  ] +
+             g_aiT32[TRANSFORM_INVERSE][ 5][k]*src[ 5*line  ] + g_aiT32[TRANSFORM_INVERSE][ 7][k]*src[ 7*line  ] +
+             g_aiT32[TRANSFORM_INVERSE][ 9][k]*src[ 9*line  ] + g_aiT32[TRANSFORM_INVERSE][11][k]*src[ 11*line ] +
+             g_aiT32[TRANSFORM_INVERSE][13][k]*src[ 13*line ] + g_aiT32[TRANSFORM_INVERSE][15][k]*src[ 15*line ] +
+             g_aiT32[TRANSFORM_INVERSE][17][k]*src[ 17*line ] + g_aiT32[TRANSFORM_INVERSE][19][k]*src[ 19*line ] +
+             g_aiT32[TRANSFORM_INVERSE][21][k]*src[ 21*line ] + g_aiT32[TRANSFORM_INVERSE][23][k]*src[ 23*line ] +
+             g_aiT32[TRANSFORM_INVERSE][25][k]*src[ 25*line ] + g_aiT32[TRANSFORM_INVERSE][27][k]*src[ 27*line ] +
+             g_aiT32[TRANSFORM_INVERSE][29][k]*src[ 29*line ] + g_aiT32[TRANSFORM_INVERSE][31][k]*src[ 31*line ];
+    }
+    for (k=0;k<8;k++)
+    {
+      EO[k] = g_aiT32[TRANSFORM_INVERSE][ 2][k]*src[ 2*line  ] + g_aiT32[TRANSFORM_INVERSE][ 6][k]*src[ 6*line  ] +
+              g_aiT32[TRANSFORM_INVERSE][10][k]*src[ 10*line ] + g_aiT32[TRANSFORM_INVERSE][14][k]*src[ 14*line ] +
+              g_aiT32[TRANSFORM_INVERSE][18][k]*src[ 18*line ] + g_aiT32[TRANSFORM_INVERSE][22][k]*src[ 22*line ] +
+              g_aiT32[TRANSFORM_INVERSE][26][k]*src[ 26*line ] + g_aiT32[TRANSFORM_INVERSE][30][k]*src[ 30*line ];
+    }
+    for (k=0;k<4;k++)
+    {
+      EEO[k] = g_aiT32[TRANSFORM_INVERSE][ 4][k]*src[  4*line ] + g_aiT32[TRANSFORM_INVERSE][12][k]*src[ 12*line ] +
+               g_aiT32[TRANSFORM_INVERSE][20][k]*src[ 20*line ] + g_aiT32[TRANSFORM_INVERSE][28][k]*src[ 28*line ];
+    }
+    EEEO[0] = g_aiT32[TRANSFORM_INVERSE][8][0]*src[ 8*line ] + g_aiT32[TRANSFORM_INVERSE][24][0]*src[ 24*line ];
+    EEEO[1] = g_aiT32[TRANSFORM_INVERSE][8][1]*src[ 8*line ] + g_aiT32[TRANSFORM_INVERSE][24][1]*src[ 24*line ];
+    EEEE[0] = g_aiT32[TRANSFORM_INVERSE][0][0]*src[ 0      ] + g_aiT32[TRANSFORM_INVERSE][16][0]*src[ 16*line ];
+    EEEE[1] = g_aiT32[TRANSFORM_INVERSE][0][1]*src[ 0      ] + g_aiT32[TRANSFORM_INVERSE][16][1]*src[ 16*line ];
+
+    /* Combining even and odd terms at each hierarchy levels to calculate the final spatial domain vector */
+    EEE[0] = EEEE[0] + EEEO[0];
+    EEE[3] = EEEE[0] - EEEO[0];
+    EEE[1] = EEEE[1] + EEEO[1];
+    EEE[2] = EEEE[1] - EEEO[1];
+    for (k=0;k<4;k++)
+    {
+      EE[k] = EEE[k] + EEO[k];
+      EE[k+4] = EEE[3-k] - EEO[3-k];
+    }
+    for (k=0;k<8;k++)
+    {
+      E[k] = EE[k] + EO[k];
+      E[k+8] = EE[7-k] - EO[7-k];
+    }
+    for (k=0;k<16;k++)
+    {
+      dst[k]    = Clip3( outputMinimum, outputMaximum, (E[k] + O[k] + add)>>shift );
+      dst[k+16] = Clip3( outputMinimum, outputMaximum, (E[15-k] - O[15-k] + add)>>shift );
+    }
+    src ++;
+    dst += 32;
+  }
+}
+
+/** MxN forward transform (2D)
+*  \param bitDepth              [in]  bit depth
+*  \param block                 [in]  residual block
+*  \param coeff                 [out] transform coefficients
+*  \param iWidth                [in]  width of transform
+*  \param iHeight               [in]  height of transform
+*  \param useDST                [in]
+*  \param maxLog2TrDynamicRange [in]
+
+*/
+<<<<<<< HEAD
+Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight, Bool useDST, const Int maxLog2TrDynamicRange)//Á≥ªÊï∞ÁöÑ‰∫åÁª¥ÂèòÊç¢ÔºàÂèØÂàÜËß£‰∏§Ê¨°‰∏ÄÁª¥ÂèòÊç¢Ôºâ
+=======
+Void xTrMxN(Int bitDepth, TCoeff *block, TCoeff *coeff, Int iWidth, Int iHeight, Bool useDST, const Int maxLog2TrDynamicRange)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+{
+  const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_FORWARD];
+
+  const Int shift_1st = ((g_aucConvertToBit[iWidth] + 2) +  bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange;
+  const Int shift_2nd = (g_aucConvertToBit[iHeight] + 2) + TRANSFORM_MATRIX_SHIFT;
+
+  assert(shift_1st >= 0);
+  assert(shift_2nd >= 0);
+
+  TCoeff tmp[ MAX_TU_SIZE * MAX_TU_SIZE ];
+
+<<<<<<< HEAD
+  switch (iWidth)//ÂÖàÂØπÂÉèÁ¥†ÂùóÁöÑË°åÂÅö‰∏ÄÁª¥DCT„ÄÄ
+=======
+  switch (iWidth)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    case 4:
+      {
+        if ((iHeight == 4) && useDST)    // Check for DCT or DST
+        {
+           fastForwardDst( block, tmp, shift_1st );
+        }
+        else
+        {
+          partialButterfly4 ( block, tmp, shift_1st, iHeight );
+        }
+      }
+      break;
+
+    case 8:     partialButterfly8 ( block, tmp, shift_1st, iHeight );  break;
+    case 16:    partialButterfly16( block, tmp, shift_1st, iHeight );  break;
+    case 32:    partialButterfly32( block, tmp, shift_1st, iHeight );  break;
+    default:
+      assert(0); exit (1); break;
+<<<<<<< HEAD
+  }//ÂæóÂà∞ÂèòÊç¢ÁöÑ‰∏≠Èó¥ÁªìÊûútmp
+
+  switch (iHeight)//Âú®ÂØπÂÉèÁ¥†ÂùóÁöÑÂàóÂÅö‰∏ÄÁª¥DCT
+=======
+  }
+
+  switch (iHeight)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    case 4:
+      {
+        if ((iWidth == 4) && useDST)    // Check for DCT or DST
+        {
+          fastForwardDst( tmp, coeff, shift_2nd );
+        }
+        else
+        {
+          partialButterfly4 ( tmp, coeff, shift_2nd, iWidth );
+        }
+      }
+      break;
+
+    case 8:     partialButterfly8 ( tmp, coeff, shift_2nd, iWidth );    break;
+    case 16:    partialButterfly16( tmp, coeff, shift_2nd, iWidth );    break;
+    case 32:    partialButterfly32( tmp, coeff, shift_2nd, iWidth );    break;
+    default:
+      assert(0); exit (1); break;
+  }
+<<<<<<< HEAD
+}//ÂæóÂà∞ÂèòÊç¢ÁöÑÊúÄÁªàÁªìÊûúcoeff
+=======
+}
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+
+/** MxN inverse transform (2D)
+*  \param bitDepth              [in]  bit depth
+*  \param coeff                 [in]  transform coefficients
+*  \param block                 [out] residual block
+*  \param iWidth                [in]  width of transform
+*  \param iHeight               [in]  height of transform
+*  \param useDST                [in]
+*  \param maxLog2TrDynamicRange [in]
+*/
+Void xITrMxN(Int bitDepth, TCoeff *coeff, TCoeff *block, Int iWidth, Int iHeight, Bool useDST, const Int maxLog2TrDynamicRange)
+<<<<<<< HEAD
+{//ÂèçÂèòÊç¢ÂÆûÁé∞ÂêåÊ≠£ÂèòÊç¢„ÄÄ‰∏çÂú®ÂèôËø∞
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  const Int TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_INVERSE];
+
+  Int shift_1st = TRANSFORM_MATRIX_SHIFT + 1; //1 has been added to shift_1st at the expense of shift_2nd
+  Int shift_2nd = (TRANSFORM_MATRIX_SHIFT + maxLog2TrDynamicRange - 1) - bitDepth;
+  const TCoeff clipMinimum = -(1 << maxLog2TrDynamicRange);
+  const TCoeff clipMaximum =  (1 << maxLog2TrDynamicRange) - 1;
+
+  assert(shift_1st >= 0);
+  assert(shift_2nd >= 0);
+
+  TCoeff tmp[MAX_TU_SIZE * MAX_TU_SIZE];
+
+  switch (iHeight)
+  {
+    case 4:
+      {
+        if ((iWidth == 4) && useDST)    // Check for DCT or DST
+        {
+          fastInverseDst( coeff, tmp, shift_1st, clipMinimum, clipMaximum);
+        }
+        else
+        {
+          partialButterflyInverse4 ( coeff, tmp, shift_1st, iWidth, clipMinimum, clipMaximum);
+        }
+      }
+      break;
+
+    case  8: partialButterflyInverse8 ( coeff, tmp, shift_1st, iWidth, clipMinimum, clipMaximum); break;
+    case 16: partialButterflyInverse16( coeff, tmp, shift_1st, iWidth, clipMinimum, clipMaximum); break;
+    case 32: partialButterflyInverse32( coeff, tmp, shift_1st, iWidth, clipMinimum, clipMaximum); break;
+
+    default:
+      assert(0); exit (1); break;
+  }
+
+  switch (iWidth)
+  {
+    // Clipping here is not in the standard, but is used to protect the "Pel" data type into which the inverse-transformed samples will be copied
+    case 4:
+      {
+        if ((iHeight == 4) && useDST)    // Check for DCT or DST
+        {
+          fastInverseDst( tmp, block, shift_2nd, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max() );
+        }
+        else
+        {
+          partialButterflyInverse4 ( tmp, block, shift_2nd, iHeight, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max());
+        }
+      }
+      break;
+
+    case  8: partialButterflyInverse8 ( tmp, block, shift_2nd, iHeight, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
+    case 16: partialButterflyInverse16( tmp, block, shift_2nd, iHeight, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
+    case 32: partialButterflyInverse32( tmp, block, shift_2nd, iHeight, std::numeric_limits<Pel>::min(), std::numeric_limits<Pel>::max()); break;
+
+    default:
+      assert(0); exit (1); break;
+  }
+}
+
+
+// To minimize the distortion only. No rate is considered.
+Void TComTrQuant::signBitHidingHDQ( TCoeff* pQCoef, TCoeff* pCoef, TCoeff* deltaU, const TUEntropyCodingParameters &codingParameters, const Int maxLog2TrDynamicRange )
+<<<<<<< HEAD
+{//SDHÊäÄÊúØ„ÄÄÈ¶ñÂÖàËÆ°ÁÆóCG‰∏≠ÊâÄÊúâÈùûÈõ∂Á≥ªÊï∞ÂπÖÂÄºÁªùÂØπÂÄº‰πãÂíå„ÄÄÁÑ∂ÂêéÂØπÂíåÂÄºÂ•áÂÅ∂Âà§Êñ≠„ÄÄËã•‰∏∫ÂÅ∂Êï∞„ÄÄÂàôÁ¨¨‰∏Ä‰∏™ÈùûÈõ∂Á≥ªÊï∞ÁöÑÁ¨¶Âè∑ÂÄçÂà§Êñ≠‰∏∫Ôºã„ÄÄÂê¶Âàô‰∏∫Ôºç„ÄÄËøôÊ†∑ÂèØ‰ª•ËäÇÁúÅÁ¨¨‰∏Ä‰∏™ÈùûÈõ∂Á≥ªÊï∞coeff_sign_flagÁöÑÁÜµÁºñÁ†Å
+  const UInt width     = codingParameters.widthInGroups  << MLS_CG_LOG2_WIDTH;//‰ª•CG‰∏∫Âçï‰ΩçÁöÑÂÆΩ
+  const UInt height    = codingParameters.heightInGroups << MLS_CG_LOG2_HEIGHT;//‰ª•CG‰∏∫Âçï‰ΩçÁöÑÈ´ò
+  const UInt groupSize = 1 << MLS_CG_SIZE;//CG‰∏≠Á≥ªÊï∞‰∏™Êï∞
+=======
+{
+  const UInt width     = codingParameters.widthInGroups  << MLS_CG_LOG2_WIDTH;
+  const UInt height    = codingParameters.heightInGroups << MLS_CG_LOG2_HEIGHT;
+  const UInt groupSize = 1 << MLS_CG_SIZE;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+  const TCoeff entropyCodingMinimum = -(1 << maxLog2TrDynamicRange);
+  const TCoeff entropyCodingMaximum =  (1 << maxLog2TrDynamicRange) - 1;
+
+  Int lastCG = -1;
+  Int absSum = 0 ;
+  Int n ;
+
+<<<<<<< HEAD
+  for( Int subSet = (width*height-1) >> MLS_CG_SIZE; subSet >= 0; subSet-- )//ÈÅçÂéÜÊâÄÊúâTu‰∏≠ÊâÄÊúâCG
+  {
+    Int  subPos = subSet << MLS_CG_SIZE;
+    Int  firstNZPosInCG=groupSize , lastNZPosInCG=-1 ;//ÂàùÂßãÂåñ
+    absSum = 0 ;
+
+    for(n = groupSize-1; n >= 0; --n )//‰ªéÂêéÂêëÂâçÈÅçÂéÜCG‰∏≠ÊâÄÊúâÁ≥ªÊï∞„ÄÄÂØªÊâæCG‰∏≠ÊúÄÂêé‰∏Ä‰∏™ÈùûÈõ∂Á≥ªÊï∞
+    {
+      if( pQCoef[ codingParameters.scan[ n + subPos ]] )//Â¶ÇÊûúÊâæÂà∞ÈùûÈõ∂Á≥ªÊï∞
+=======
+  for( Int subSet = (width*height-1) >> MLS_CG_SIZE; subSet >= 0; subSet-- )
+  {
+    Int  subPos = subSet << MLS_CG_SIZE;
+    Int  firstNZPosInCG=groupSize , lastNZPosInCG=-1 ;
+    absSum = 0 ;
+
+    for(n = groupSize-1; n >= 0; --n )
+    {
+      if( pQCoef[ codingParameters.scan[ n + subPos ]] )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+      {
+        lastNZPosInCG = n;
+        break;
+      }
+    }
+
+<<<<<<< HEAD
+    for(n = 0; n <groupSize; n++ )//‰ªéÂâçÂêëÂêéÈÅçÂéÜCG‰∏≠ÊâÄÊúâÁ≥ªÊï∞„ÄÄÂØªÊâæCG‰∏≠Á¨¨‰∏Ä‰∏™‰∏Ä‰∏™ÈùûÈõ∂Á≥ªÊï∞
+=======
+    for(n = 0; n <groupSize; n++ )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      if( pQCoef[ codingParameters.scan[ n + subPos ]] )
+      {
+        firstNZPosInCG = n;
+        break;
+      }
+    }
+
+<<<<<<< HEAD
+    for(n = firstNZPosInCG; n <=lastNZPosInCG; n++ )//ËÆ°ÁÆóCG‰∏≠Á≥ªÊï∞ÁªùÂØπÂÄº‰πãÂíå
+=======
+    for(n = firstNZPosInCG; n <=lastNZPosInCG; n++ )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      absSum += Int(pQCoef[ codingParameters.scan[ n + subPos ]]);
+    }
+
+<<<<<<< HEAD
+    if(lastNZPosInCG>=0 && lastCG==-1)//Â≠òÂú®ÊúÄÂêé‰∏Ä‰∏™ÈùûÈõ∂Á≥ªÊï∞„ÄÄlastCGÁΩÆÔºë
+=======
+    if(lastNZPosInCG>=0 && lastCG==-1)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      lastCG = 1 ;
+    }
+
+<<<<<<< HEAD
+    if( lastNZPosInCG-firstNZPosInCG>=SBH_THRESHOLD )//Á¨¨‰∏Ä‰∏™ÈùûÈõ∂Á≥ªÊï∞ÂíåÊúÄÂêé‰∏Ä‰∏™ÈùûÈõ∂Á≥ªÊï∞‰πãÈó¥ÁöÑÈó¥ÈöîÂ§ß‰∫éÔºîÊó∂„ÄÄËØ•CGÊâçËÉΩÁúÅÁï•Á¨¨‰∏Ä‰∏™ÈùûÈõ∂Á≥ªÊï∞Á¨¶Âè∑ÁöÑÁÜµÁºñÁ†Å
+    {
+      UInt signbit = (pQCoef[codingParameters.scan[subPos+firstNZPosInCG]]>0?0:1) ;//Á¨¨‰∏Ä‰∏™ÈùûÈõ∂Á≥ªÊï∞Á¨¶Âè∑
+      if( signbit!=(absSum&0x1) )  //compare signbit with sum_parity„ÄÄSDHÁªìÊûú‰∏éCG‰∏≠Á¨¨‰∏Ä‰∏™ÈùûÈõ∂Á≥ªÊï∞ÁªìÊûú‰∏ç‰∏ÄËá¥
+      {
+        TCoeff curCost    = std::numeric_limits<TCoeff>::max();//ÂàùÂßãÂåñÈúÄË¶ÅÁî®Âà∞ÁöÑÂèÇÊï∞
+        TCoeff minCostInc = std::numeric_limits<TCoeff>::max();
+        Int minPos =-1, finalChange=0, curChange=0;
+        //Âú®‰∏Ä‰∏™CG‰∏≠„ÄÄËÆ°ÁÆóÂéüÂßãÁ≥ªÊï∞ÂÄºÂíåÂèçÈáèÂåñÂÄº‰πãÈó¥ÁöÑÂ∑ÆÂÄºÔºåÂØπÂ∑ÆÂÄºÊúÄÂ§ßÁöÑÈáèÂåñÂÄºËøõË°å‰øÆÊ≠£
+        for( n = (lastCG==1?lastNZPosInCG:groupSize-1) ; n >= 0; --n )//ÈÅçÂéÜCG‰∏≠ÊâÄÊúâÁ≥ªÊï∞„ÄÄËã•Â≠òÂú®ÊúÄÂêé‰∏Ä‰∏™ÈùûÈõ∂Á≥ªÊï∞Âàô‰ªéÊúÄÂêé‰∏Ä‰∏™ÈùûÈõ∂Á≥ªÊï∞ÂºÄÂßãÂêëÂâçÈÅçÂéÜ
+        {
+          UInt blkPos   = codingParameters.scan[ n+subPos ];
+          if(pQCoef[ blkPos ] != 0 )//ÈáèÂåñÂÄº‰∏ç‰∏∫Ôºê
+          {
+            if(deltaU[blkPos]>0)//ÂéüÂßãÁ≥ªÊï∞ÂÄºÊØîÂèçÈáèÂåñÂÄºÂ§ß
+            {
+              curCost = - deltaU[blkPos];//‰øÆÊ≠£ÂêéÁöÑËØØÂ∑ÆÔºàÁõ∏ÂØπÂÄº„ÄÄÂè™Áî®‰∫éÂÅöÊØîËæÉÔºâ
+              curChange=1 ;//‰øÆÊ≠£ÂÄº‰∏∫ÈáèÂåñÂÄºÂä†Ôºë
+            }
+            else//ÂéüÂßãÁ≥ªÊï∞ÂÄºÊØîÂèçÈáèÂåñÂÄºÂ§ß
+=======
+    if( lastNZPosInCG-firstNZPosInCG>=SBH_THRESHOLD )
+    {
+      UInt signbit = (pQCoef[codingParameters.scan[subPos+firstNZPosInCG]]>0?0:1) ;
+      if( signbit!=(absSum&0x1) )  //compare signbit with sum_parity
+      {
+        TCoeff curCost    = std::numeric_limits<TCoeff>::max();
+        TCoeff minCostInc = std::numeric_limits<TCoeff>::max();
+        Int minPos =-1, finalChange=0, curChange=0;
+
+        for( n = (lastCG==1?lastNZPosInCG:groupSize-1) ; n >= 0; --n )
+        {
+          UInt blkPos   = codingParameters.scan[ n+subPos ];
+          if(pQCoef[ blkPos ] != 0 )
+          {
+            if(deltaU[blkPos]>0)
+            {
+              curCost = - deltaU[blkPos];
+              curChange=1 ;
+            }
+            else
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+            {
+              //curChange =-1;
+              if(n==firstNZPosInCG && abs(pQCoef[blkPos])==1)
+              {
+                curCost = std::numeric_limits<TCoeff>::max();
+              }
+              else
+              {
+<<<<<<< HEAD
+                curCost = deltaU[blkPos];//‰øÆÊ≠£ÂêéÁöÑËØØÂ∑ÆÔºàÁõ∏ÂØπÂÄº„ÄÄÂè™Áî®‰∫éÂÅöÊØîËæÉÔºâ
+                curChange =-1;//‰øÆÊ≠£ÂÄº‰∏∫ÈáèÂåñÂÄºÂáèÔºë
+              }
+            }
+          }
+          else//ÈáèÂåñÂÄº‰∏∫Ôºê ‰øÆÊ≠£ÈáèÂåñÂÄºÂè™ËÉΩÂä†ÔºëÔºàÂõ†‰∏∫ÂéüÂßãÁ≥ªÊï∞ÂÄº‰∏ÄÂÆöÊØîÂèçÈáèÂåñÂÄºÂ§ßÔºâ
+=======
+                curCost = deltaU[blkPos];
+                curChange =-1;
+              }
+            }
+          }
+          else
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+          {
+            if(n<firstNZPosInCG)
+            {
+              UInt thisSignBit = (pCoef[blkPos]>=0?0:1);
+              if(thisSignBit != signbit )
+              {
+                curCost = std::numeric_limits<TCoeff>::max();
+              }
+              else
+              {
+                curCost = - (deltaU[blkPos])  ;
+                curChange = 1 ;
+              }
+            }
+            else
+            {
+              curCost = - (deltaU[blkPos])  ;
+              curChange = 1 ;
+            }
+          }
+
+<<<<<<< HEAD
+          if( curCost<minCostInc)//ÊØîËæÉÂêÑÁ≥ªÊï∞‰øÆÊ≠£ÂêéÁöÑËØØÂ∑Æ„ÄÄÈÄâÊã©‰øÆÊ≠£ÂêéËØØÂ∑ÆÊúÄÂ∞èÁöÑÁ≥ªÊï∞ËøõË°å‰øÆÊ≠£
+=======
+          if( curCost<minCostInc)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+          {
+            minCostInc = curCost ;
+            finalChange = curChange ;
+            minPos = blkPos ;
+          }
+        } //CG loop
+
+<<<<<<< HEAD
+        if(pQCoef[minPos] == entropyCodingMaximum || pQCoef[minPos] == entropyCodingMinimum)//Á≥ªÊï∞ËææÂà∞ÊúÄÂÄºÂè™ËÉΩÂáèÔºë
+=======
+        if(pQCoef[minPos] == entropyCodingMaximum || pQCoef[minPos] == entropyCodingMinimum)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        {
+          finalChange = -1;
+        }
+
+<<<<<<< HEAD
+        if(pCoef[minPos]>=0)//Á≥ªÊï∞Ê≠£Ë¥üÂΩ±ÂìçÊúÄÁªà‰øÆÊ≠£ÂÄº
+=======
+        if(pCoef[minPos]>=0)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        {
+          pQCoef[minPos] += finalChange ;
+        }
+        else
+        {
+          pQCoef[minPos] -= finalChange ;
+        }
+      } // Hide
+    }
+    if(lastCG==1)
+    {
+      lastCG=0 ;
+    }
+  } // TU loop
+
+  return;
+}
+
+
+Void TComTrQuant::xQuant(       TComTU       &rTu,
+                                TCoeff      * pSrc,
+                                TCoeff      * pDes,
+#if ADAPTIVE_QP_SELECTION
+                                TCoeff      *pArlDes,
+#endif
+                                TCoeff       &uiAbsSum,
+                          const ComponentID   compID,
+                          const QpParam      &cQP )
+<<<<<<< HEAD
+{//ÂØπÂèòÂåñÂêéÁöÑÁ≥ªÊï∞ËøõË°åÈáèÂåñ
+  const TComRectangle &rect = rTu.getRect(compID);//TuÂùó‰ΩçÁΩÆ
+=======
+{
+  const TComRectangle &rect = rTu.getRect(compID);
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  const UInt uiWidth        = rect.width;
+  const UInt uiHeight       = rect.height;
+  TComDataCU* pcCU          = rTu.getCU();
+  const UInt uiAbsPartIdx   = rTu.GetAbsPartIdxTU();
+<<<<<<< HEAD
+  const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));//ÈÄöÈÅì‰ΩçÊ∑±
+=======
+  const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+  TCoeff* piCoef    = pSrc;
+  TCoeff* piQCoef   = pDes;
+#if ADAPTIVE_QP_SELECTION
+  TCoeff* piArlCCoef = pArlDes;
+#endif
+
+  const Bool useTransformSkip      = pcCU->getTransformSkip(uiAbsPartIdx, compID);
+  const Int  maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
+
+  Bool useRDOQ = useTransformSkip ? m_useRDOQTS : m_useRDOQ;
+<<<<<<< HEAD
+  if ( useRDOQ && (isLuma(compID) || RDOQ_CHROMA) )//Â¶ÇÊûú‰ΩøÁî®ÁéáÂ§±Áúü‰ºòÂåñÈáèÂåñ
+=======
+  if ( useRDOQ && (isLuma(compID) || RDOQ_CHROMA) )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+#if T0196_SELECTIVE_RDOQ
+    if ( !m_useSelectiveRDOQ || xNeedRDOQ( rTu, piCoef, compID, cQP ) )
+    {
+#endif
+#if ADAPTIVE_QP_SELECTION
+<<<<<<< HEAD
+      xRateDistOptQuant( rTu, piCoef, pDes, pArlDes, uiAbsSum, compID, cQP );//ÁéáÂ§±Áúü‰ºòÂåñÈáèÂåñ
+=======
+      xRateDistOptQuant( rTu, piCoef, pDes, pArlDes, uiAbsSum, compID, cQP );
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+#else
+      xRateDistOptQuant( rTu, piCoef, pDes, uiAbsSum, compID, cQP );
+#endif
+#if T0196_SELECTIVE_RDOQ
+    }
+    else
+    {
+      memset( pDes, 0, sizeof( TCoeff ) * uiWidth *uiHeight );
+      uiAbsSum = 0;
+    }
+#endif
+  }
+<<<<<<< HEAD
+  else//ÊôÆÈÄöÈáèÂåñÔºà‰∏ç‰ΩøÁî®ÁéáÂ§±Áúü‰ºòÂåñÈáèÂåñÔºâ
+=======
+  else
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    TUEntropyCodingParameters codingParameters;
+    getTUEntropyCodingParameters(codingParameters, rTu, compID);
+
+    const TCoeff entropyCodingMinimum = -(1 << maxLog2TrDynamicRange);
+    const TCoeff entropyCodingMaximum =  (1 << maxLog2TrDynamicRange) - 1;
+
+    TCoeff deltaU[MAX_TU_SIZE * MAX_TU_SIZE];
+
+<<<<<<< HEAD
+    const UInt uiLog2TrSize = rTu.GetEquivalentLog2TrSize(compID);//TuÂùólog2Â§ßÂ∞è
+
+    Int scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);//ÈáèÂåñÁü©ÈòµÁ±ªÂûã
+    assert(scalingListType < SCALING_LIST_NUM);
+    Int *piQuantCoeff = getQuantCoeff(scalingListType, cQP.rem, uiLog2TrSize-2);//QPÂØπÂ∫îÁöÑÈáèÂåñÁ≥ªÊï∞Âú∞ÂùÄ
+
+    const Bool enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));//ÊòØÂê¶‰ΩøÁî®ÈáèÂåñÁü©Èòµ
+    const Int  defaultQuantisationCoefficient = g_quantScales[cQP.rem];//‰∏ç‰ΩøÁî®ÈáèÂåñÁü©ÈòµQPÂØπÂ∫îÁöÑÈáèÂåñÁ≥ªÊï∞
+=======
+    const UInt uiLog2TrSize = rTu.GetEquivalentLog2TrSize(compID);
+
+    Int scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
+    assert(scalingListType < SCALING_LIST_NUM);
+    Int *piQuantCoeff = getQuantCoeff(scalingListType, cQP.rem, uiLog2TrSize-2);
+
+    const Bool enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));
+    const Int  defaultQuantisationCoefficient = g_quantScales[cQP.rem];
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+    /* for 422 chroma blocks, the effective scaling applied during transformation is not a power of 2, hence it cannot be
+     * implemented as a bit-shift (the quantised result will be sqrt(2) * larger than required). Alternatively, adjust the
+     * uiLog2TrSize applied in iTransformShift, such that the result is 1/sqrt(2) the required result (i.e. smaller)
+     * Then a QP+3 (sqrt(2)) or QP-3 (1/sqrt(2)) method could be used to get the required result
+     */
+
+    // Represents scaling through forward transform
+<<<<<<< HEAD
+    Int iTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange);//ÂèòÂåñÁßª‰ΩçÈáè
+    if (useTransformSkip && pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag())//Ëã•‰ΩøÁî®TransformSkipÂíåÁ≤æÂ∫¶Êâ©Â±ï„ÄÄ
+    {
+      iTransformShift = std::max<Int>(0, iTransformShift);//ÂàôiTransformShift‰∏ÄÂÆö‰∏∫Ê≠£
+    }
+
+    const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;//‰πò‰ª•ÈáèÂåñÁ≥ªÊï∞ÂêéÁöÑÂè≥Áßª‰ΩçÈáè
+=======
+    Int iTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange);
+    if (useTransformSkip && pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag())
+    {
+      iTransformShift = std::max<Int>(0, iTransformShift);
+    }
+
+    const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    // QBits will be OK for any internal bit depth as the reduction in transform shift is balanced by an increase in Qp_per due to QpBDOffset
+
+#if ADAPTIVE_QP_SELECTION
+    Int iQBitsC = MAX_INT;
+    Int iAddC   = MAX_INT;
+
+    if (m_bUseAdaptQpSelect)
+    {
+      iQBitsC = iQBits - ARL_C_PRECISION;
+      iAddC   = 1 << (iQBitsC-1);
+    }
+#endif
+
+<<<<<<< HEAD
+    const Int iAdd   = (pcCU->getSlice()->getSliceType()==I_SLICE ? 171 : 85) << (iQBits-9);//ËàçÂÖ•ÂÅèÁßªÈáè I 1/3 P/B 1/6
+    const Int qBits8 = iQBits - 8;
+
+    for( Int uiBlockPos = 0; uiBlockPos < uiWidth*uiHeight; uiBlockPos++ )//ÈÅçÂéÜÊâÄÊúâÁ≥ªÊï∞
+=======
+    const Int iAdd   = (pcCU->getSlice()->getSliceType()==I_SLICE ? 171 : 85) << (iQBits-9);
+    const Int qBits8 = iQBits - 8;
+
+    for( Int uiBlockPos = 0; uiBlockPos < uiWidth*uiHeight; uiBlockPos++ )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      const TCoeff iLevel   = piCoef[uiBlockPos];
+      const TCoeff iSign    = (iLevel < 0 ? -1: 1);
+
+<<<<<<< HEAD
+      const Int64  tmpLevel = (Int64)abs(iLevel) * (enableScalingLists ? piQuantCoeff[uiBlockPos] : defaultQuantisationCoefficient);//ÈáèÂåñ‰∏≠Èó¥ÂÄº(dij*MF)
+=======
+      const Int64  tmpLevel = (Int64)abs(iLevel) * (enableScalingLists ? piQuantCoeff[uiBlockPos] : defaultQuantisationCoefficient);
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+#if ADAPTIVE_QP_SELECTION
+      if( m_bUseAdaptQpSelect )
+      {
+        piArlCCoef[uiBlockPos] = (TCoeff)((tmpLevel + iAddC ) >> iQBitsC);
+      }
+#endif
+
+<<<<<<< HEAD
+      const TCoeff quantisedMagnitude = TCoeff((tmpLevel + iAdd ) >> iQBits);//ÊúÄÁªàÈáèÂåñÂÄºÁªùÂØπÂÄº„ÄÄ(dij*MFÔºãf')>>(qbits+T_shift)
+      deltaU[uiBlockPos] = (TCoeff)((tmpLevel - (quantisedMagnitude<<iQBits) )>> qBits8);//ÈáèÂåñ‰∫ßÁîüÁöÑËØØÂ∑Æ
+
+      uiAbsSum += quantisedMagnitude;//ÈáèÂåñÂÄºÁªùÂØπÂÄº‰πãÂíå
+      const TCoeff quantisedCoefficient = quantisedMagnitude * iSign;//ÊúÄÁªàÈáèÂåñÂÄºÔºàÈáèÂåñÁªùÂØπÂÄº‰πò‰∏äÈáèÂåñÂÄºÁ¨¶Âè∑Ôºâ
+
+      piQCoef[uiBlockPos] = Clip3<TCoeff>( entropyCodingMinimum, entropyCodingMaximum, quantisedCoefficient );//ÈôêÂà∂ÈáèÂåñÂÄºÂ§ßÂ∞è
+=======
+      const TCoeff quantisedMagnitude = TCoeff((tmpLevel + iAdd ) >> iQBits);
+      deltaU[uiBlockPos] = (TCoeff)((tmpLevel - (quantisedMagnitude<<iQBits) )>> qBits8);
+
+      uiAbsSum += quantisedMagnitude;
+      const TCoeff quantisedCoefficient = quantisedMagnitude * iSign;
+
+      piQCoef[uiBlockPos] = Clip3<TCoeff>( entropyCodingMinimum, entropyCodingMaximum, quantisedCoefficient );
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    } // for n
+
+    if( pcCU->getSlice()->getPPS()->getSignHideFlag() )
+    {
+      if(uiAbsSum >= 2) //this prevents TUs with only one coefficient of value 1 from being tested
+      {
+<<<<<<< HEAD
+        signBitHidingHDQ( piQCoef, piCoef, deltaU, codingParameters, maxLog2TrDynamicRange ) ;//SDHÊäÄÊúØ„ÄÄÈöêËóèÊúÄÂêé‰∏Ä‰∏™ÈùûÈõ∂ÈáèÂåñÂÄºÁöÑÁ¨¶Âè∑‰Ωç„ÄÄËäÇÁ∫¶ÁºñÁ†Åbit‰Ωç
+=======
+        signBitHidingHDQ( piQCoef, piCoef, deltaU, codingParameters, maxLog2TrDynamicRange ) ;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+      }
+    }
+  } //if RDOQ
+  //return;
+}
+
+#if T0196_SELECTIVE_RDOQ
+Bool TComTrQuant::xNeedRDOQ( TComTU &rTu, TCoeff * pSrc, const ComponentID compID, const QpParam &cQP )
+<<<<<<< HEAD
+{//Âà§Êñ≠ÂèòÂåñÂêéÁöÑÁ≥ªÊï∞ÊòØÂê¶ÈúÄË¶ÅÁéáÂ§±Áúü‰ºòÂåñÈáèÂåñ
+  const TComRectangle &rect = rTu.getRect(compID);//TuÂùó‰ΩçÁΩÆ
+=======
+{
+  const TComRectangle &rect = rTu.getRect(compID);
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  const UInt uiWidth        = rect.width;
+  const UInt uiHeight       = rect.height;
+  TComDataCU* pcCU          = rTu.getCU();
+  const UInt uiAbsPartIdx   = rTu.GetAbsPartIdxTU();
+<<<<<<< HEAD
+  const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));//ÈÄöÈÅì‰ΩçÊ∑±
+=======
+  const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+  TCoeff* piCoef    = pSrc;
+
+  const Bool useTransformSkip      = pcCU->getTransformSkip(uiAbsPartIdx, compID);
+  const Int  maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
+
+  const UInt uiLog2TrSize = rTu.GetEquivalentLog2TrSize(compID);
+
+<<<<<<< HEAD
+  Int scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);//ÈáèÂåñÁü©ÈòµÁ±ªÂûã
+  assert(scalingListType < SCALING_LIST_NUM);
+  Int *piQuantCoeff = getQuantCoeff(scalingListType, cQP.rem, uiLog2TrSize-2);//QPÂØπÂ∫îÁöÑÈáèÂåñÁ≥ªÊï∞Âú∞ÂùÄ
+
+  const Bool enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));//ÊòØÂê¶‰ΩøÁî®ÈáèÂåñÁü©Èòµ
+  const Int  defaultQuantisationCoefficient = g_quantScales[cQP.rem];//‰∏ç‰ΩøÁî®ÈáèÂåñÁü©ÈòµQPÂØπÂ∫îÁöÑÈáèÂåñÁ≥ªÊï∞
+=======
+  Int scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
+  assert(scalingListType < SCALING_LIST_NUM);
+  Int *piQuantCoeff = getQuantCoeff(scalingListType, cQP.rem, uiLog2TrSize-2);
+
+  const Bool enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));
+  const Int  defaultQuantisationCoefficient = g_quantScales[cQP.rem];
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+  /* for 422 chroma blocks, the effective scaling applied during transformation is not a power of 2, hence it cannot be
+    * implemented as a bit-shift (the quantised result will be sqrt(2) * larger than required). Alternatively, adjust the
+    * uiLog2TrSize applied in iTransformShift, such that the result is 1/sqrt(2) the required result (i.e. smaller)
+    * Then a QP+3 (sqrt(2)) or QP-3 (1/sqrt(2)) method could be used to get the required result
+    */
+
+  // Represents scaling through forward transform
+  Int iTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange);
+  if (useTransformSkip && pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag())
+  {
+    iTransformShift = std::max<Int>(0, iTransformShift);
+  }
+
+  const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;
+  // QBits will be OK for any internal bit depth as the reduction in transform shift is balanced by an increase in Qp_per due to QpBDOffset
+
+  // iAdd is different from the iAdd used in normal quantization
+<<<<<<< HEAD
+  const Int iAdd   = (compID == COMPONENT_Y ? 171 : 256) << (iQBits-9);//ËàçÂÖ•ÂÅèÁßªÈáè I 1/3 P/B 1/6
+
+  for( Int uiBlockPos = 0; uiBlockPos < uiWidth*uiHeight; uiBlockPos++ )//ÈÅçÂéÜÊâÄÊúâÁ≥ªÊï∞
+=======
+  const Int iAdd   = (compID == COMPONENT_Y ? 171 : 256) << (iQBits-9);
+
+  for( Int uiBlockPos = 0; uiBlockPos < uiWidth*uiHeight; uiBlockPos++ )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    const TCoeff iLevel   = piCoef[uiBlockPos];
+    const Int64  tmpLevel = (Int64)abs(iLevel) * (enableScalingLists ? piQuantCoeff[uiBlockPos] : defaultQuantisationCoefficient);
+    const TCoeff quantisedMagnitude = TCoeff((tmpLevel + iAdd ) >> iQBits);
+
+<<<<<<< HEAD
+    if ( quantisedMagnitude != 0 )//Â¶ÇÊûúËØ•TuÂ≠òÂú®ÈùûÈõ∂ÈáèÂåñÂÄº„ÄÄÂàôÈúÄË¶ÅÁéáÂ§±Áúü‰ºòÂåñÈáèÂåñ„ÄÄÂê¶Âàô‰∏çÈúÄË¶Å
+=======
+    if ( quantisedMagnitude != 0 )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      return true;
+    }
+  } // for n
+  return false;
+}
+#endif
+
+Void TComTrQuant::xDeQuant(       TComTU        &rTu,
+                            const TCoeff       * pSrc,
+                                  TCoeff       * pDes,
+                            const ComponentID    compID,
+                            const QpParam       &cQP )
+<<<<<<< HEAD
+{//ÂèçÈáèÂåñËøáÁ®ãËæÉÈáèÂåñËøáÁ®ãÁÆÄÂçï„ÄÄ‰∏î‰∏éÊôÆÈÄöÈáèÂåñËøáÁ®ãÂü∫Êú¨Áõ∏Âêå„ÄÄÊïÖ‰∏çÂÜçÂèôËø∞
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  assert(compID<MAX_NUM_COMPONENT);
+
+        TComDataCU          *pcCU               = rTu.getCU();
+  const UInt                 uiAbsPartIdx       = rTu.GetAbsPartIdxTU();
+  const TComRectangle       &rect               = rTu.getRect(compID);
+  const UInt                 uiWidth            = rect.width;
+  const UInt                 uiHeight           = rect.height;
+  const TCoeff        *const piQCoef            = pSrc;
+        TCoeff        *const piCoef             = pDes;
+  const UInt                 uiLog2TrSize       = rTu.GetEquivalentLog2TrSize(compID);
+  const UInt                 numSamplesInBlock  = uiWidth*uiHeight;
+  const Int                  maxLog2TrDynamicRange  = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
+  const TCoeff               transformMinimum   = -(1 << maxLog2TrDynamicRange);
+  const TCoeff               transformMaximum   =  (1 << maxLog2TrDynamicRange) - 1;
+  const Bool                 enableScalingLists = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));
+  const Int                  scalingListType    = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
+#if O0043_BEST_EFFORT_DECODING
+  const Int                  channelBitDepth    = pcCU->getSlice()->getSPS()->getStreamBitDepth(toChannelType(compID));
+#else
+  const Int                  channelBitDepth    = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+#endif
+
+  assert (scalingListType < SCALING_LIST_NUM);
+  assert ( uiWidth <= m_uiMaxTrSize );
+
+  // Represents scaling through forward transform
+  const Bool bClipTransformShiftTo0 = (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0) && pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag();
+  const Int  originalTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange);
+  const Int  iTransformShift        = bClipTransformShiftTo0 ? std::max<Int>(0, originalTransformShift) : originalTransformShift;
+
+  const Int QP_per = cQP.per;
+  const Int QP_rem = cQP.rem;
+
+  const Int rightShift = (IQUANT_SHIFT - (iTransformShift + QP_per)) + (enableScalingLists ? LOG2_SCALING_LIST_NEUTRAL_VALUE : 0);
+
+  if(enableScalingLists)
+  {
+    //from the dequantisation equation:
+    //iCoeffQ                         = ((Intermediate_Int(clipQCoef) * piDequantCoef[deQuantIdx]) + iAdd ) >> rightShift
+    //(sizeof(Intermediate_Int) * 8)  =              inputBitDepth    +    dequantCoefBits                   - rightShift
+    const UInt             dequantCoefBits     = 1 + IQUANT_SHIFT + SCALING_LIST_BITS;
+    const UInt             targetInputBitDepth = std::min<UInt>((maxLog2TrDynamicRange + 1), (((sizeof(Intermediate_Int) * 8) + rightShift) - dequantCoefBits));
+
+    const Intermediate_Int inputMinimum        = -(1 << (targetInputBitDepth - 1));
+    const Intermediate_Int inputMaximum        =  (1 << (targetInputBitDepth - 1)) - 1;
+
+    Int *piDequantCoef = getDequantCoeff(scalingListType,QP_rem,uiLog2TrSize-2);
+
+    if(rightShift > 0)
+    {
+      const Intermediate_Int iAdd = 1 << (rightShift - 1);
+
+      for( Int n = 0; n < numSamplesInBlock; n++ )
+      {
+        const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
+        const Intermediate_Int iCoeffQ   = ((Intermediate_Int(clipQCoef) * piDequantCoef[n]) + iAdd ) >> rightShift;
+
+        piCoef[n] = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
+      }
+    }
+    else
+    {
+      const Int leftShift = -rightShift;
+
+      for( Int n = 0; n < numSamplesInBlock; n++ )
+      {
+        const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
+        const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * piDequantCoef[n]) << leftShift;
+
+        piCoef[n] = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
+      }
+    }
+  }
+  else
+  {
+    const Int scale     =  g_invQuantScales[QP_rem];
+    const Int scaleBits =     (IQUANT_SHIFT + 1)   ;
+
+    //from the dequantisation equation:
+    //iCoeffQ                         = Intermediate_Int((Int64(clipQCoef) * scale + iAdd) >> rightShift);
+    //(sizeof(Intermediate_Int) * 8)  =                    inputBitDepth   + scaleBits      - rightShift
+    const UInt             targetInputBitDepth = std::min<UInt>((maxLog2TrDynamicRange + 1), (((sizeof(Intermediate_Int) * 8) + rightShift) - scaleBits));
+    const Intermediate_Int inputMinimum        = -(1 << (targetInputBitDepth - 1));
+    const Intermediate_Int inputMaximum        =  (1 << (targetInputBitDepth - 1)) - 1;
+
+    if (rightShift > 0)
+    {
+      const Intermediate_Int iAdd = 1 << (rightShift - 1);
+
+      for( Int n = 0; n < numSamplesInBlock; n++ )
+      {
+        const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
+        const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * scale + iAdd) >> rightShift;
+
+        piCoef[n] = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
+      }
+    }
+    else
+    {
+      const Int leftShift = -rightShift;
+
+      for( Int n = 0; n < numSamplesInBlock; n++ )
+      {
+        const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, piQCoef[n]));
+        const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * scale) << leftShift;
+
+        piCoef[n] = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
+      }
+    }
+  }
+}
+
+
+Void TComTrQuant::init(   UInt  uiMaxTrSize,
+                          Bool  bUseRDOQ,
+                          Bool  bUseRDOQTS,
+#if T0196_SELECTIVE_RDOQ
+                          Bool  useSelectiveRDOQ,
+#endif
+                          Bool  bEnc,
+                          Bool  useTransformSkipFast
+#if ADAPTIVE_QP_SELECTION
+                        , Bool bUseAdaptQpSelect
+#endif
+                       )
+{
+  m_uiMaxTrSize  = uiMaxTrSize;
+  m_bEnc         = bEnc;
+  m_useRDOQ      = bUseRDOQ;
+  m_useRDOQTS    = bUseRDOQTS;
+#if T0196_SELECTIVE_RDOQ
+  m_useSelectiveRDOQ = useSelectiveRDOQ;
+#endif
+#if ADAPTIVE_QP_SELECTION
+  m_bUseAdaptQpSelect = bUseAdaptQpSelect;
+#endif
+  m_useTransformSkipFast = useTransformSkipFast;
+}
+
+
+Void TComTrQuant::transformNxN(       TComTU        & rTu,
+                                const ComponentID     compID,
+                                      Pel          *  pcResidual,
+                                const UInt            uiStride,
+                                      TCoeff       *  rpcCoeff,
+#if ADAPTIVE_QP_SELECTION
+                                      TCoeff       *  pcArlCoeff,
+#endif
+                                      TCoeff        & uiAbsSum,
+                                const QpParam       & cQP
+                              )
+<<<<<<< HEAD
+{//N*N TuÂùóÂØπÊÆãÂ∑ÆÂÄºËøõË°åÂèòÊç¢ÈáèÂåñÂæóÂà∞ÊúÄÁªàÈáèÂåñÂÄº
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  const TComRectangle &rect = rTu.getRect(compID);
+  const UInt uiWidth        = rect.width;
+  const UInt uiHeight       = rect.height;
+  TComDataCU* pcCU          = rTu.getCU();
+  const UInt uiAbsPartIdx   = rTu.GetAbsPartIdxTU();
+  const UInt uiOrgTrDepth   = rTu.GetTransformDepthRel();
+
+<<<<<<< HEAD
+  uiAbsSum=0;//ÂàùÂßãÂåñÈáèÂåñÂÄºÁ≥ªÊï∞‰πãÂíå‰∏∫Ôºê
+
+  RDPCMMode rdpcmMode = RDPCM_OFF;//ÂàùÂßãÂåñPCMÊ®°Âºè‰∏∫RDPCM_OFF
+  rdpcmNxN( rTu, compID, pcResidual, uiStride, cQP, rpcCoeff, uiAbsSum, rdpcmMode );//ËÆ°ÁÆóËØ•TUÂùóÊúÄ‰ºòPCMÂπ∂ËµãÁªôrdpcmMode„ÄÄËã•rdpcmMode ÔºÅ= RDPCM_OFF„ÄÄÂàôrpcCoeff‰∏∫ÊúÄÁªàÈáèÂåñÂÄº
+
+  if (rdpcmMode == RDPCM_OFF)//Ëã•‰∏ç‰ΩøÁî®PCMÊ®°Âºè„ÄÄÂàôÈúÄË¶ÅËøõË°åÂèòÊç¢ÂíåÈáèÂåñ
+  {
+    uiAbsSum = 0;
+    //transform and quantise
+    if(pcCU->getCUTransquantBypass(uiAbsPartIdx))//Â¶ÇÊûúËØ•CU‰∏∫losslessÊ®°Âºè„ÄÄ‰∏çÈúÄË¶ÅÂèòÊç¢ÂèäÈáèÂåñ
+=======
+  uiAbsSum=0;
+
+  RDPCMMode rdpcmMode = RDPCM_OFF;
+  rdpcmNxN( rTu, compID, pcResidual, uiStride, cQP, rpcCoeff, uiAbsSum, rdpcmMode );
+
+  if (rdpcmMode == RDPCM_OFF)
+  {
+    uiAbsSum = 0;
+    //transform and quantise
+    if(pcCU->getCUTransquantBypass(uiAbsPartIdx))
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      const Bool rotateResidual = rTu.isNonTransformedResidualRotated(compID);
+      const UInt uiSizeMinus1   = (uiWidth * uiHeight) - 1;
+
+<<<<<<< HEAD
+      for (UInt y = 0, coefficientIndex = 0; y<uiHeight; y++)//‰æùÊ¨°ÈÅçÂéÜÊâÄÊúâÊÆãÂ∑ÆÂÄº
+=======
+      for (UInt y = 0, coefficientIndex = 0; y<uiHeight; y++)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+      {
+        for (UInt x = 0; x<uiWidth; x++, coefficientIndex++)
+        {
+          const Pel currentSample = pcResidual[(y * uiStride) + x];
+
+<<<<<<< HEAD
+          rpcCoeff[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] = currentSample;//ÂéüÂßãÊÆãÂ∑ÆÂÄºÂç≥‰∏∫ÊúÄÁªàÂÄº
+=======
+          rpcCoeff[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] = currentSample;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+          uiAbsSum += TCoeff(abs(currentSample));
+        }
+      }
+    }
+<<<<<<< HEAD
+    else//‰∏ç‰∏∫losslessÊ®°Âºè
+=======
+    else
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+#if DEBUG_TRANSFORM_AND_QUANTISE
+      std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at input to transform\n";
+      printBlock(pcResidual, uiWidth, uiHeight, uiStride);
+#endif
+
+      assert( (pcCU->getSlice()->getSPS()->getMaxTrSize() >= uiWidth) );
+
+<<<<<<< HEAD
+      if(pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0)///‰∏∫TransformSkipÊ®°Âºè„ÄÄÔºà‰∏çÈúÄË¶ÅÂèòÊç¢Ôºâ„ÄÄ
+      {
+        xTransformSkip( pcResidual, uiStride, m_plTempCoeff, rTu, compID );//ÊâßË°åTransformSkipÊ®°Âºè
+      }
+      else//Âê¶ÂàôÂØπÊÆãÂ∑ÆÂÄºÂèòÊç¢
+      {
+        const Int channelBitDepth=pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+        xT( channelBitDepth, rTu.useDST(compID), pcResidual, uiStride, m_plTempCoeff, uiWidth, uiHeight, pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)) );//ÂØπÊÆãÂ∑ÆÂÄºÂÅöÂèòÊç¢
+=======
+      if(pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0)
+      {
+        xTransformSkip( pcResidual, uiStride, m_plTempCoeff, rTu, compID );
+      }
+      else
+      {
+        const Int channelBitDepth=pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+        xT( channelBitDepth, rTu.useDST(compID), pcResidual, uiStride, m_plTempCoeff, uiWidth, uiHeight, pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)) );
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+      }
+
+#if DEBUG_TRANSFORM_AND_QUANTISE
+      std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU between transform and quantiser\n";
+      printBlock(m_plTempCoeff, uiWidth, uiHeight, uiWidth);
+#endif
+
+      xQuant( rTu, m_plTempCoeff, rpcCoeff,
+
+#if ADAPTIVE_QP_SELECTION
+              pcArlCoeff,
+#endif
+<<<<<<< HEAD
+              uiAbsSum, compID, cQP );//ÂØπÂèòÊç¢ÂêéÁöÑÂÄºÔºàÂåÖÊã¨TransformSkipÔºâÂÅöÈáèÂåñ
+=======
+              uiAbsSum, compID, cQP );
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+#if DEBUG_TRANSFORM_AND_QUANTISE
+      std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at output of quantiser\n";
+      printBlock(rpcCoeff, uiWidth, uiHeight, uiWidth);
+#endif
+    }
+  }
+
+    //set the CBF
+<<<<<<< HEAD
+  pcCU->setCbfPartRange((((uiAbsSum > 0) ? 1 : 0) << uiOrgTrDepth), compID, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(compID));//ËÆæÁΩÆcbf Ë°®ÊòéËØ•TuÂùóÊòØÂê¶Â≠òÂú®ÈùûÈõ∂Á≥ªÊï∞
+=======
+  pcCU->setCbfPartRange((((uiAbsSum > 0) ? 1 : 0) << uiOrgTrDepth), compID, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(compID));
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+}
+
+
+Void TComTrQuant::invTransformNxN(      TComTU        &rTu,
+                                  const ComponentID    compID,
+                                        Pel          *pcResidual,
+                                  const UInt           uiStride,
+                                        TCoeff       * pcCoeff,
+                                  const QpParam       &cQP
+                                        DEBUG_STRING_FN_DECLAREP(psDebug))
+<<<<<<< HEAD
+{//Áî±ÈáèÂåñÂÄºÂèçÈáèÂåñÂèçÂèòÊç¢ÁöÑÂæóÂà∞ÈáçÂª∫ÁöÑÊÆãÂ∑ÆÂÄº„ÄÄËøáÁ®ãÂü∫Êú¨ÂêåtransformNxN„ÄÄ‰∏çÂÜçÂèôËø∞
+=======
+{
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  TComDataCU* pcCU=rTu.getCU();
+  const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
+  const TComRectangle &rect = rTu.getRect(compID);
+  const UInt uiWidth = rect.width;
+  const UInt uiHeight = rect.height;
+
+  if (uiWidth != uiHeight) //for intra, the TU will have been split above this level, so this condition won't be true, hence this only affects inter
+<<<<<<< HEAD
+  {//Ëã•‰∏ç‰∏∫Ê†áÂáÜTuÂùó„ÄÄÂàôÈÄíÂΩí„ÄÄÂØπÊ†áÂáÜÂ≠êTu ËøõË°åinvTransformNxN
+=======
+  {
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    //------------------------------------------------
+
+    //recurse deeper
+
+    TComTURecurse subTURecurse(rTu, false, TComTU::VERTICAL_SPLIT, true, compID);
+
+    do
+    {
+      //------------------
+
+      const UInt lineOffset = subTURecurse.GetSectionNumber() * subTURecurse.getRect(compID).height;
+
+      Pel    *subTUResidual     = pcResidual + (lineOffset * uiStride);
+      TCoeff *subTUCoefficients = pcCoeff     + (lineOffset * subTURecurse.getRect(compID).width);
+
+      invTransformNxN(subTURecurse, compID, subTUResidual, uiStride, subTUCoefficients, cQP DEBUG_STRING_PASS_INTO(psDebug));
+
+      //------------------
+
+<<<<<<< HEAD
+    } while (subTURecurse.nextSection(rTu));//Â≠òÂú®‰∏ã‰∏ÄÂ≠êN*NÁöÑTUÂùó
+=======
+    } while (subTURecurse.nextSection(rTu));
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+    //------------------------------------------------
+
+    return;
+  }
+
+#if DEBUG_STRING
+  if (psDebug)
+  {
+    std::stringstream ss(stringstream::out);
+    printBlockToStream(ss, (compID==0)?"###InvTran ip Ch0: " : ((compID==1)?"###InvTran ip Ch1: ":"###InvTran ip Ch2: "), pcCoeff, uiWidth, uiHeight, uiWidth);
+    DEBUG_STRING_APPEND((*psDebug), ss.str())
+  }
+#endif
+
+  if(pcCU->getCUTransquantBypass(uiAbsPartIdx))
+  {
+    const Bool rotateResidual = rTu.isNonTransformedResidualRotated(compID);
+    const UInt uiSizeMinus1   = (uiWidth * uiHeight) - 1;
+
+    for (UInt y = 0, coefficientIndex = 0; y<uiHeight; y++)
+    {
+      for (UInt x = 0; x<uiWidth; x++, coefficientIndex++)
+      {
+        pcResidual[(y * uiStride) + x] = Pel(pcCoeff[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex]);
+      }
+    }
+  }
+  else
+  {
+#if DEBUG_TRANSFORM_AND_QUANTISE
+    std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at input to dequantiser\n";
+    printBlock(pcCoeff, uiWidth, uiHeight, uiWidth);
+#endif
+
+    xDeQuant(rTu, pcCoeff, m_plTempCoeff, compID, cQP);
+
+#if DEBUG_TRANSFORM_AND_QUANTISE
+    std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU between dequantiser and inverse-transform\n";
+    printBlock(m_plTempCoeff, uiWidth, uiHeight, uiWidth);
+#endif
+
+#if DEBUG_STRING
+    if (psDebug)
+    {
+      std::stringstream ss(stringstream::out);
+      printBlockToStream(ss, "###InvTran deq: ", m_plTempCoeff, uiWidth, uiHeight, uiWidth);
+      (*psDebug)+=ss.str();
+    }
+#endif
+
+    if(pcCU->getTransformSkip(uiAbsPartIdx, compID))
+    {
+      xITransformSkip( m_plTempCoeff, pcResidual, uiStride, rTu, compID );
+
+#if DEBUG_STRING
+      if (psDebug)
+      {
+        std::stringstream ss(stringstream::out);
+        printBlockToStream(ss, "###InvTran resi: ", pcResidual, uiWidth, uiHeight, uiStride);
+        (*psDebug)+=ss.str();
+        (*psDebug)+="(<- was a Transform-skipped block)\n";
+      }
+#endif
+    }
+    else
+    {
+#if O0043_BEST_EFFORT_DECODING
+      const Int channelBitDepth = pcCU->getSlice()->getSPS()->getStreamBitDepth(toChannelType(compID));
+#else
+      const Int channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+#endif
+      xIT( channelBitDepth, rTu.useDST(compID), m_plTempCoeff, pcResidual, uiStride, uiWidth, uiHeight, pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID)) );
+
+#if DEBUG_STRING
+      if (psDebug)
+      {
+        std::stringstream ss(stringstream::out);
+        printBlockToStream(ss, "###InvTran resi: ", pcResidual, uiWidth, uiHeight, uiStride);
+        (*psDebug)+=ss.str();
+        (*psDebug)+="(<- was a Transformed block)\n";
+      }
+#endif
+    }
+
+#if DEBUG_TRANSFORM_AND_QUANTISE
+    std::cout << g_debugCounter << ": " << uiWidth << "x" << uiHeight << " channel " << compID << " TU at output of inverse-transform\n";
+    printBlock(pcResidual, uiWidth, uiHeight, uiStride);
+    g_debugCounter++;
+#endif
+  }
+
+  invRdpcmNxN( rTu, compID, pcResidual, uiStride );
+}
+
+<<<<<<< HEAD
+Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,//ÈÄöÈÅìÁ±ªÂûã
+                                        TComYuv *pResidual,//Êï¥Â∏ßÂõæÁöÑÊÆãÂ∑ÆÂÄº
+                                        TComTU &rTu)//TuÂùó‰ø°ÊÅØ
+{
+  if (!rTu.ProcessComponentSection(compID))//ËØ•Tu‰∏çÈúÄË¶ÅÂ§ÑÁêÜ
+  {
+    return;//ÊñπÊ≥ïÁªìÊùü
+=======
+Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,
+                                        TComYuv *pResidual,
+                                        TComTU &rTu)
+{
+  if (!rTu.ProcessComponentSection(compID))
+  {
+    return;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  }
+
+  TComDataCU* pcCU = rTu.getCU();
+  UInt absPartIdxTU = rTu.GetAbsPartIdxTU();
+<<<<<<< HEAD
+  UInt uiTrMode=rTu.GetTransformDepthRel();//TuÁõ∏ÂØπCuÁöÑÊ∑±Â∫¶
+  if( (pcCU->getCbf(absPartIdxTU, compID, uiTrMode) == 0) && (isLuma(compID) || !pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag()) )//Â¶ÇÊûúËØ•Tu‰∏çÂ≠òÂú®ÈùûÈõ∂Á≥ªÊï∞Âπ∂‰∏îËØ•Tb‰∏∫‰∫ÆÂ∫¶ÁªÑÊàêÊàñ‰∏∫‰ΩøËÉΩCCp ÂàôÊñπÊ≥ïÁªìÊùü
+=======
+  UInt uiTrMode=rTu.GetTransformDepthRel();
+  if( (pcCU->getCbf(absPartIdxTU, compID, uiTrMode) == 0) && (isLuma(compID) || !pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag()) )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    return;
+  }
+
+<<<<<<< HEAD
+  if( uiTrMode == pcCU->getTransformIdx( absPartIdxTU ) )//ËØ•Tu‰∏çÂ≠òÂú®Â≠êTu(‰∏écuÂêå‰∏ÄÊ∑±Â∫¶)
+=======
+  if( uiTrMode == pcCU->getTransformIdx( absPartIdxTU ) )
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    const TComRectangle &tuRect      = rTu.getRect(compID);
+    const Int            uiStride    = pResidual->getStride( compID );
+          Pel           *rpcResidual = pResidual->getAddr( compID );
+          UInt           uiAddr      = (tuRect.x0 + uiStride*tuRect.y0);
+          Pel           *pResi       = rpcResidual + uiAddr;
+          TCoeff        *pcCoeff     = pcCU->getCoeff(compID) + rTu.getCoefficientOffset(compID);
+
+    const QpParam cQP(*pcCU, compID);
+
+<<<<<<< HEAD
+    if(pcCU->getCbf(absPartIdxTU, compID, uiTrMode) != 0)//ËØ•TuÂ≠òÂú®ÈùûÈõ∂Á≥ªÊï∞
+=======
+    if(pcCU->getCbf(absPartIdxTU, compID, uiTrMode) != 0)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      DEBUG_STRING_NEW(sTemp)
+#if DEBUG_STRING
+      std::string *psDebug=((DebugOptionList::DebugString_InvTran.getInt()&(pcCU->isIntra(absPartIdxTU)?1:(pcCU->isInter(absPartIdxTU)?2:4)))!=0) ? &sTemp : 0;
+#endif
+
+<<<<<<< HEAD
+      invTransformNxN( rTu, compID, pResi, uiStride, pcCoeff, cQP DEBUG_STRING_PASS_INTO(psDebug) );//ÂÅöÂèçÂèòÊç¢(ÂåÖÊã¨ÂèçÈáèÂåñÂíåÂèçÂèòÂåñ)Áî±ÈáèÂåñÂÄºÂæóÂà∞‰∫ÆÂ∫¶ÊÆãÂ∑ÆÂÄº
+=======
+      invTransformNxN( rTu, compID, pResi, uiStride, pcCoeff, cQP DEBUG_STRING_PASS_INTO(psDebug) );
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+#if DEBUG_STRING
+      if (psDebug != 0)
+      {
+        std::cout << (*psDebug);
+      }
+#endif
+    }
+
+<<<<<<< HEAD
+    if (isChroma(compID) && (pcCU->getCrossComponentPredictionAlpha(absPartIdxTU, compID) != 0))//‰∏∫Ëâ≤Â∫¶ÂàÜÈáè‰∏îCCP‰∏≠alpha‰∏ç‰∏∫Ôºê„ÄÄ
+=======
+    if (isChroma(compID) && (pcCU->getCrossComponentPredictionAlpha(absPartIdxTU, compID) != 0))
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      const Pel *piResiLuma = pResidual->getAddr( COMPONENT_Y );
+      const Int  strideLuma = pResidual->getStride( COMPONENT_Y );
+      const Int  tuWidth    = rTu.getRect( compID ).width;
+      const Int  tuHeight   = rTu.getRect( compID ).height;
+
+      if(pcCU->getCbf(absPartIdxTU, COMPONENT_Y, uiTrMode) != 0)
+      {
+        pResi = rpcResidual + uiAddr;
+        const Pel *pResiLuma = piResiLuma + uiAddr;
+
+<<<<<<< HEAD
+        crossComponentPrediction( rTu, compID, pResiLuma, pResi, pResi, tuWidth, tuHeight, strideLuma, uiStride, uiStride, true );//Áî±CCP„ÄÄÁî®‰∫ÆÂ∫¶ÊÆãÂ∑ÆÈ¢ÑÊµãÂæóÂà∞Ëâ≤Â∫¶ÊÆãÂ∑Æ
+=======
+        crossComponentPrediction( rTu, compID, pResiLuma, pResi, pResi, tuWidth, tuHeight, strideLuma, uiStride, uiStride, true );
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+      }
+    }
+  }
+  else
+  {
+    TComTURecurse tuRecurseChild(rTu, false);
+    do
+    {
+      invRecurTransformNxN( compID, pResidual, tuRecurseChild );
+<<<<<<< HEAD
+    } while (tuRecurseChild.nextSection(rTu));//ËØ•TuÂ≠òÂú®Â≠êTU ÂàôÊ∑±Â∫¶ÈÅçÂéÜÊâÄÊúâÂ≠êTu
+=======
+    } while (tuRecurseChild.nextSection(rTu));
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  }
+}
+
+Void TComTrQuant::applyForwardRDPCM( TComTU& rTu, const ComponentID compID, Pel* pcResidual, const UInt uiStride, const QpParam& cQP, TCoeff* pcCoeff, TCoeff &uiAbsSum, const RDPCMMode mode )
+{
+<<<<<<< HEAD
+  TComDataCU *pcCU=rTu.getCU();//TUÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩCUÔøΩÔøΩÔøΩÔøΩÔøΩœ¢
+  const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();//TuÔøΩÔøΩŒªÔøΩÔøΩ
+
+  const Bool bLossless      = pcCU->getCUTransquantBypass( uiAbsPartIdx );//ÔøΩ«∑ÔøΩlosslessƒ£ Ω ÔøΩÔøΩƒ£ ΩÔøΩ¬≤ÔøΩÔøΩÔøΩ“™ÔøΩ‰ªªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+  const UInt uiWidth        = rTu.getRect(compID).width;//TuÔøΩÔøΩƒøÔøΩÕ∏ÔøΩ
+  const UInt uiHeight       = rTu.getRect(compID).height;
+  const Bool rotateResidual = rTu.isNonTransformedResidualRotated(compID);//ÔøΩ«∑ÔøΩÔøΩÔøΩ◊™ÔøΩÔøΩÔøΩÔøΩ«∞ÔøΩÔøΩÔøΩÔøΩÔøΩ«¥”∫ÔøΩÔøΩÔøΩ«∞ÔøΩÔøΩ
+  const UInt uiSizeMinus1   = (uiWidth * uiHeight) - 1;//œµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ1
+
+  UInt uiX = 0;
+  UInt uiY = 0;
+  //ÔøΩÔøΩÔøΩÔøΩPCMƒ£ Ω »∑ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩƒ∑ÔøΩÔøΩÔøΩ
+        UInt &majorAxis             = (mode == RDPCM_VER) ? uiX      : uiY;//ÔøΩÔøΩÔøΩ√±ÔøΩÔøΩÔøΩ C++ÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÕ¨ÔøΩÔøΩ÷±ÔøΩ”∏ÔøΩ÷µ majorAxisÔøΩƒ∏ƒ±ÔøΩ“≤ÔøΩÔøΩƒ±ÔøΩuiX ÔøΩÔøΩuiY
+=======
+  TComDataCU *pcCU=rTu.getCU();//TUøÈÀ˘‘⁄CUøÈµƒ–≈œ¢
+  const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();//TuµƒŒª÷√
+
+  const Bool bLossless      = pcCU->getCUTransquantBypass( uiAbsPartIdx );// «∑Òlosslessƒ£ Ω ∏√ƒ£ Ωœ¬≤ª–Ë“™±‰ªª∫Õ¡øªØ
+  const UInt uiWidth        = rTu.getRect(compID).width;//TuøÈµƒøÌ∫Õ∏ﬂ
+  const UInt uiHeight       = rTu.getRect(compID).height;
+  const Bool rotateResidual = rTu.isNonTransformedResidualRotated(compID);// «∑Ò–˝◊™£®¥”«∞Õ˘∫Ûªπ «¥”∫ÛÕ˘«∞£©
+  const UInt uiSizeMinus1   = (uiWidth * uiHeight) - 1;//œµ ˝∏ˆ ˝ºı1
+
+  UInt uiX = 0;
+  UInt uiY = 0;
+  //∏˘æ›PCMƒ£ Ω »∑∂®∫Û–¯±È¿˙µƒ∑ΩœÚ
+        UInt &majorAxis             = (mode == RDPCM_VER) ? uiX      : uiY;//“˝”√±‰¡ø C++Ãÿ–‘ ≤ªÕ¨”⁄÷±Ω”∏≥÷µ majorAxisµƒ∏ƒ±‰“≤ª·∏ƒ±‰uiX ªÚuiY
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        UInt &minorAxis             = (mode == RDPCM_VER) ? uiY      : uiX;
+  const UInt  majorAxisLimit        = (mode == RDPCM_VER) ? uiWidth  : uiHeight;
+  const UInt  minorAxisLimit        = (mode == RDPCM_VER) ? uiHeight : uiWidth;
+
+<<<<<<< HEAD
+  const Bool bUseHalfRoundingPoint  = (mode != RDPCM_OFF);//‰ΩøÁî®PCMÊ®°ÂºèÊó∂‰ΩøÁî®ÂçäÁÇπÁ≤æÂ∫¶ÔºàÂ∞èÊï∞ÁÇπÂõõËàç‰∫îÂÖ•ÂèñÊï¥Ôºâ
+
+  uiAbsSum = 0;
+
+  for ( majorAxis = 0; majorAxis < majorAxisLimit; majorAxis++ )//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ√øÔøΩÔøΩŒªÔøΩÔøΩÔøΩœµÔøΩœµÔøΩÔøΩ
+=======
+  const Bool bUseHalfRoundingPoint  = (mode != RDPCM_OFF);
+
+  uiAbsSum = 0;
+
+  for ( majorAxis = 0; majorAxis < majorAxisLimit; majorAxis++ )//∏˘æ›÷˜∑ΩœÚ±È¿˙√ø∏ˆŒª÷√…œµƒœµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    TCoeff accumulatorValue = 0; // 32-bit accumulator
+    for ( minorAxis = 0; minorAxis < minorAxisLimit; minorAxis++ )
+    {
+      const UInt sampleIndex      = (uiY * uiWidth) + uiX;
+<<<<<<< HEAD
+      const UInt coefficientIndex = (rotateResidual ? (uiSizeMinus1-sampleIndex) : sampleIndex);//»∑ÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩŒªÔøΩÔøΩ
+      const Pel  currentSample    = pcResidual[(uiY * uiStride) + uiX];//ÔøΩÔøΩŒªÔøΩÔøΩÔøΩœµÔøΩœµÔøΩÔøΩ÷µ  µÔøΩÔøΩÔøΩÔøΩŒ™√øÔøΩ–£ÔøΩÔøΩ–£ÔøΩÔøΩÔøΩÔøΩÔøΩŒªÔøΩÔøΩÔøΩœµÔøΩÔøΩ€ºÔøΩ÷µ
+      const TCoeff encoderSideDelta = TCoeff(currentSample) - accumulatorValue;//ÔøΩ€ºÔøΩ«∞ÔøΩÔøΩ µÔøΩ ≤–≤ÔøΩ÷µ
+
+      Pel reconstructedDelta;
+      if ( bLossless )//ÔøΩÔøΩŒ™losslessƒ£ Ω
+      {
+        pcCoeff[coefficientIndex] = encoderSideDelta;//ÔøΩ√¥ÔøΩ÷µ÷±ÔøΩÔøΩŒ™ÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ(ÔøΩÔøΩÔøΩÔøΩ“™ÔøΩÔøΩÔøΩÔøΩÔøΩ‰ªªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ)
+        reconstructedDelta        = (Pel) encoderSideDelta;//Ê≤°ÊúâÂèòÊç¢ÂíåÈáèÂåñËøáÁ®ã„ÄÄÊâÄ‰ª•ÈáçÂª∫ÂÄºÂíåÂéüÂßãÂÄºÁõ∏Âêå
+      }
+      else
+      {
+        transformSkipQuantOneSample(rTu, compID, encoderSideDelta, pcCoeff, coefficientIndex, cQP, bUseHalfRoundingPoint);//ÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ–±‰ªª
+        invTrSkipDeQuantOneSample  (rTu, compID, pcCoeff[coefficientIndex], reconstructedDelta, cQP, coefficientIndex);//Áî±pcCoeff[coefficientIndex]ËøõË°åÂèçÈáèÂåñÂíåTrSkipÂæóÂà∞ÈáçÂª∫ÂÄº
+      }
+
+      uiAbsSum += abs(pcCoeff[coefficientIndex]);//ÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ÷ÆÔøΩÔøΩ
+
+      if (mode != RDPCM_OFF)//ÔøΩÔøΩŒ™RDPCM_OFF ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ€ºÔøΩ÷µ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩPCMƒ£ ΩÔøΩÔøΩ µÔøΩ ≤–≤ÔøΩ÷µ
+=======
+      const UInt coefficientIndex = (rotateResidual ? (uiSizeMinus1-sampleIndex) : sampleIndex);//»∑∂®œµ ˝µƒŒª÷√
+      const Pel  currentSample    = pcResidual[(uiY * uiStride) + uiX];//∏√Œª÷√…œµƒœµ ˝÷µ  µº …œŒ™√ø––£®¡–£©µΩ∏√Œª÷√…œµƒ¿€º”÷µ
+      const TCoeff encoderSideDelta = TCoeff(currentSample) - accumulatorValue;//¿€º”«∞µƒ µº ≤–≤Ó÷µ
+
+      Pel reconstructedDelta;
+      if ( bLossless )//»ÙŒ™losslessƒ£ Ω
+      {
+        pcCoeff[coefficientIndex] = encoderSideDelta;//∏√¥¶÷µ÷±Ω”Œ™◊Ó÷’œµ ˝(≤ª–Ë“™æ≠π˝±‰ªª∫Õ¡øªØ)
+        reconstructedDelta        = (Pel) encoderSideDelta;
+      }
+      else
+      {
+        transformSkipQuantOneSample(rTu, compID, encoderSideDelta, pcCoeff, coefficientIndex, cQP, bUseHalfRoundingPoint);//∏√œµ ˝≤ªΩ¯––±‰ªª
+        invTrSkipDeQuantOneSample  (rTu, compID, pcCoeff[coefficientIndex], reconstructedDelta, cQP, coefficientIndex);
+      }
+
+      uiAbsSum += abs(pcCoeff[coefficientIndex]);//º∆À„œµ ˝æ¯∂‘÷µ÷Æ∫Õ
+
+      if (mode != RDPCM_OFF)//≤ªŒ™RDPCM_OFF –Ëº∆À„¿€º”÷µ ”√”⁄«Ûµ√PCMƒ£ Ω÷– µº ≤–≤Ó÷µ
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+      {
+        accumulatorValue += reconstructedDelta;
+      }
+    }
+  }
+}
+
+Void TComTrQuant::rdpcmNxN   ( TComTU& rTu, const ComponentID compID, Pel* pcResidual, const UInt uiStride, const QpParam& cQP, TCoeff* pcCoeff, TCoeff &uiAbsSum, RDPCMMode& rdpcmMode )
+<<<<<<< HEAD
+{//ÔøΩÔøΩTuÔøΩÔøΩÔøΩÔøΩÔøΩpcmÔøΩÔøΩÔøΩÔøΩ
+  TComDataCU *pcCU=rTu.getCU();//ÔøΩÔøΩTuÔøΩÔøΩÔøΩCUÔøΩÔøΩœ¢
+  const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();//TUÔøΩÔøΩÔøΩŒªÔøΩÔøΩ
+
+  if (!pcCU->isRDPCMEnabled(uiAbsPartIdx) || ((pcCU->getTransformSkip(uiAbsPartIdx, compID) == 0) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))//ÔøΩÔøΩÔøΩPCMƒ£ ΩŒ¥ πÔøΩ‹ªÔøΩÔøΩﬂ∏ÔøΩTuÔøΩÈ≤ª πÔøΩÔøΩTransformSkipÔøΩÔøΩTransquantBypass ÔøΩÔøΩpcmƒ£ ΩÔøΩÿ±ÔøΩ
+  {
+    rdpcmMode = RDPCM_OFF;
+  }
+  else if ( pcCU->isIntra( uiAbsPartIdx ) )//Œ™÷°ÔøΩÔøΩ‘§ÔøΩÔøΩ
+  {
+    const ChromaFormat chFmt = pcCU->getPic()->getPicYuvOrg()->getChromaFormat();//…´ÔøΩ»∏ÔøΩ Ω
+    const ChannelType chType = toChannelType(compID);//Õ®ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+    const UInt uiChPredMode  = pcCU->getIntraDir( chType, uiAbsPartIdx );//ÔøΩ√µÔøΩÔøΩÔøΩÕ®ÔøΩÔøΩÔøΩÔøΩÔøΩÕµÔøΩ÷°ÔøΩÔøΩ‘§ÔøΩÔøΩƒ£ Ω
+    const TComSPS *sps=pcCU->getSlice()->getSPS();//SPSÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœ¢
+    const UInt partsPerMinCU = 1<<(2*(sps->getMaxTotalCUDepth() - sps->getLog2DiffMaxMinCodingBlockSize()));
+    const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && isChroma(compID)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
+    const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;//ÔøΩÔøΩÔøΩÔøΩ÷°ÔøΩÔøΩ‘§ÔøΩÔøΩƒ£ ΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ…´ÔøΩÔøΩƒ£ ΩÔøΩ√µÔøΩ
+
+    if (uiChFinalMode == VER_IDX || uiChFinalMode == HOR_IDX)//ÔøΩÔøΩÔøΩ÷°ÔøΩÔøΩ‘§ÔøΩÔøΩƒ£ ΩŒ™ÔøΩÔøΩ◊ºÔøΩÔøΩ÷±ƒ£ ΩÔøΩÔøΩÀÆ∆Ωƒ£ Ω  
+    {
+      rdpcmMode = (uiChFinalMode == VER_IDX) ? RDPCM_VER : RDPCM_HOR;
+      applyForwardRDPCM( rTu, compID, pcResidual, uiStride, cQP, pcCoeff, uiAbsSum, rdpcmMode );//”¶ÔøΩ√∂ÔøΩ”¶ÔøΩÔøΩPCMƒ£ Ω
+    }
+    else//ÔøΩÔøΩÔøΩÔøΩ PCMÔøΩÿ±ÔøΩ
+=======
+{//∂‘TuøÈΩ¯––pcm¥¶¿Ì
+  TComDataCU *pcCU=rTu.getCU();//∏√TuøÈµƒCU–≈œ¢
+  const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();//TUøÈµƒŒª÷√
+
+  if (!pcCU->isRDPCMEnabled(uiAbsPartIdx) || ((pcCU->getTransformSkip(uiAbsPartIdx, compID) == 0) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))//»Áπ˚PCMƒ£ ΩŒ¥ πƒ‹ªÚ’ﬂ∏√TuøÈ≤ª π”√TransformSkip∫ÕTransquantBypass ‘Úpcmƒ£ Ωπÿ±’
+  {
+    rdpcmMode = RDPCM_OFF;
+  }
+  else if ( pcCU->isIntra( uiAbsPartIdx ) )//Œ™÷°ƒ⁄‘§≤‚
+  {
+    const ChromaFormat chFmt = pcCU->getPic()->getPicYuvOrg()->getChromaFormat();//…´∂»∏Ò Ω
+    const ChannelType chType = toChannelType(compID);//Õ®µ¿¿‡–Õ
+    const UInt uiChPredMode  = pcCU->getIntraDir( chType, uiAbsPartIdx );//µ√µΩ∏√Õ®µ¿¿‡–Õµƒ÷°ƒ⁄‘§≤‚ƒ£ Ω
+    const TComSPS *sps=pcCU->getSlice()->getSPS();//SPS≤Œ ˝ºØ–≈œ¢
+    const UInt partsPerMinCU = 1<<(2*(sps->getMaxTotalCUDepth() - sps->getLog2DiffMaxMinCodingBlockSize()));
+    const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && isChroma(compID)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
+    const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;//◊Ó÷’÷°ƒ⁄‘§≤‚ƒ£ Ω¿‡–Õ–Ë∏˘æ›…´∂»ƒ£ Ωµ√µΩ
+
+    if (uiChFinalMode == VER_IDX || uiChFinalMode == HOR_IDX)//»Áπ˚÷°ƒ⁄‘§≤‚ƒ£ ΩŒ™±Í◊º¥π÷±ƒ£ ΩªÚÀÆ∆Ωƒ£ Ω  
+    {
+      rdpcmMode = (uiChFinalMode == VER_IDX) ? RDPCM_VER : RDPCM_HOR;
+      applyForwardRDPCM( rTu, compID, pcResidual, uiStride, cQP, pcCoeff, uiAbsSum, rdpcmMode );//”¶”√∂‘”¶µƒPCMƒ£ Ω
+    }
+    else//∑Ò‘Ú PCMπÿ±’
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      rdpcmMode = RDPCM_OFF;
+    }
+  }
+<<<<<<< HEAD
+  else // not intra, need to select the best mode //ÔøΩÔøΩÔøΩÔøΩ÷°ÔøΩÔøΩ‘§ÔøΩÔøΩƒ£ Ω ÔøΩÔøΩÔøΩÔøΩ“™ÔøΩ–∂ÔøΩÔøΩÔøΩ√µÔøΩPCMƒ£ Ω
+  {
+    const UInt uiWidth  = rTu.getRect(compID).width;//TuÔøΩÔøΩƒøÔøΩÕ∏ÔøΩ
+    const UInt uiHeight = rTu.getRect(compID).height;
+
+    RDPCMMode bestMode   = NUMBER_OF_RDPCM_MODES;//ÔøΩÔøΩ ºÔøΩÔøΩÔøΩÔøΩ“™ÔøΩ√µÔøΩÔøΩƒ≤ÔøΩÔøΩÔøΩ
+    TCoeff    bestAbsSum = std::numeric_limits<TCoeff>::max();
+    TCoeff    bestCoefficients[MAX_TU_SIZE * MAX_TU_SIZE];
+
+    for (UInt modeIndex = 0; modeIndex < NUMBER_OF_RDPCM_MODES; modeIndex++)//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩPCMƒ£ Ω
+=======
+  else // not intra, need to select the best mode //≤ª «÷°ƒ⁄‘§≤‚ƒ£ Ω ‘Ú–Ë“™≈–∂œ◊Ó∫√µƒPCMƒ£ Ω
+  {
+    const UInt uiWidth  = rTu.getRect(compID).width;//TuøÈµƒøÌ∫Õ∏ﬂ
+    const UInt uiHeight = rTu.getRect(compID).height;
+
+    RDPCMMode bestMode   = NUMBER_OF_RDPCM_MODES;//≥ı ºªØ–Ë“™”√µΩµƒ≤Œ ˝
+    TCoeff    bestAbsSum = std::numeric_limits<TCoeff>::max();
+    TCoeff    bestCoefficients[MAX_TU_SIZE * MAX_TU_SIZE];
+
+    for (UInt modeIndex = 0; modeIndex < NUMBER_OF_RDPCM_MODES; modeIndex++)//±È¿˙À˘”–PCMƒ£ Ω
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      const RDPCMMode mode = RDPCMMode(modeIndex);
+
+      TCoeff currAbsSum = 0;
+
+<<<<<<< HEAD
+      applyForwardRDPCM( rTu, compID, pcResidual, uiStride, cQP, pcCoeff, currAbsSum, mode );//ÔøΩÔøΩPCMÔøΩÔøΩÔøΩÔøΩ
+
+      if (currAbsSum < bestAbsSum)//ÔøΩ‰ªªÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ÷ÆÔøΩÔøΩ“ªÔøΩÔøΩÔøΩÃ∂ÔøΩÔøΩœ∑ÔøΩ”≥ÔøΩÔøΩÔøΩÔøΩÔøΩƒ¥ÔøΩ–° ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩŒ™ƒ£ Ω—°ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+      {
+        bestMode   = mode;
+        bestAbsSum = currAbsSum;
+        if (mode != RDPCM_OFF)//ÔøΩÔøΩ πÔøΩÔøΩPCM
+        {
+          memcpy(bestCoefficients, pcCoeff, (uiWidth * uiHeight * sizeof(TCoeff)));//ÔøΩÚ±£¥ÔøΩÔøΩPCMƒ£ ΩœµÔøΩÔøΩÔøΩÔøΩŒ™ÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+=======
+      applyForwardRDPCM( rTu, compID, pcResidual, uiStride, cQP, pcCoeff, currAbsSum, mode );//◊ˆPCM¥¶¿Ì
+
+      if (currAbsSum < bestAbsSum)//±‰ªª∫Ûœµ ˝æ¯∂‘÷µ÷Æ∫Õ“ª∂®≥Ã∂»…œ∑¥”≥¡ÀŒÛ≤Óµƒ¥Û–° ø…“‘◊˜Œ™ƒ£ Ω—°‘Òµƒ“¿æ›
+      {
+        bestMode   = mode;
+        bestAbsSum = currAbsSum;
+        if (mode != RDPCM_OFF)//»Ù π”√PCM
+        {
+          memcpy(bestCoefficients, pcCoeff, (uiWidth * uiHeight * sizeof(TCoeff)));//‘Ú±£¥Ê∏√PCMƒ£ Ωœµ ˝◊˜Œ™◊Óº—œµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        }
+      }
+    }
+
+    rdpcmMode = bestMode;
+    uiAbsSum  = bestAbsSum;
+
+    if (rdpcmMode != RDPCM_OFF) //the TU is re-transformed and quantised if DPCM_OFF is returned, so there is no need to preserve it here
+    {
+<<<<<<< HEAD
+      memcpy(pcCoeff, bestCoefficients, (uiWidth * uiHeight * sizeof(TCoeff)));//ÔøΩÔøΩ πÔøΩÔøΩPCMƒ£ Ω ÔøΩÔøΩÔøΩÔøΩ“™ÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩPCMƒ£ Ω ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩtransform ÔøΩÔøΩÔøΩÔøΩ“™ÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+=======
+      memcpy(pcCoeff, bestCoefficients, (uiWidth * uiHeight * sizeof(TCoeff)));//»Ù π”√PCMƒ£ Ω ‘Ú–Ë“™±£¥Êœµ ˝ »Ù≤ª  ”√PCMƒ£ Ω ∫Û–¯ªπª·Ω¯––transform ‘Ú≤ª–Ë“™±£¥Êœµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    }
+  }
+
+  pcCU->setExplicitRdpcmModePartRange(rdpcmMode, compID, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(compID));
+}
+
+Void TComTrQuant::invRdpcmNxN( TComTU& rTu, const ComponentID compID, Pel* pcResidual, const UInt uiStride )
+{
+  TComDataCU *pcCU=rTu.getCU();
+  const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
+<<<<<<< HEAD
+  //»∑ÔøΩÔøΩPCMƒ£ Ω
+=======
+  //»∑∂®PCMƒ£ Ω
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  if (pcCU->isRDPCMEnabled( uiAbsPartIdx ) && ((pcCU->getTransformSkip(uiAbsPartIdx, compID ) != 0) || pcCU->getCUTransquantBypass(uiAbsPartIdx)))
+  {
+    const UInt uiWidth  = rTu.getRect(compID).width;
+    const UInt uiHeight = rTu.getRect(compID).height;
+
+    RDPCMMode rdpcmMode = RDPCM_OFF;
+
+    if ( pcCU->isIntra( uiAbsPartIdx ) )
+    {
+      const ChromaFormat chFmt = pcCU->getPic()->getPicYuvRec()->getChromaFormat();
+      const ChannelType chType = toChannelType(compID);
+      const UInt uiChPredMode  = pcCU->getIntraDir( chType, uiAbsPartIdx );
+      const TComSPS *sps=pcCU->getSlice()->getSPS();
+      const UInt partsPerMinCU = 1<<(2*(sps->getMaxTotalCUDepth() - sps->getLog2DiffMaxMinCodingBlockSize()));
+      const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && isChroma(compID)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
+      const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
+
+      if (uiChFinalMode == VER_IDX || uiChFinalMode == HOR_IDX)
+      {
+        rdpcmMode = (uiChFinalMode == VER_IDX) ? RDPCM_VER : RDPCM_HOR;
+      }
+    }
+    else  // not intra case
+    {
+      rdpcmMode = RDPCMMode(pcCU->getExplicitRdpcmMode( compID, uiAbsPartIdx ));
+    }
+	
+    const TCoeff pelMin=(TCoeff) std::numeric_limits<Pel>::min();
+    const TCoeff pelMax=(TCoeff) std::numeric_limits<Pel>::max();
+<<<<<<< HEAD
+    if (rdpcmMode == RDPCM_VER)//ÔøΩÔøΩ÷±PCMƒ£ Ω
+    {
+      for( UInt uiX = 0; uiX < uiWidth; uiX++ )//»∑ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+      {
+        Pel *pcCurResidual = pcResidual+uiX;//ÔøΩÔøΩÔøΩ–µÔøΩÔøΩÔøΩ ºŒªÔøΩÔøΩ
+        TCoeff accumulator = *pcCurResidual; // 32-bit accumulator
+        pcCurResidual+=uiStride;//ÔøΩÔøΩÔøΩÔøΩÔøΩœµƒµ⁄∂ÔøΩÔøΩÔøΩŒªÔøΩÔøΩ
+        for( UInt uiY = 1; uiY < uiHeight; uiY++, pcCurResidual+=uiStride )//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ
+        {
+          accumulator += *(pcCurResidual);//ÔøΩÔøΩÔøΩÔøΩ√øÔøΩÔøΩÔøΩœµÔøΩÔøΩ€ºÔøΩ÷µ
+          *pcCurResidual = (Pel)Clip3<TCoeff>(pelMin, pelMax, accumulator);//ÔøΩÔøΩÔøΩ’ΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ–°÷µ÷ÆÔøΩÔøΩ
+=======
+    if (rdpcmMode == RDPCM_VER)//¥π÷±PCMƒ£ Ω
+    {
+      for( UInt uiX = 0; uiX < uiWidth; uiX++ )//»∑∂®À˘‘⁄¡–
+      {
+        Pel *pcCurResidual = pcResidual+uiX;//∏√¡–µƒ∆ ºŒª÷√
+        TCoeff accumulator = *pcCurResidual; // 32-bit accumulator
+        pcCurResidual+=uiStride;//∏√¡–…œµƒµ⁄∂˛∏ˆŒª÷√
+        for( UInt uiY = 1; uiY < uiHeight; uiY++, pcCurResidual+=uiStride )//±È¿˙∏√¡–…œµƒÀ˘”–÷µ
+        {
+          accumulator += *(pcCurResidual);//º∆À„√ø¡–…œµƒ¿€º”÷µ
+          *pcCurResidual = (Pel)Clip3<TCoeff>(pelMin, pelMax, accumulator);//◊Ó÷’Ω·π˚÷µ±ÿ–Î‘⁄◊Ó¥Û∫Õ◊Ó–°÷µ÷Æº‰
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        }
+      }
+    }
+    else if (rdpcmMode == RDPCM_HOR)//ÀÆ∆ΩPCMƒ£ Ω
+    {
+<<<<<<< HEAD
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )//»∑ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+      {
+        Pel *pcCurResidual = pcResidual+uiY*uiStride;//ÔøΩÔøΩÔøΩ–µÔøΩÔøΩÔøΩ ºŒªÔøΩÔøΩ
+        TCoeff accumulator = *pcCurResidual;
+        pcCurResidual++;//ÔøΩÔøΩÔøΩ–µƒµ⁄∂ÔøΩÔøΩÔøΩŒªÔøΩÔøΩ
+        for( UInt uiX = 1; uiX < uiWidth; uiX++, pcCurResidual++ )//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ
+        {
+          accumulator += *(pcCurResidual);//ÔøΩÔøΩÔøΩÔøΩ√øÔøΩÔøΩÔøΩœµÔøΩÔøΩ€ºÔøΩ÷µ
+          *pcCurResidual = (Pel)Clip3<TCoeff>(pelMin, pelMax, accumulator);//ÔøΩÔøΩÔøΩ’ΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ–°÷µ÷ÆÔøΩÔøΩ
+=======
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )//»∑∂®À˘‘⁄––
+      {
+        Pel *pcCurResidual = pcResidual+uiY*uiStride;//∏√––µƒ∆ ºŒª÷√
+        TCoeff accumulator = *pcCurResidual;
+        pcCurResidual++;//∏√––µƒµ⁄∂˛∏ˆŒª÷√
+        for( UInt uiX = 1; uiX < uiWidth; uiX++, pcCurResidual++ )//±È¿˙∏√––…œµƒÀ˘”–÷µ
+        {
+          accumulator += *(pcCurResidual);//º∆À„√ø––…œµƒ¿€º”÷µ
+          *pcCurResidual = (Pel)Clip3<TCoeff>(pelMin, pelMax, accumulator);//◊Ó÷’Ω·π˚÷µ±ÿ–Î‘⁄◊Ó¥Û∫Õ◊Ó–°÷µ÷Æº‰
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        }
+        }
+      }
+    }
+  }
+}
+
+// ------------------------------------------------------------------------------------------------
+// Logical transform
+// ------------------------------------------------------------------------------------------------
+
+/** Wrapper function between HM interface and core NxN forward transform (2D)
+ *  \param channelBitDepth bit depth of channel
+ *  \param useDST
+ *  \param piBlkResi input data (residual)
+ *  \param uiStride stride of input residual data
+ *  \param psCoeff output data (transform coefficients)
+ *  \param iWidth transform width
+ *  \param iHeight transform height
+ *  \param maxLog2TrDynamicRange
+ */
+Void TComTrQuant::xT( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange )
+<<<<<<< HEAD
+{//HMÔøΩ”øÔøΩÔøΩÔøΩxTrMxN÷ÆÔøΩÔøΩƒ∞ÔøΩ◊∞ÔøΩÔøΩÔøΩÔøΩ  πÔøΩÔøΩtranformÔøΩÔøΩÔøΩÔøΩÃµƒµÔøΩÔøΩÔøΩÔøΩÔøΩHMÔøΩ–∏ÔøΩÔøΩ”∑ÔøΩÔøΩÔøΩ ƒ≥ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœ∂ÔøΩxTrMxNÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+=======
+{//HMΩ”ø⁄”ÎxTrMxN÷Æº‰µƒ∞¸◊∞∫Ø ˝  πµ√tranform’‚π˝≥Ãµƒµ˜”√‘⁄HM÷–∏¸º”∑Ω±„ ƒ≥÷÷“‚“Â…œ∂‘xTrMxNµƒ÷ÿ‘ÿ
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+#if MATRIX_MULT
+  if( iWidth == iHeight)
+  {
+    xTr(channelBitDepth, piBlkResi, psCoeff, uiStride, (UInt)iWidth, useDST, maxLog2TrDynamicRange);
+    return;
+  }
+#endif
+
+  TCoeff block[ MAX_TU_SIZE * MAX_TU_SIZE ];
+  TCoeff coeff[ MAX_TU_SIZE * MAX_TU_SIZE ];
+
+  for (Int y = 0; y < iHeight; y++)
+  {
+    for (Int x = 0; x < iWidth; x++)
+    {
+      block[(y * iWidth) + x] = piBlkResi[(y * uiStride) + x];
+    }
+  }
+
+  xTrMxN( channelBitDepth, block, coeff, iWidth, iHeight, useDST, maxLog2TrDynamicRange );
+
+  memcpy(psCoeff, coeff, (iWidth * iHeight * sizeof(TCoeff)));
+}
+
+/** Wrapper function between HM interface and core NxN inverse transform (2D)
+ *  \param channelBitDepth bit depth of channel
+ *  \param useDST
+ *  \param plCoef input data (transform coefficients)
+ *  \param pResidual output data (residual)
+ *  \param uiStride stride of input residual data
+ *  \param iWidth transform width
+ *  \param iHeight transform height
+ *  \param maxLog2TrDynamicRange
+ */
+Void TComTrQuant::xIT( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, Pel* pResidual, UInt uiStride, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange )
+<<<<<<< HEAD
+{//HMÔøΩ”øÔøΩÔøΩÔøΩxITrMxN÷ÆÔøΩÔøΩƒ∞ÔøΩ◊∞ÔøΩÔøΩÔøΩÔøΩ  πÔøΩÔøΩinverser tranformÔøΩÔøΩÔøΩÔøΩÃµƒµÔøΩÔøΩÔøΩÔøΩÔøΩHMÔøΩ–∏ÔøΩÔøΩ”∑ÔøΩÔøΩÔøΩ 
+=======
+{//HMΩ”ø⁄”ÎxITrMxN÷Æº‰µƒ∞¸◊∞∫Ø ˝  πµ√inverser tranform’‚π˝≥Ãµƒµ˜”√‘⁄HM÷–∏¸º”∑Ω±„ 
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+#if MATRIX_MULT
+  if( iWidth == iHeight )
+  {
+    xITr(channelBitDepth, plCoef, pResidual, uiStride, (UInt)iWidth, useDST, maxLog2TrDynamicRange);
+    return;
+  }
+#endif
+
+  TCoeff block[ MAX_TU_SIZE * MAX_TU_SIZE ];
+  TCoeff coeff[ MAX_TU_SIZE * MAX_TU_SIZE ];
+
+  memcpy(coeff, plCoef, (iWidth * iHeight * sizeof(TCoeff)));
+
+  xITrMxN( channelBitDepth, coeff, block, iWidth, iHeight, useDST, maxLog2TrDynamicRange );
+
+  for (Int y = 0; y < iHeight; y++)
+  {
+    for (Int x = 0; x < iWidth; x++)
+    {
+      pResidual[(y * uiStride) + x] = Pel(block[(y * iWidth) + x]);
+    }
+  }
+}
+
+/** Wrapper function between HM interface and core 4x4 transform skipping
+ *  \param piBlkResi input data (residual)
+ *  \param uiStride stride of input residual data
+ *  \param psCoeff output data (transform coefficients)
+ *  \param rTu reference to transform data
+ *  \param component colour component
+ */
+Void TComTrQuant::xTransformSkip( Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff, TComTU &rTu, const ComponentID component )
+<<<<<<< HEAD
+{//TransformSkip ÔøΩÔøΩÔøΩÔøΩÔøΩ‰ªªÔøΩÔøΩ“ªÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ‰ªªÔøΩÔøΩ
+  const TComRectangle &rect = rTu.getRect(component);//TuÔøΩÔøΩŒªÔøΩÔøΩÔøΩÔøΩœ¢
+  const Int width           = rect.width;
+  const Int height          = rect.height;
+  const Int maxLog2TrDynamicRange = rTu.getCU()->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(component));
+  const Int channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(toChannelType(component));//Õ®ÔøΩÔøΩŒªÔøΩÔøΩ
+
+  Int iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(component), maxLog2TrDynamicRange);//ÔøΩ‰ªªÔøΩÔøΩŒªÔøΩÔøΩ
+  if (rTu.getCU()->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag())//ÔøΩÔøΩÔøΩÔøΩ’πÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩ÷§ÔøΩÔøΩŒªÔøΩÔøΩŒ™ÔøΩÔøΩ
+=======
+{//TransformSkip Ã¯π˝±‰ªª’‚“ª≤Ω £®ƒÊ±‰ªª£©
+  const TComRectangle &rect = rTu.getRect(component);//TuµƒŒª÷√–≈œ¢
+  const Int width           = rect.width;
+  const Int height          = rect.height;
+  const Int maxLog2TrDynamicRange = rTu.getCU()->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(component));
+  const Int channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(toChannelType(component));//Õ®µ¿Œª…Ó
+
+  Int iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(component), maxLog2TrDynamicRange);//±‰ªª“∆Œª¡ø
+  if (rTu.getCU()->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag())//»Ù¿©’πæ´∂» ±£÷§“∆Œª¡øŒ™’˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    iTransformShift = std::max<Int>(0, iTransformShift);
+  }
+
+<<<<<<< HEAD
+  const Bool rotateResidual = rTu.isNonTransformedResidualRotated(component);//ÔøΩ«∑ÔøΩÔøΩÔøΩ◊™ÔøΩ–≤ÔøΩ
+  const UInt uiSizeMinus1   = (width * height) - 1;//TuÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ1
+
+  if (iTransformShift >= 0)
+  {
+    for (UInt y = 0, coefficientIndex = 0; y < height; y++)//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+=======
+  const Bool rotateResidual = rTu.isNonTransformedResidualRotated(component);// «∑Ò–˝◊™≤–≤Ó
+  const UInt uiSizeMinus1   = (width * height) - 1;//TuøÈœµ ˝∏ˆ ˝ºı1
+
+  if (iTransformShift >= 0)
+  {
+    for (UInt y = 0, coefficientIndex = 0; y < height; y++)//±È¿˙øÈ÷–À˘”–œµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      for (UInt x = 0; x < width; x++, coefficientIndex++)
+      {
+        psCoeff[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] = TCoeff(piBlkResi[(y * uiStride) + x]) << iTransformShift;
+      }
+    }
+  }
+  else //for very high bit depths
+  {
+    iTransformShift = -iTransformShift;
+<<<<<<< HEAD
+    const TCoeff offset = 1 << (iTransformShift - 1);//ÔøΩÔøΩ÷§–°ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ∆´ÔøΩÔøΩ
+=======
+    const TCoeff offset = 1 << (iTransformShift - 1);//±£÷§–° ˝Àƒ…·ŒÂ»Îµƒ∆´÷√
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+    for (UInt y = 0, coefficientIndex = 0; y < height; y++)
+    {
+      for (UInt x = 0; x < width; x++, coefficientIndex++)
+      {
+        psCoeff[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] = (TCoeff(piBlkResi[(y * uiStride) + x]) + offset) >> iTransformShift;
+      }
+    }
+  }
+}
+
+/** Wrapper function between HM interface and core NxN transform skipping
+ *  \param plCoef input data (coefficients)
+ *  \param pResidual output data (residual)
+ *  \param uiStride stride of input residual data
+ *  \param rTu reference to transform data
+ *  \param component colour component ID
+ */
+Void TComTrQuant::xITransformSkip( TCoeff* plCoef, Pel* pResidual, UInt uiStride, TComTU &rTu, const ComponentID component )
+<<<<<<< HEAD
+{//TransformSkip ÔøΩÔøΩÔøΩÔøΩÔøΩ‰ªªÔøΩÔøΩ“ªÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ‰ªªÔøΩÔøΩÔøΩÔøΩÔøΩÃªÔøΩÔøΩÔøΩÕ¨ÔøΩÔøΩ ÷ªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ‰ªªÔøΩÔøΩÔøΩÔøΩŒªÔøΩÔøΩÔøΩÔøΩÔøΩ‡∑¥
+  const TComRectangle &rect = rTu.getRect(component);//TuÔøΩÔøΩŒªÔøΩÔøΩÔøΩÔøΩœ¢
+=======
+{//TransformSkip Ã¯π˝±‰ªª’‚“ª≤Ω £®ƒÊ±‰ªª£©π˝≥Ãª˘±æÕ¨…œ ÷ª «’˝∑¥±‰ªª÷–“∆Œª∑ΩœÚœ‡∑¥
+  const TComRectangle &rect = rTu.getRect(component);//TuµƒŒª÷√–≈œ¢
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  const Int width           = rect.width;
+  const Int height          = rect.height;
+  const Int maxLog2TrDynamicRange = rTu.getCU()->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(component));
+#if O0043_BEST_EFFORT_DECODING
+  const Int channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getStreamBitDepth(toChannelType(component));
+#else
+<<<<<<< HEAD
+  const Int channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(toChannelType(component));//Õ®ÔøΩÔøΩŒªÔøΩÔøΩ
+#endif
+
+  Int iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(component), maxLog2TrDynamicRange);//ÔøΩ‰ªªÔøΩÔøΩŒªÔøΩÔøΩ
+  if (rTu.getCU()->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag())//ÔøΩÔøΩÔøΩÔøΩ’πÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩ÷§ÔøΩÔøΩŒªÔøΩÔøΩŒ™ÔøΩÔøΩ
+=======
+  const Int channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(toChannelType(component));//Õ®µ¿Œª…Ó
+#endif
+
+  Int iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(component), maxLog2TrDynamicRange);//±‰ªª“∆Œª¡ø
+  if (rTu.getCU()->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag())//»Ù¿©’πæ´∂» ±£÷§“∆Œª¡øŒ™’˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    iTransformShift = std::max<Int>(0, iTransformShift);
+  }
+
+<<<<<<< HEAD
+  const Bool rotateResidual = rTu.isNonTransformedResidualRotated(component);//ÔøΩ«∑ÔøΩÔøΩÔøΩ◊™ÔøΩ–≤ÔøΩ
+  const UInt uiSizeMinus1   = (width * height) - 1;//TuÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ1
+
+  if (iTransformShift >= 0)
+  {
+    const TCoeff offset = iTransformShift==0 ? 0 : (1 << (iTransformShift - 1));//ÔøΩÔøΩ÷§–°ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ∆´ÔøΩÔøΩ
+
+    for (UInt y = 0, coefficientIndex = 0; y < height; y++)//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+    {
+      for (UInt x = 0; x < width; x++, coefficientIndex++)
+      {
+        pResidual[(y * uiStride) + x] =  Pel((plCoef[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] + offset) >> iTransformShift);//ÔøΩÔøΩÔøΩÔøΩÔøΩ–±‰ªª ÷ªÔøΩÔøΩŒªÔøΩÔøΩ‘≠
+=======
+  const Bool rotateResidual = rTu.isNonTransformedResidualRotated(component);// «∑Ò–˝◊™≤–≤Ó
+  const UInt uiSizeMinus1   = (width * height) - 1;//TuøÈœµ ˝∏ˆ ˝ºı1
+
+  if (iTransformShift >= 0)
+  {
+    const TCoeff offset = iTransformShift==0 ? 0 : (1 << (iTransformShift - 1));//±£÷§–° ˝Àƒ…·ŒÂ»Îµƒ∆´÷√
+
+    for (UInt y = 0, coefficientIndex = 0; y < height; y++)//±È¿˙øÈ÷–À˘”–œµ ˝
+    {
+      for (UInt x = 0; x < width; x++, coefficientIndex++)
+      {
+        pResidual[(y * uiStride) + x] =  Pel((plCoef[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] + offset) >> iTransformShift);//≤ªΩ¯––±‰ªª ÷ª“∆Œªªπ‘≠
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+      }
+    }
+  }
+  else //for very high bit depths
+<<<<<<< HEAD
+  {//ÔøΩÔøΩÔøΩÔøΩÕ¨ÔøΩÔøΩ
+=======
+  {//π˝≥ÃÕ¨…œ
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    iTransformShift = -iTransformShift;
+
+    for (UInt y = 0, coefficientIndex = 0; y < height; y++)
+    {
+      for (UInt x = 0; x < width; x++, coefficientIndex++)
+      {
+        pResidual[(y * uiStride) + x] = Pel(plCoef[rotateResidual ? (uiSizeMinus1 - coefficientIndex) : coefficientIndex] << iTransformShift);
+      }
+    }
+  }
+}
+
+/** RDOQ with CABAC
+ * \param rTu reference to transform data
+ * \param plSrcCoeff pointer to input buffer
+ * \param piDstCoeff reference to pointer to output buffer
+ * \param piArlDstCoeff
+ * \param uiAbsSum reference to absolute sum of quantized transform coefficient
+ * \param compID colour component ID
+ * \param cQP reference to quantization parameters
+
+ * Rate distortion optimized quantization for entropy
+ * coding engines using probability models like CABAC
+ */
+Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
+                                                            TCoeff      * plSrcCoeff,
+<<<<<<< HEAD
+                                                            TCoeff      * piDstCoeff,//ÔøΩÔøΩÔøΩÔøΩƒΩÔøΩÔøΩ÷µ
+=======
+                                                            TCoeff      * piDstCoeff,//À˘«ÛµƒΩ·π˚÷µ
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+#if ADAPTIVE_QP_SELECTION
+                                                            TCoeff      * piArlDstCoeff,
+#endif
+                                                            TCoeff       &uiAbsSum,
+                                                      const ComponentID   compID,
+                                                      const QpParam      &cQP  )
+<<<<<<< HEAD
+{//ÔøΩÔøΩ ßÔøΩÔøΩÔøΩ≈ªÔøΩÔøΩÔøΩÔøΩÔøΩ
+  const TComRectangle  & rect             = rTu.getRect(compID);//TUÔøΩÔøΩŒªÔøΩÔøΩÔøΩÔøΩœ¢
+=======
+{//¬  ß’Ê”≈ªØ¡øªØ
+  const TComRectangle  & rect             = rTu.getRect(compID);//TUøÈŒª÷√–≈œ¢
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  const UInt             uiWidth          = rect.width;
+  const UInt             uiHeight         = rect.height;
+        TComDataCU    *  pcCU             = rTu.getCU();
+  const UInt             uiAbsPartIdx     = rTu.GetAbsPartIdxTU();
+<<<<<<< HEAD
+  const ChannelType      channelType      = toChannelType(compID);//Õ®ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+  const UInt             uiLog2TrSize     = rTu.GetEquivalentLog2TrSize(compID);//TUÔøΩÔøΩ log2ÔøΩÔøΩ–°
+
+  const Bool             extendedPrecision = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag();//ÔøΩ«∑ÔøΩÔøΩÔøΩ’πÔøΩÔøΩÔøΩÔøΩ
+  const Int              maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
+  const Int              channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(channelType);//Õ®ÔøΩÔøΩŒªÔøΩÔøΩ
+=======
+  const ChannelType      channelType      = toChannelType(compID);//Õ®µ¿¿‡–Õ
+  const UInt             uiLog2TrSize     = rTu.GetEquivalentLog2TrSize(compID);//TUøÈ log2¥Û–°
+
+  const Bool             extendedPrecision = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag();// «∑Ò¿©’πæ´∂»
+  const Int              maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
+  const Int              channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(channelType);//Õ®µ¿Œª…Ó
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+  /* for 422 chroma blocks, the effective scaling applied during transformation is not a power of 2, hence it cannot be
+   * implemented as a bit-shift (the quantised result will be sqrt(2) * larger than required). Alternatively, adjust the
+   * uiLog2TrSize applied in iTransformShift, such that the result is 1/sqrt(2) the required result (i.e. smaller)
+   * Then a QP+3 (sqrt(2)) or QP-3 (1/sqrt(2)) method could be used to get the required result
+   */
+
+  // Represents scaling through forward transform
+<<<<<<< HEAD
+  Int iTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange);//ÔøΩ‰ªªÔøΩÔøΩŒªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ‰ªªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ”£ÔøΩ
+  if ((pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0) && extendedPrecision)//ÔøΩÔøΩ“™ÔøΩÔøΩ’πÔøΩ‰ªØÔøΩÔøΩÔøΩ»∫Õ∑ÔøΩTransformSkipƒ£ Ω ± »∑ÔøΩÔøΩiTransformShiftŒ™ÔøΩÔøΩ
+=======
+  Int iTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange);//±‰ªª“∆Œª¡ø£®’˚ ˝±‰ªªµƒÀı∑≈“Ú◊”£©
+  if ((pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0) && extendedPrecision)//–Ë“™¿©’π±‰ªØæ´∂»∫Õ∑«TransformSkipƒ£ Ω ± »∑±£iTransformShiftŒ™’˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    iTransformShift = std::max<Int>(0, iTransformShift);
+  }
+
+  const Bool bUseGolombRiceParameterAdaptation = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getPersistentRiceAdaptationEnabledFlag();
+  const UInt initialGolombRiceParameter        = m_pcEstBitsSbac->golombRiceAdaptationStatistics[rTu.getGolombRiceStatisticsIndex(compID)] / RExt__GOLOMB_RICE_INCREMENT_DIVISOR;
+<<<<<<< HEAD
+        UInt uiGoRiceParam                     = initialGolombRiceParameter;//ÔøΩÔøΩÔøΩ◊≤ÔøΩÔøΩÔøΩ‘™ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ”∞ÔøΩÔøΩÔøΩ‘™ÔøΩÔøΩÔøΩÔøΩ◊∫ÔøΩÔøΩÔøΩÔøΩ
+  Double     d64BlockUncodedCost               = 0;
+  const UInt uiLog2BlockWidth                  = g_aucConvertToBit[ uiWidth  ] + 2;//TuÔøΩÔøΩÔøΩlog2ÔøΩÔøΩÔøΩ
+  const UInt uiLog2BlockHeight                 = g_aucConvertToBit[ uiHeight ] + 2;//TuÔøΩÔøΩÔøΩlog2ÔøΩﬂ∂ÔøΩ
+  const UInt uiMaxNumCoeff                     = uiWidth * uiHeight;//œµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩƒø
+  assert(compID<MAX_NUM_COMPONENT);
+
+  Int scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);//ÔøΩÔøΩ‘§ÔøΩÔøΩƒ£ ΩÔøΩÔøΩÕ®ÔøΩÔøΩÔøΩÔøΩÔøΩÕµ√µÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+=======
+        UInt uiGoRiceParam                     = initialGolombRiceParameter;//∏Á¬◊≤º∂˛‘™ªØ≤Œ ˝ ”∞œÏ∂˛‘™ªØ∫Û◊∫≥§∂»
+  Double     d64BlockUncodedCost               = 0;
+  const UInt uiLog2BlockWidth                  = g_aucConvertToBit[ uiWidth  ] + 2;//TuøÈµƒlog2øÌ∂»
+  const UInt uiLog2BlockHeight                 = g_aucConvertToBit[ uiHeight ] + 2;//TuøÈµƒlog2∏ﬂ∂»
+  const UInt uiMaxNumCoeff                     = uiWidth * uiHeight;//œµ ˝◊‹ ˝ƒø
+  assert(compID<MAX_NUM_COMPONENT);
+
+  Int scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);//”…‘§≤‚ƒ£ Ω∫ÕÕ®µ¿¿‡–Õµ√µΩ¡øªØæÿ’Û¿‡±
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  assert(scalingListType < SCALING_LIST_NUM);
+
+#if ADAPTIVE_QP_SELECTION
+  memset(piArlDstCoeff, 0, sizeof(TCoeff) *  uiMaxNumCoeff);
+#endif
+<<<<<<< HEAD
+  //ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ºÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+=======
+  //…˘√˜º∞≥ı ºªØ∏˜¿‡≤Œ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  Double pdCostCoeff [ MAX_TU_SIZE * MAX_TU_SIZE ];
+  Double pdCostSig   [ MAX_TU_SIZE * MAX_TU_SIZE ];
+  Double pdCostCoeff0[ MAX_TU_SIZE * MAX_TU_SIZE ];
+  memset( pdCostCoeff, 0, sizeof(Double) *  uiMaxNumCoeff );
+  memset( pdCostSig,   0, sizeof(Double) *  uiMaxNumCoeff );
+  Int rateIncUp   [ MAX_TU_SIZE * MAX_TU_SIZE ];
+  Int rateIncDown [ MAX_TU_SIZE * MAX_TU_SIZE ];
+  Int sigRateDelta[ MAX_TU_SIZE * MAX_TU_SIZE ];
+  TCoeff deltaU   [ MAX_TU_SIZE * MAX_TU_SIZE ];
+  memset( rateIncUp,    0, sizeof(Int   ) *  uiMaxNumCoeff );
+  memset( rateIncDown,  0, sizeof(Int   ) *  uiMaxNumCoeff );
+  memset( sigRateDelta, 0, sizeof(Int   ) *  uiMaxNumCoeff );
+  memset( deltaU,       0, sizeof(TCoeff) *  uiMaxNumCoeff );
+
+  const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;                   // Right shift of non-RDOQ quantizer;  level = (coeff*uiQ + offset)>>q_bits
+  const Double *const pdErrScale = getErrScaleCoeff(scalingListType, (uiLog2TrSize-2), cQP.rem);
+<<<<<<< HEAD
+  const Int    *const piQCoef    = getQuantCoeff(scalingListType, cQP.rem, (uiLog2TrSize-2));//ÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩ÷∑
+
+  const Bool   enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));//ÔøΩ«∑ÔøΩ πÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+  const Int    defaultQuantisationCoefficient = g_quantScales[cQP.rem];//ÔøΩÔøΩ πÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+=======
+  const Int    *const piQCoef    = getQuantCoeff(scalingListType, cQP.rem, (uiLog2TrSize-2));//¡øªØœµ ˝µÿ÷∑
+
+  const Bool   enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));// «∑Ò π”√¡øªØæÿ’Û
+  const Int    defaultQuantisationCoefficient = g_quantScales[cQP.rem];//≤ª π”√¡øªØæÿ’Û ±µƒ¡øªØœµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  const Double defaultErrorScale              = getErrScaleCoeffNoScalingList(scalingListType, (uiLog2TrSize-2), cQP.rem);
+
+  const TCoeff entropyCodingMinimum = -(1 << maxLog2TrDynamicRange);
+  const TCoeff entropyCodingMaximum =  (1 << maxLog2TrDynamicRange) - 1;
+
+#if ADAPTIVE_QP_SELECTION
+  Int iQBitsC = iQBits - ARL_C_PRECISION;
+  Int iAddC =  1 << (iQBitsC-1);
+#endif
+
+<<<<<<< HEAD
+  TUEntropyCodingParameters codingParameters;//ÔøΩÿ±ÔøΩÔøΩÔøΩÔøΩ–πÿ≤ÔøΩÔøΩÔøΩ
+  getTUEntropyCodingParameters(codingParameters, rTu, compID);
+  const UInt uiCGSize = (1 << MLS_CG_SIZE);//“ªÔøΩÔøΩCGÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+
+  Double pdCostCoeffGroupSig[ MLS_GRP_NUM ];// “ªÔøΩÔøΩCGÔøΩÔøΩÔøΩ–∑ÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩƒ±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ MLS_GRP_NUMŒ™“ªÔøΩÔøΩTuÔøΩÔøΩÔøΩÔøΩÔøΩCGÔøΩÔøΩ
+  UInt uiSigCoeffGroupFlag[ MLS_GRP_NUM ];//CGÔøΩÔøΩÔøΩÔøΩÔøΩ«∑ÔøΩÔøΩÔøΩ⁄∑ÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+=======
+  TUEntropyCodingParameters codingParameters;//Ïÿ±‡¬Î”–πÿ≤Œ ˝
+  getTUEntropyCodingParameters(codingParameters, rTu, compID);
+  const UInt uiCGSize = (1 << MLS_CG_SIZE);//“ª∏ˆCG÷–œµ ˝∏ˆ ˝
+
+  Double pdCostCoeffGroupSig[ MLS_GRP_NUM ];// “ª∏ˆCGøÈ÷–∑«¡„œµ ˝µƒ±‡¬ÎÀ∫ƒ MLS_GRP_NUMŒ™“ª∏ˆTu÷–◊Ó¥ÛCG ˝
+  UInt uiSigCoeffGroupFlag[ MLS_GRP_NUM ];//CGøÈ÷– «∑Ò¥Ê‘⁄∑«¡„œµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  Int iCGLastScanPos = -1;
+
+  UInt    uiCtxSet            = 0;
+  Int     c1                  = 1;
+  Int     c2                  = 0;
+  Double  d64BaseCost         = 0;
+  Int     iLastScanPos        = -1;
+
+  UInt    c1Idx     = 0;
+  UInt    c2Idx     = 0;
+  Int     baseLevel;
+
+<<<<<<< HEAD
+  memset( pdCostCoeffGroupSig,   0, sizeof(Double) * MLS_GRP_NUM );//ÔøΩÔøΩ ºÔøΩÔøΩŒ™0
+  memset( uiSigCoeffGroupFlag,   0, sizeof(UInt) * MLS_GRP_NUM );
+
+  UInt uiCGNum = uiWidth * uiHeight >> MLS_CG_SIZE;//ÔøΩÔøΩTuÔøΩÔøΩCGÔøΩÔøΩƒ∏ÔøΩÔøΩÔøΩ
+  Int iScanPos;
+  coeffGroupRDStats rdStats;
+
+  const UInt significanceMapContextOffset = getSignificanceMapContextOffset(compID);//SignificanceMapÔøΩÔøΩÔøΩ√¥ÔøΩœµÔøΩÔøΩÔøΩ«∑ÔøΩŒ¥ÔøΩ„£©ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ∆´ÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ»∑ÔøΩÔøΩÔøΩÔøΩÔøΩ’µÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+
+  for (Int iCGScanPos = uiCGNum-1; iCGScanPos >= 0; iCGScanPos--)//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩCG
+  {
+    UInt uiCGBlkPos = codingParameters.scanCG[ iCGScanPos ];
+    UInt uiCGPosY   = uiCGBlkPos / codingParameters.widthInGroups;//ÔøΩÔøΩCGÔøΩÔøΩÔøΩ–µÔøΩYÔøΩÔøΩÔøΩÔøΩ
+    UInt uiCGPosX   = uiCGBlkPos - (uiCGPosY * codingParameters.widthInGroups);//ÔøΩÔøΩCGÔøΩÔøΩÔøΩ–µÔøΩXÔøΩÔøΩÔøΩÔøΩ
+
+    memset( &rdStats, 0, sizeof (coeffGroupRDStats));
+
+    const Int patternSigCtx = TComTrQuant::calcPatternSigCtx(uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups);//ÔøΩÔøΩCGÔøΩÔøΩÔøΩƒ£ Ω ÔøΩÔøΩÔøΩÔøΩ»∑ÔøΩÔøΩCGÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩ’µÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+
+    for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)//ÔøΩ”∫ÔøΩÔøΩÔøΩ«∞ÔøΩÔøΩÔøΩÔøΩCGÔøΩÔøΩÔøΩ–µÔøΩ√øÔøΩÔøΩœµÔøΩÔøΩ
+    {
+      iScanPos = iCGScanPos*uiCGSize + iScanPosinCG;//TbÔøΩÔøΩÔøΩ–µÔøΩŒªÔøΩÔøΩ
+=======
+  memset( pdCostCoeffGroupSig,   0, sizeof(Double) * MLS_GRP_NUM );//≥ı ºªØŒ™0
+  memset( uiSigCoeffGroupFlag,   0, sizeof(UInt) * MLS_GRP_NUM );
+
+  UInt uiCGNum = uiWidth * uiHeight >> MLS_CG_SIZE;//∏√Tu÷–CGøÈµƒ∏ˆ ˝
+  Int iScanPos;
+  coeffGroupRDStats rdStats;
+
+  const UInt significanceMapContextOffset = getSignificanceMapContextOffset(compID);//SignificanceMap£®∏√¥¶œµ ˝ «∑ÒŒ¥¡„£©…œœ¬Œƒ∆´÷√ ”√”⁄»∑∂®◊Ó÷’µƒ…œŒƒÀ˜“˝
+
+  for (Int iCGScanPos = uiCGNum-1; iCGScanPos >= 0; iCGScanPos--)//±È¿˙À˘”–CG
+  {
+    UInt uiCGBlkPos = codingParameters.scanCG[ iCGScanPos ];
+    UInt uiCGPosY   = uiCGBlkPos / codingParameters.widthInGroups;//‘⁄CGøÈ÷–µƒY◊¯±Í
+    UInt uiCGPosX   = uiCGBlkPos - (uiCGPosY * codingParameters.widthInGroups);//‘⁄CGøÈ÷–µƒX◊¯±Í
+
+    memset( &rdStats, 0, sizeof (coeffGroupRDStats));
+
+    const Int patternSigCtx = TComTrQuant::calcPatternSigCtx(uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups);//∏√CGøÈµƒƒ£ Ω ”√”⁄»∑∂®CGøÈ÷–œµ ˝◊Ó÷’µƒ…œœ¬ŒƒÀ˜“˝
+
+    for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)//¥”∫ÛœÚ«∞±È¿˙CGøÈ÷–µƒ√ø∏ˆœµ ˝
+    {
+      iScanPos = iCGScanPos*uiCGSize + iScanPosinCG;//TbøÈ÷–µƒŒª÷√
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+      //===== quantization =====
+      UInt    uiBlkPos          = codingParameters.scan[iScanPos];
+      // set coeff
+
+<<<<<<< HEAD
+      const Int    quantisationCoefficient = (enableScalingLists) ? piQCoef   [uiBlkPos] : defaultQuantisationCoefficient;//ÔøΩÔøΩÔøΩÔøΩÔøΩ«∑ÔøΩ πÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ—°ÔøΩÔøΩÔøΩ”¶ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+      const Double errorScale              = (enableScalingLists) ? pdErrScale[uiBlkPos] : defaultErrorScale;
+
+      const Int64  tmpLevel                = Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient;//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ–ºÔøΩ÷µ
+
+      const Intermediate_Int lLevelDouble  = (Intermediate_Int)min<Int64>(tmpLevel, std::numeric_limits<Intermediate_Int>::max() - (Intermediate_Int(1) << (iQBits - 1)));//ÔøΩÔøΩtmpLevelÔøΩﬁ∑ÔøΩ
+=======
+      const Int    quantisationCoefficient = (enableScalingLists) ? piQCoef   [uiBlkPos] : defaultQuantisationCoefficient;//∏˘æ› «∑Ò π”√¡øªØæÿ’Û—°‘Ò∂‘”¶µƒ¡øªØœµ ˝
+      const Double errorScale              = (enableScalingLists) ? pdErrScale[uiBlkPos] : defaultErrorScale;
+
+      const Int64  tmpLevel                = Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient;//¡øªØΩ·π˚÷–º‰÷µ
+
+      const Intermediate_Int lLevelDouble  = (Intermediate_Int)min<Int64>(tmpLevel, std::numeric_limits<Intermediate_Int>::max() - (Intermediate_Int(1) << (iQBits - 1)));//∂‘tmpLevelœﬁ∑˘
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+#if ADAPTIVE_QP_SELECTION
+      if( m_bUseAdaptQpSelect )
+      {
+        piArlDstCoeff[uiBlkPos]   = (TCoeff)(( lLevelDouble + iAddC) >> iQBitsC );
+      }
+#endif
+<<<<<<< HEAD
+      const UInt uiMaxAbsLevel  = std::min<UInt>(UInt(entropyCodingMaximum), UInt((lLevelDouble + (Intermediate_Int(1) << (iQBits - 1))) >> iQBits));//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ
+
+      const Double dErr         = Double( lLevelDouble );
+      pdCostCoeff0[ iScanPos ]  = dErr * dErr * errorScale;//œµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩŒ™0ÔøΩÔøΩÔøΩÔøΩÔøΩ
+      d64BlockUncodedCost      += pdCostCoeff0[ iScanPos ];//TbŒ™ÔøΩÔøΩÔøΩÔøΩŒ™0 ±ÔøΩÔøΩÔøΩÔøΩƒ£ÔøΩÔøΩÔøΩ ±√ªÔøΩ–±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷ªÔøΩÔøΩ ßÔøΩÔøΩÔøΩÔøΩƒ£ÔøΩ
+      piDstCoeff[ uiBlkPos ]    = uiMaxAbsLevel;//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩpiDstCoeff
+
+      if ( uiMaxAbsLevel > 0 && iLastScanPos < 0 )//ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩ0ÔøΩÔøΩÔøΩÔøΩŒ¥ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ“ªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩŒªÔøΩÔøΩ
+      {
+        iLastScanPos            = iScanPos;//ÔøΩÔøΩÔøΩ“ªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩTbÔøΩÔøΩÔøΩ–µÔøΩŒªÔøΩÔøΩ
+        uiCtxSet                = getContextSetIndex(compID, (iScanPos >> MLS_CG_SIZE), 0);//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩset
+        iCGLastScanPos          = iCGScanPos;//ÔøΩÔøΩÔøΩ“ªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩCGÔøΩÔøΩ
+      }
+
+      if ( iLastScanPos >= 0 )//CGÔøΩ–¥ÔøΩÔøΩ⁄∑ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ ÔøΩÔøΩÔøΩÔøΩÔøΩ“ªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩ ºÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ
+      {
+        //===== coefficient level estimation =====
+        UInt  uiLevel;
+        UInt  uiOneCtx         = (NUM_ONE_FLAG_CTX_PER_SET * uiCtxSet) + c1;//coeff_abs_level_greater1ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+        UInt  uiAbsCtx         = (NUM_ABS_FLAG_CTX_PER_SET * uiCtxSet) + c2;//coeff_abs_level_greater2ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+
+        if( iScanPos == iLastScanPos )//ÔøΩÔøΩÔøΩ“ªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+=======
+      const UInt uiMaxAbsLevel  = std::min<UInt>(UInt(entropyCodingMaximum), UInt((lLevelDouble + (Intermediate_Int(1) << (iQBits - 1))) >> iQBits));//¡øªØΩ·π˚÷µ
+
+      const Double dErr         = Double( lLevelDouble );
+      pdCostCoeff0[ iScanPos ]  = dErr * dErr * errorScale;//œµ ˝±‡¬ÎŒ™0µƒŒÛ≤Ó
+      d64BlockUncodedCost      += pdCostCoeff0[ iScanPos ];//TbŒ™±‡¬ÎŒ™0 ±µƒÀ∫ƒ£®¥À ±√ª”–±‡¬ÎÀ∫ƒ÷ª”– ß’ÊÀ∫ƒ£©
+      piDstCoeff[ uiBlkPos ]    = uiMaxAbsLevel;//Ω´¡øªØ÷µ∏≥∏¯piDstCoeff
+
+      if ( uiMaxAbsLevel > 0 && iLastScanPos < 0 )//¡øªØ÷µ¥Û”⁄0≤¢«“Œ¥±Íº«◊Ó∫Û“ª∏ˆ∑«¡„œµ ˝µƒŒª÷√
+      {
+        iLastScanPos            = iScanPos;//◊Ó∫Û“ª∏ˆ∑«¡„œµ ˝‘⁄TbøÈ÷–µƒŒª÷√
+        uiCtxSet                = getContextSetIndex(compID, (iScanPos >> MLS_CG_SIZE), 0);//…œœ¬ŒƒÀ˜“˝À˘ Ùset
+        iCGLastScanPos          = iCGScanPos;//◊Ó∫Û“ª∏ˆ∑«¡„œµ ˝À˘‘⁄CGøÈ
+      }
+
+      if ( iLastScanPos >= 0 )//CG÷–¥Ê‘⁄∑«¡„¡øªØ÷µ ¥”◊Ó∫Û“ª∏ˆ∑«¡„œµ ˝ø™ ºº∆À„◊Ó”≈¡øªØ÷µ
+      {
+        //===== coefficient level estimation =====
+        UInt  uiLevel;
+        UInt  uiOneCtx         = (NUM_ONE_FLAG_CTX_PER_SET * uiCtxSet) + c1;//coeff_abs_level_greater1µƒ…œœ¬ŒƒÀ˜“˝
+        UInt  uiAbsCtx         = (NUM_ABS_FLAG_CTX_PER_SET * uiCtxSet) + c2;//coeff_abs_level_greater2µƒ…œœ¬ŒƒÀ˜“˝
+
+        if( iScanPos == iLastScanPos )//◊Ó∫Û“ª∏ˆ∑«¡„œµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        {
+          uiLevel              = xGetCodedLevel( pdCostCoeff[ iScanPos ], pdCostCoeff0[ iScanPos ], pdCostSig[ iScanPos ],
+                                                  lLevelDouble, uiMaxAbsLevel, significanceMapContextOffset, uiOneCtx, uiAbsCtx, uiGoRiceParam,
+                                                  c1Idx, c2Idx, iQBits, errorScale, 1, extendedPrecision, maxLog2TrDynamicRange
+<<<<<<< HEAD
+                                                  );//RDOÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩ”¶ÔøΩÔøΩÔøΩÔøΩ ßÔøΩÔøΩÔøΩÔøΩÔøΩ
+        }
+        else//ÔøΩÔøΩŒ™ÔøΩÔøΩÔøΩ“ªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩSigCtxIncÔøΩÔøΩÔøΩÔøΩÔøΩsigÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+        {
+          UShort uiCtxSig      = significanceMapContextOffset + getSigCtxInc( patternSigCtx, codingParameters, iScanPos, uiLog2BlockWidth, uiLog2BlockHeight, channelType );//sigÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+=======
+                                                  );//RDOº∆À„◊Ó”≈¡øªØ÷µº∞∂‘”¶µƒ¬  ß’Ê¥˙º€
+        }
+        else//≤ªŒ™◊Ó∫Û“ª∏ˆ∑«¡„œµ ˝ –Ëº∆À„SigCtxInc¿¥«Ûµ√sigµƒ…œœ¬ŒƒÀ˜“˝
+        {
+          UShort uiCtxSig      = significanceMapContextOffset + getSigCtxInc( patternSigCtx, codingParameters, iScanPos, uiLog2BlockWidth, uiLog2BlockHeight, channelType );//sigµƒ…œœ¬ŒƒÀ˜“˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+          uiLevel              = xGetCodedLevel( pdCostCoeff[ iScanPos ], pdCostCoeff0[ iScanPos ], pdCostSig[ iScanPos ],
+                                                  lLevelDouble, uiMaxAbsLevel, uiCtxSig, uiOneCtx, uiAbsCtx, uiGoRiceParam,
+                                                  c1Idx, c2Idx, iQBits, errorScale, 0, extendedPrecision, maxLog2TrDynamicRange
+<<<<<<< HEAD
+                                                  );//RDOÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩ”¶ÔøΩÔøΩÔøΩÔøΩ ßÔøΩÔøΩÔøΩÔøΩÔøΩ
+=======
+                                                  );//RDOº∆À„◊Ó”≈¡øªØ÷µº∞∂‘”¶µƒ¬  ß’Ê¥˙º€
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+          sigRateDelta[ uiBlkPos ] = m_pcEstBitsSbac->significantBits[ uiCtxSig ][ 1 ] - m_pcEstBitsSbac->significantBits[ uiCtxSig ][ 0 ];
+        }
+
+<<<<<<< HEAD
+        deltaU[ uiBlkPos ]        = TCoeff((lLevelDouble - (Intermediate_Int(uiLevel) << iQBits)) >> (iQBits-8));//»∑ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+
+        if( uiLevel > 0 )
+        {
+          Int rateNow = xGetICRate( uiLevel, uiOneCtx, uiAbsCtx, uiGoRiceParam, c1Idx, c2Idx, extendedPrecision, maxLog2TrDynamicRange );//ÔøΩÔøΩ«∞rate
+          rateIncUp   [ uiBlkPos ] = xGetICRate( uiLevel+1, uiOneCtx, uiAbsCtx, uiGoRiceParam, c1Idx, c2Idx, extendedPrecision, maxLog2TrDynamicRange ) - rateNow;//ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩ1ÔøΩÔøΩÔøΩÔøΩ÷Æ«∞rateÔøΩƒ≤ÔøΩ÷µ
+          rateIncDown [ uiBlkPos ] = xGetICRate( uiLevel-1, uiOneCtx, uiAbsCtx, uiGoRiceParam, c1Idx, c2Idx, extendedPrecision, maxLog2TrDynamicRange ) - rateNow;//ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩ1ÔøΩÔøΩÔøΩÔøΩ÷Æ«∞rateÔøΩƒ≤ÔøΩ÷µ
+        }
+        else // uiLevel == 0 ÔøΩﬁ∑ÔøΩÔøΩÔøΩ1
+        {
+          rateIncUp   [ uiBlkPos ] = m_pcEstBitsSbac->m_greaterOneBits[ uiOneCtx ][ 0 ];//ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩ1ÔøΩÔøΩÔøΩÔøΩ÷Æ«∞ÔøΩÔøΩrateÔøΩÔøΩ(ÔøΩÔøΩÔøΩÔøΩcoeff_abs_level_greater1_flag=0ÔøΩƒ±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ)
+        }
+        piDstCoeff[ uiBlkPos ] = uiLevel;
+        d64BaseCost           += pdCostCoeff [ iScanPos ];//TBÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+
+        baseLevel = (c1Idx < C1FLAG_NUMBER) ? (2 + (c2Idx < C2FLAG_NUMBER)) : 1;//ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩbaselevel
+        if( uiLevel >= baseLevel )//ÔøΩÔøΩÔøΩÔøΩcoeff_abs_level_remaining
+        {
+          if (uiLevel > 3*(1<<uiGoRiceParam))//ÔøΩÔøΩÔøΩÔøΩuiLevelÔøΩƒ¥ÔøΩ–°»∑ÔøΩÔøΩuiGoRiceParamÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩRÔøΩÔøΩ
+          {//R=Min(R+(cAbsLevel>(3*(1<<R)?1:0),4)
+            uiGoRiceParam = bUseGolombRiceParameterAdaptation ? (uiGoRiceParam + 1) : (std::min<UInt>((uiGoRiceParam + 1), 4));//TRÔøΩÔøΩEGKÔøΩÔøΩ‘™ÔøΩÔøΩ ÔøΩÔøΩ√≤ÔøΩÔøΩÔøΩR K=R-1
+          }
+        }
+        if ( uiLevel >= 1)//ÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+        {
+          c1Idx ++;//coeff_abs_level_greater1_flagÔøΩÔøΩÔøΩÔøΩ ÷ªÔøΩÔøΩÔøΩÔøΩ«∞8ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩcoeff_abs_level_greater1_flag
+=======
+        deltaU[ uiBlkPos ]        = TCoeff((lLevelDouble - (Intermediate_Int(uiLevel) << iQBits)) >> (iQBits-8));//»∑∂®◊Ó”≈¡øªØ÷µ∫Ûµƒ¡øªØŒÛ≤Ó
+
+        if( uiLevel > 0 )
+        {
+          Int rateNow = xGetICRate( uiLevel, uiOneCtx, uiAbsCtx, uiGoRiceParam, c1Idx, c2Idx, extendedPrecision, maxLog2TrDynamicRange );//µ±«∞rate
+          rateIncUp   [ uiBlkPos ] = xGetICRate( uiLevel+1, uiOneCtx, uiAbsCtx, uiGoRiceParam, c1Idx, c2Idx, extendedPrecision, maxLog2TrDynamicRange ) - rateNow;//¡øªØ÷µº”1∫Û”Î÷Æ«∞rateµƒ≤Ó÷µ
+          rateIncDown [ uiBlkPos ] = xGetICRate( uiLevel-1, uiOneCtx, uiAbsCtx, uiGoRiceParam, c1Idx, c2Idx, extendedPrecision, maxLog2TrDynamicRange ) - rateNow;//¡øªØ÷µºı1∫Û”Î÷Æ«∞rateµƒ≤Ó÷µ
+        }
+        else // uiLevel == 0 Œﬁ∑®ºı1
+        {
+          rateIncUp   [ uiBlkPos ] = m_pcEstBitsSbac->m_greaterOneBits[ uiOneCtx ][ 0 ];//¡øªØ÷µº”1∫Û”Î÷Æ«∞µƒrate≤Ó(‘ˆº”coeff_abs_level_greater1_flag=0µƒ±‡¬ÎÀ∫ƒ)
+        }
+        piDstCoeff[ uiBlkPos ] = uiLevel;
+        d64BaseCost           += pdCostCoeff [ iScanPos ];//TBøÈ◊‹À∫ƒ
+
+        baseLevel = (c1Idx < C1FLAG_NUMBER) ? (2 + (c2Idx < C2FLAG_NUMBER)) : 1;//¡øªØ÷µµƒbaselevel
+        if( uiLevel >= baseLevel )//¥Ê‘⁄coeff_abs_level_remaining
+        {
+          if (uiLevel > 3*(1<<uiGoRiceParam))//∏˘æ›uiLevelµƒ¥Û–°»∑∂®uiGoRiceParam£®≤Œ ˝R£©
+          {//R=Min(R+(cAbsLevel>(3*(1<<R)?1:0),4)
+            uiGoRiceParam = bUseGolombRiceParameterAdaptation ? (uiGoRiceParam + 1) : (std::min<UInt>((uiGoRiceParam + 1), 4));//TR∫ÕEGK∂˛‘™ªØ «Ûµ√≤Œ ˝R K=R-1
+          }
+        }
+        if ( uiLevel >= 1)//∑«¡„œµ ˝
+        {
+          c1Idx ++;//coeff_abs_level_greater1_flag∏ˆ ˝ ÷ª±‡¬Î«∞8∏ˆ∑«¡„œµ ˝µƒcoeff_abs_level_greater1_flag
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        }
+
+        //===== update bin model =====
+        if( uiLevel > 1 )
+        {
+          c1 = 0;
+          c2 += (c2 < 2);
+<<<<<<< HEAD
+          c2Idx ++;//coeff_abs_level_greater2_flagÔøΩÔøΩÔøΩÔøΩ
+=======
+          c2Idx ++;//coeff_abs_level_greater2_flag∏ˆ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        }
+        else if( (c1 < 3) && (c1 > 0) && uiLevel)
+        {
+          c1++;
+        }
+
+        //===== context set update =====
+<<<<<<< HEAD
+        if( ( iScanPos % uiCGSize == 0 ) && ( iScanPos > 0 ) )//CGÔøΩÔøΩÔøΩÔøΩÔøΩ“ªÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+=======
+        if( ( iScanPos % uiCGSize == 0 ) && ( iScanPos > 0 ) )//CG÷–◊Ó∫Û“ª∏ˆœµ ˝±È¿˙ÕÍ ∏¸–¬…œœ¬Œƒ…Ë÷√
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        {
+          uiCtxSet          = getContextSetIndex(compID, ((iScanPos - 1) >> MLS_CG_SIZE), (c1 == 0)); //(iScanPos - 1) because we do this **before** entering the final group
+          c1                = 1;
+          c2                = 0;
+          c1Idx             = 0;
+          c2Idx             = 0;
+          uiGoRiceParam     = initialGolombRiceParameter;
+        }
+      }//end  if ( iLastScanPos >= 0 )
+<<<<<<< HEAD
+      else//ÔøΩ√¥ÔøΩœµÔøΩÔøΩ“ªÔøΩÔøΩŒ™ÔøΩÔøΩ
+      {
+        d64BaseCost    += pdCostCoeff0[ iScanPos ];//ÔøΩÔøΩÔøΩÔøΩƒºÔøΩÔøΩÔøΩœµÔøΩÔøΩŒ™ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+      }
+      rdStats.d64SigCost += pdCostSig[ iScanPos ];//sigÔøΩÔøΩÔøΩÔøΩÔøΩ
+      if (iScanPosinCG == 0 )
+      {
+        rdStats.d64SigCost_0 = pdCostSig[ iScanPos ];//tbÔøΩÔøΩDCÔøΩÔøΩsigÔøΩÔøΩÔøΩ
+      }
+      if (piDstCoeff[ uiBlkPos ] )//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩŒ™0
+      {
+        uiSigCoeffGroupFlag[ uiCGBlkPos ] = 1;//ÔøΩÔøΩCGÔøΩÔøΩÔøΩ–¥ÔøΩÔøΩ⁄∑ÔøΩÔøΩÔøΩœµÔøΩÔøΩ uiSigCoeffGroupFlagÔøΩÔøΩ1
+        rdStats.d64CodedLevelandDist += pdCostCoeff[ iScanPos ] - pdCostSig[ iScanPos ];//ÔøΩÔøΩCGÔøΩÔøΩ»•sigÔøΩÔøΩÔøΩÔøΩ ßÔøΩÔøΩÔøΩÔøΩ€£ÔøΩÔøΩÔøΩÔøΩÔøΩ÷ªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ+ ßÔøΩÔøΩÔøΩÔøΩƒ£ÔøΩ
+        rdStats.d64UncodedDist += pdCostCoeff0[ iScanPos ];//CGÔøΩÔøΩÔøΩÔøΩÔøΩŒ™ÔøΩÔøΩ ±ÔøΩÔøΩ ßÔøΩÔøΩÔøΩÔøΩÔøΩ
+        if ( iScanPosinCG != 0 )
+        {
+          rdStats.iNNZbeforePos0++;//ÔøΩÔøΩiScanPosinCG 0ŒªÔøΩÔøΩ÷Æ«∞ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩŒ™ÔøΩÔøΩƒ∏ÔøΩÔøΩÔøΩ
+=======
+      else//∏√¥¶œµ ˝“ª∂®Œ™¡„
+      {
+        d64BaseCost    += pdCostCoeff0[ iScanPos ];//◊‹À∫ƒº”…œœµ ˝Œ™¡„µƒÀ∫ƒ
+      }
+      rdStats.d64SigCost += pdCostSig[ iScanPos ];//sig◊‹À∫ƒ
+      if (iScanPosinCG == 0 )
+      {
+        rdStats.d64SigCost_0 = pdCostSig[ iScanPos ];//tb÷–DCµƒsigÀ∫ƒ
+      }
+      if (piDstCoeff[ uiBlkPos ] )//»Áπ˚¡øªØ÷µ≤ªŒ™0
+      {
+        uiSigCoeffGroupFlag[ uiCGBlkPos ] = 1;//∏√CGøÈ÷–¥Ê‘⁄∑«¡„œµ ˝ uiSigCoeffGroupFlag÷√1
+        rdStats.d64CodedLevelandDist += pdCostCoeff[ iScanPos ] - pdCostSig[ iScanPos ];//∏√CG≥˝»•sigµƒ¬  ß’Ê¥˙º€£®¡øªØ÷ª±‡¬ÎÀ∫ƒ+ ß’ÊÀ∫ƒ£©
+        rdStats.d64UncodedDist += pdCostCoeff0[ iScanPos ];//CGøÈ±‡¬ÎŒ™¡„ ±µƒ ß’ÊÀ∫ƒ
+        if ( iScanPosinCG != 0 )
+        {
+          rdStats.iNNZbeforePos0++;//‘⁄iScanPosinCG 0Œª÷√÷Æ«∞¡øªØ÷µ≤ªŒ™¡„µƒ∏ˆ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        }
+      }
+    } //end for (iScanPosinCG)
+
+<<<<<<< HEAD
+    if (iCGLastScanPos >= 0)//TbÔøΩÔøΩÔøΩ–¥ÔøΩÔøΩÔøΩÔøΩ–∑ÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩCG
+    {
+      if( iCGScanPos )//ÔøΩÔøΩŒ™TbÔøΩ–µÔøΩ“ªÔøΩÔøΩCG
+      {
+        if (uiSigCoeffGroupFlag[ uiCGBlkPos ] == 0)//ÔøΩÔøΩCGÔøΩ–≤ÔøΩÔøΩÔøΩÔøΩ⁄∑ÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+        {
+          UInt  uiCtxSig = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups );//ÔøΩÔøΩ«∞CGÔøΩÔøΩcoeff_abs_significant_flagÔøΩÔøΩCtxInc
+          d64BaseCost += xGetRateSigCoeffGroup(0, uiCtxSig) - rdStats.d64SigCost;//ÔøΩÔøΩÔøΩÔøΩ ßÔøΩÔøΩÔøΩÔøΩœ∏ÔøΩCGÔøΩÔøΩuiSigCoeffGroupFlag=0ÔøΩÔøΩÔøΩÔøΩƒ£ÔøΩÔøΩÔøΩŒ™CGœµÔøΩÔøΩ»´Œ™ÔøΩÔøΩÔøΩÔøΩÔøΩ‘≤ÔøΩÔøΩÔøΩÔøΩÔøΩsigÔøΩÔøΩ
+          pdCostCoeffGroupSig[ iCGScanPos ] = xGetRateSigCoeffGroup(0, uiCtxSig);//ÔøΩÔøΩCGÔøΩÔøΩCoeffGroupSigÔøΩƒ±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+        }
+        else//ÔøΩÔøΩCGÔøΩ–¥ÔøΩÔøΩ⁄∑ÔøΩÔøΩÔøΩœµÔøΩÔøΩ ÔøΩ–∂œµÔøΩ«∞CGÔøΩ«∑ÔøΩÔøΩÔøΩÔøΩÔøΩŒ™»´ÔøΩÔøΩÔøΩÔøΩ
+        {
+          if (iCGScanPos < iCGLastScanPos) //skip the last coefficient group, which will be handled together with last position below.ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ“ªÔøΩÔøΩCGÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+          {
+            if ( rdStats.iNNZbeforePos0 == 0 )//÷ªÔøΩÔøΩCGÔøΩÔøΩÔøΩœµÔøΩ“ªÔøΩÔøΩŒªÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩŒ™ÔøΩÔøΩ
+            {
+              d64BaseCost -= rdStats.d64SigCost_0;//ÔøΩÔøΩ»•ÔøΩÔøΩ”¶ÔøΩÔøΩÔøΩ
+              rdStats.d64SigCost -= rdStats.d64SigCost_0;
+            }
+            // rd-cost if SigCoeffGroupFlag = 0, initialization
+            Double d64CostZeroCG = d64BaseCost;//ÔøΩÔøΩ ºÔøΩÔøΩ»´ÔøΩÔøΩÔøΩÔøΩCGÔøΩÔøΩÔøΩÔøΩ ßÔøΩÔøΩŒ™d64BaseCost
+
+            // add SigCoeffGroupFlag cost to total cost
+            UInt  uiCtxSig = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups );//uiSigCoeffGroupFlagÔøΩÔøΩctxInc
+
+            if (iCGScanPos < iCGLastScanPos)
+            {
+              d64BaseCost  += xGetRateSigCoeffGroup(1, uiCtxSig);//d64BaseCostÔøΩÔøΩCGÔøΩ–∑ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ uiSignificanceCoeffGroupŒ™1
+              d64CostZeroCG += xGetRateSigCoeffGroup(0, uiCtxSig);//d64CostZeroCGÔøΩÔøΩCGÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µŒ™»´ÔøΩÔøΩ  uiSignificanceCoeffGroupŒ™0
+              pdCostCoeffGroupSig[ iCGScanPos ] = xGetRateSigCoeffGroup(1, uiCtxSig);
+            }
+
+            // try to convert the current coeff group from non-zero to all-zero ÔøΩÔøΩÔøΩÔøΩ»´ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ßÔøΩÊ£®ÔøΩÔøΩ‘≠ ºÔøΩÔøΩÔøΩÔøΩCGÔøΩÔøΩ ßÔøΩÔøΩÔøΩÔøΩÔøΩ”ºÔøΩÔøΩÔøΩÔøΩÔøΩ
+=======
+    if (iCGLastScanPos >= 0)//TbøÈ÷–¥Ê‘⁄”–∑«¡„œµ ˝µƒCG
+    {
+      if( iCGScanPos )//≤ªŒ™Tb÷–µ⁄“ªøÈCG
+      {
+        if (uiSigCoeffGroupFlag[ uiCGBlkPos ] == 0)//∏√CG÷–≤ª¥Ê‘⁄∑«¡„œµ ˝
+        {
+          UInt  uiCtxSig = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups );//µ±«∞CGµƒcoeff_abs_significant_flagµƒCtxInc
+          d64BaseCost += xGetRateSigCoeffGroup(0, uiCtxSig) - rdStats.d64SigCost;//◊‹¬  ß’Êº”…œ∏√CGµƒuiSigCoeffGroupFlag=0µƒÀ∫ƒ£®“ÚŒ™CGœµ ˝»´Œ™¡„À˘“‘≤ª¥Ê‘⁄sig£©
+          pdCostCoeffGroupSig[ iCGScanPos ] = xGetRateSigCoeffGroup(0, uiCtxSig);//∏√CGµƒCoeffGroupSigµƒ±‡¬ÎÀ∫ƒ
+        }
+        else//∏√CG÷–¥Ê‘⁄∑«¡„œµ ˝ ≈–∂œµ±«∞CG «∑Ò¡øªØŒ™»´¡„◊È
+        {
+          if (iCGScanPos < iCGLastScanPos) //skip the last coefficient group, which will be handled together with last position below.∑«¡„µƒ◊Ó∫Û“ªøÈCGµ•∂¿¥¶¿Ì
+          {
+            if ( rdStats.iNNZbeforePos0 == 0 )//÷ª”–CG◊Û…œµ⁄“ª∏ˆŒª÷√œµ ˝≤ªŒ™¡„
+            {
+              d64BaseCost -= rdStats.d64SigCost_0;//ºı»•œ‡”¶À∫ƒ
+              rdStats.d64SigCost -= rdStats.d64SigCost_0;
+            }
+            // rd-cost if SigCoeffGroupFlag = 0, initialization
+            Double d64CostZeroCG = d64BaseCost;//≥ı ºªØ»´¡„◊ÈCGµƒ¬  ß’ÊŒ™d64BaseCost
+
+            // add SigCoeffGroupFlag cost to total cost
+            UInt  uiCtxSig = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups );//uiSigCoeffGroupFlagµƒctxInc
+
+            if (iCGScanPos < iCGLastScanPos)
+            {
+              d64BaseCost  += xGetRateSigCoeffGroup(1, uiCtxSig);//d64BaseCost÷–CG”–∑«¡„¡øªØ÷µ uiSignificanceCoeffGroupŒ™1
+              d64CostZeroCG += xGetRateSigCoeffGroup(0, uiCtxSig);//d64CostZeroCG÷–CG÷–¡øªØ÷µŒ™»´¡„  uiSignificanceCoeffGroupŒ™0
+              pdCostCoeffGroupSig[ iCGScanPos ] = xGetRateSigCoeffGroup(1, uiCtxSig);
+            }
+
+            // try to convert the current coeff group from non-zero to all-zero º∆À„»´¡„◊Èµƒ¬  ß’Ê£®“‘‘≠ º∑«¡„CG¬  ß’Ê◊ˆº”ºı∑®£©
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+            d64CostZeroCG += rdStats.d64UncodedDist;  // distortion for resetting non-zero levels to zero levels
+            d64CostZeroCG -= rdStats.d64CodedLevelandDist;   // distortion and level cost for keeping all non-zero levels
+            d64CostZeroCG -= rdStats.d64SigCost;     // sig cost for all coeffs, including zero levels and non-zerl levels
+
+            // if we can save cost, change this block to all-zero block
+<<<<<<< HEAD
+            if ( d64CostZeroCG < d64BaseCost )//ÔøΩÔøΩÔøΩÔøΩ ßÔøΩÔøΩÔøΩ–° ÔøΩÚΩ´∏ÔøΩCGÔøΩÔøΩŒ™»´ÔøΩÔøΩÔøΩÔøΩ
+            {
+              uiSigCoeffGroupFlag[ uiCGBlkPos ] = 0;
+              d64BaseCost = d64CostZeroCG;//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ßÔøΩÔøΩ
+=======
+            if ( d64CostZeroCG < d64BaseCost )//»Ù¬  ß’Êºı–° ‘ÚΩ´∏√CG±‰Œ™»´¡„◊È
+            {
+              uiSigCoeffGroupFlag[ uiCGBlkPos ] = 0;
+              d64BaseCost = d64CostZeroCG;//÷ÿ÷√¬  ß’Ê
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+              if (iCGScanPos < iCGLastScanPos)
+              {
+                pdCostCoeffGroupSig[ iCGScanPos ] = xGetRateSigCoeffGroup(0, uiCtxSig);
+              }
+              // reset coeffs to 0 in this block
+<<<<<<< HEAD
+              for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ
+=======
+              for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)//±È¿˙À˘”–¡øªØ÷µ
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+              {
+                iScanPos      = iCGScanPos*uiCGSize + iScanPosinCG;
+                UInt uiBlkPos = codingParameters.scan[ iScanPos ];
+
+<<<<<<< HEAD
+                if (piDstCoeff[ uiBlkPos ])//ÔøΩÔøΩ‘≠ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩ
+                {
+                  piDstCoeff [ uiBlkPos ] = 0;//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µŒ™0
+=======
+                if (piDstCoeff[ uiBlkPos ])//»Ù‘≠œ»¡øªØ÷µ∑«¡„
+                {
+                  piDstCoeff [ uiBlkPos ] = 0;//÷ÿ÷√¡øªØ÷µŒ™0
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+                  pdCostCoeff[ iScanPos ] = pdCostCoeff0[ iScanPos ];
+                  pdCostSig  [ iScanPos ] = 0;
+                }
+              }
+            } // end if ( d64CostAllZeros < d64BaseCost )
+          }
+        } // end if if (uiSigCoeffGroupFlag[ uiCGBlkPos ] == 0)
+      }
+      else
+      {
+        uiSigCoeffGroupFlag[ uiCGBlkPos ] = 1;
+      }
+    }
+  } //end for (iCGScanPos)
+
+<<<<<<< HEAD
+  //===== estimate last position ===== »∑ÔøΩÔøΩÔøΩÔøΩÔøΩ“ªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩŒªÔøΩÔøΩ
+  if ( iLastScanPos < 0 )//ÔøΩÔøΩÔøΩÔøΩÔøΩ⁄∑ÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+  {
+    return;//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+=======
+  //===== estimate last position ===== »∑∂®◊Ó∫Û“ª∏ˆ∑«¡„œµ ˝Œª÷√
+  if ( iLastScanPos < 0 )//≤ª¥Ê‘⁄∑«¡„œµ ˝
+  {
+    return;//∑Ω∑®Ω· ¯
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  }
+
+  Double  d64BestCost         = 0;
+  Int     ui16CtxCbf          = 0;
+  Int     iBestLastIdxP1      = 0;
+  if( !pcCU->isIntra( uiAbsPartIdx ) && isLuma(compID) && pcCU->getTransformIdx( uiAbsPartIdx ) == 0 )
+  {
+    ui16CtxCbf   = 0;
+    d64BestCost  = d64BlockUncodedCost + xGetICost( m_pcEstBitsSbac->blockRootCbpBits[ ui16CtxCbf ][ 0 ] );
+    d64BaseCost += xGetICost( m_pcEstBitsSbac->blockRootCbpBits[ ui16CtxCbf ][ 1 ] );
+  }
+  else
+  {
+    ui16CtxCbf   = pcCU->getCtxQtCbf( rTu, channelType );
+    ui16CtxCbf  += getCBFContextOffset(compID);
+    d64BestCost  = d64BlockUncodedCost + xGetICost( m_pcEstBitsSbac->blockCbpBits[ ui16CtxCbf ][ 0 ] );
+    d64BaseCost += xGetICost( m_pcEstBitsSbac->blockCbpBits[ ui16CtxCbf ][ 1 ] );
+  }
+
+
+  Bool bFoundLast = false;
+<<<<<<< HEAD
+  for (Int iCGScanPos = iCGLastScanPos; iCGScanPos >= 0; iCGScanPos--)//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩCG
+=======
+  for (Int iCGScanPos = iCGLastScanPos; iCGScanPos >= 0; iCGScanPos--)//±È¿˙À˘”–CG
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    UInt uiCGBlkPos = codingParameters.scanCG[ iCGScanPos ];
+
+    d64BaseCost -= pdCostCoeffGroupSig [ iCGScanPos ];
+    if (uiSigCoeffGroupFlag[ uiCGBlkPos ])
+    {
+<<<<<<< HEAD
+      for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)//ÔøΩÔøΩÔøΩÔøΩCGÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ
+      {
+        iScanPos = iCGScanPos*uiCGSize + iScanPosinCG;
+
+        if (iScanPos > iLastScanPos)//ÔøΩÔøΩÔøΩÔøΩÔøΩ“ªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ«∞»∑ÔøΩÔøΩÔøΩÔøΩÔøΩ≈µƒ∑ÔøΩÔøΩÔøΩœµÔøΩÔøΩŒªÔøΩÔøΩ
+=======
+      for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)//±È¿˙CG÷–À˘”–¡øªØ÷µ
+      {
+        iScanPos = iCGScanPos*uiCGSize + iScanPosinCG;
+
+        if (iScanPos > iLastScanPos)//¥”◊Ó∫Û“ª∏ˆ∑«¡„œµ ˝¥¶œÚ«∞»∑∂®◊Ó”≈µƒ∑«¡„œµ ˝Œª÷√
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        {
+          continue;
+        }
+        UInt   uiBlkPos     = codingParameters.scan[iScanPos];
+
+<<<<<<< HEAD
+        if( piDstCoeff[ uiBlkPos ] )//ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩ0
+=======
+        if( piDstCoeff[ uiBlkPos ] )//¡øªØ÷µ¥Û”⁄0
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        {
+          UInt   uiPosY       = uiBlkPos >> uiLog2BlockWidth;
+          UInt   uiPosX       = uiBlkPos - ( uiPosY << uiLog2BlockWidth );
+
+          Double d64CostLast= codingParameters.scanType == SCAN_VER ? xGetRateLast( uiPosY, uiPosX, compID ) : xGetRateLast( uiPosX, uiPosY, compID );
+          Double totalCost = d64BaseCost + d64CostLast - pdCostSig[ iScanPos ];
+
+<<<<<<< HEAD
+          if( totalCost < d64BestCost )//ÔøΩ¬µÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩŒªÔøΩ√µÔøΩcostÔøΩÔøΩ÷Æ«∞–° 
+          {
+            iBestLastIdxP1  = iScanPos + 1;//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩŒªÔøΩÔøΩ
+            d64BestCost     = totalCost;//ÔøΩÔøΩÔøΩÔøΩbestcost
+          }
+          if( piDstCoeff[ uiBlkPos ] > 1 )//ÔøΩÔøΩÔøΩ“ªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩŒªÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩ“ªÔøΩÔøΩ‘§ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩ0 ÔøΩÔøΩ ÔøΩÔøΩÔøΩ“ªÔøΩÔøΩ‘§ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩ1 ÷ÆÔøΩÔøΩ 
+          {//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩ1 ÔøΩÔøΩÔøΩŸºÔøΩÔøΩÔøΩ—∞ÔøΩÔøΩÔøΩÔøΩÔøΩ≈∑ÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩŒªÔøΩÔøΩ
+            bFoundLast = true;
+            break;
+          }
+          d64BaseCost      -= pdCostCoeff[ iScanPos ];//ÔøΩÔøΩÔøΩÔøΩ√¥ÔøΩÔøΩÔøΩÔøΩÔøΩ÷µŒ™ÔøΩÔøΩÔøΩÔøΩTbÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ßÔøΩÔøΩ
+          d64BaseCost      += pdCostCoeff0[ iScanPos ];//ÔøΩ√¥ÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩŒ™ÔøΩÔøΩÔøΩÔøΩTbÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ßÔøΩÔøΩŒ™ÔøΩÔøΩ‘≠ÔøΩÔøΩ ßÔøΩÔøΩÔøΩ»•ÔøΩ√¥ÔøΩ‘≠ÔøΩÔøΩÔøΩÔøΩ÷µcostÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µŒ™0ÔøΩÔøΩcost
+        }
+        else//ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩ0
+        {
+          d64BaseCost      -= pdCostSig[ iScanPos ];//ÔøΩ√¥ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ“™ÔøΩÔøΩÔøΩÔøΩsig
+        }
+      } //end for
+      if (bFoundLast)//ÔøΩ“µÔøΩÔøΩÔøΩÔøΩ≈∑ÔøΩÔøΩÔøΩœµÔøΩÔøΩŒªÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ—≠ÔøΩÔøΩ
+=======
+          if( totalCost < d64BestCost )//–¬µƒ◊Ó∫Û∑«¡„œµ ˝Œª÷√µƒcostΩœ÷Æ«∞–° 
+          {
+            iBestLastIdxP1  = iScanPos + 1;//∏¸–¬◊Ó”≈◊Ó∫Û∑«¡„œµ ˝Œª÷√
+            d64BestCost     = totalCost;//∏¸–¬bestcost
+          }
+          if( piDstCoeff[ uiBlkPos ] > 1 )//◊Ó∫Û“ª∏ˆ∑«¡„œµ ˝Œª÷√‘⁄ ◊Ó∫Û“ª∏ˆ‘§¡øªØ÷µ¥Û”⁄0 ”Î ◊Ó∫Û“ª∏ˆ‘§¡øªØ÷µ¥Û”⁄1 ÷Æº‰ 
+          {//»Ù”ˆµΩ¡øªØ÷µ¥Û”⁄1 ‘Ú≤ª‘ŸºÃ–¯—∞’“◊Ó”≈∑«¡„œµ ˝µƒŒª÷√
+            bFoundLast = true;
+            break;
+          }
+          d64BaseCost      -= pdCostCoeff[ iScanPos ];//º∆À„∏√¥¶¡øªØ÷µŒ™¡„∫ÛµƒTbµƒ◊‹¬  ß’Ê
+          d64BaseCost      += pdCostCoeff0[ iScanPos ];//∏√¥¶¡øªØ÷µ±‰Œ™¡„∫ÛµƒTbµƒ◊‹¬  ß’ÊŒ™£∫‘≠¬  ß’Êºı»•∏√¥¶‘≠¡øªØ÷µcostº”…œ¡øªØ÷µŒ™0µƒcost
+        }
+        else//¡øªØ÷µµ»”⁄0
+        {
+          d64BaseCost      -= pdCostSig[ iScanPos ];//∏√¥¶≤ª‘Ÿ–Ë“™±‡¬Îsig
+        }
+      } //end for
+      if (bFoundLast)//’“µΩ◊Ó”≈∑«¡„œµ ˝Œª÷√ Ã¯≥ˆ—≠ª∑
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+      {
+        break;
+      }
+    } // end if (uiSigCoeffGroupFlag[ uiCGBlkPos ])
+  } // end for
+
+
+<<<<<<< HEAD
+  for ( Int scanPos = 0; scanPos < iBestLastIdxP1; scanPos++ )//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩŒªÔøΩÔøΩÔøΩÔøΩ«∞ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩƒæÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩœ∂ÔøΩ”¶ÔøΩÔøΩÔøΩÔøΩ
+  {
+    Int blkPos = codingParameters.scan[ scanPos ];
+    TCoeff level = piDstCoeff[ blkPos ];
+    uiAbsSum += level;//ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩ÷µ÷ÆÔøΩÔøΩ
+=======
+  for ( Int scanPos = 0; scanPos < iBestLastIdxP1; scanPos++ )//¥”◊Ó”≈◊Ó∫Û∑«¡„œµ ˝Œª÷√œÚ«∞Ω´¡øªØ÷µµƒæ¯∂‘÷µ∏Ω…œ∂‘”¶∑˚∫≈
+  {
+    Int blkPos = codingParameters.scan[ scanPos ];
+    TCoeff level = piDstCoeff[ blkPos ];
+    uiAbsSum += level;//¡øªØ÷µæ¯∂‘÷µ÷Æ∫Õ
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    piDstCoeff[ blkPos ] = ( plSrcCoeff[ blkPos ] < 0 ) ? -level : level;
+  }
+
+  //===== clean uncoded coefficients =====
+<<<<<<< HEAD
+  for ( Int scanPos = iBestLastIdxP1; scanPos <= iLastScanPos; scanPos++ )//CGÔøΩ–ΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ÷ÆÔøΩÔøΩÔøΩŒªÔøΩ√µÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩ0
+=======
+  for ( Int scanPos = iBestLastIdxP1; scanPos <= iLastScanPos; scanPos++ )//CG÷–Ω´◊Ó”≈◊Ó∫Û∑«¡„œµ ˝÷Æ∫ÛµƒŒª÷√µƒ¡øªØ÷µ∏≥0
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    piDstCoeff[ codingParameters.scan[ scanPos ] ] = 0;
+  }
+
+
+<<<<<<< HEAD
+  if( pcCU->getSlice()->getPPS()->getSignHideFlag() && uiAbsSum>=2)//SDHÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩŸ±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ›µƒ±ÔøΩÔøΩÔøΩÔøΩÔøΩ ÷Æ«∞ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ◊∏ÔøΩÔøΩ
+=======
+  if( pcCU->getSlice()->getPPS()->getSignHideFlag() && uiAbsSum>=2)//SDHºº ı ºı…Ÿ±‡¬Î∑˚∫≈ ˝æ›µƒ±»Ãÿ ˝ ÷Æ«∞“—œÍ ˆπ˝ ≤ª‘Ÿ◊∏ ˆ
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    const Double inverseQuantScale = Double(g_invQuantScales[cQP.rem]);
+    Int64 rdFactor = (Int64)(inverseQuantScale * inverseQuantScale * (1 << (2 * cQP.per))
+                             / m_dLambda / 16 / (1 << (2 * DISTORTION_PRECISION_ADJUSTMENT(channelBitDepth - 8)))
+                             + 0.5);
+
+    Int lastCG = -1;
+    Int absSum = 0 ;
+    Int n ;
+
+    for( Int subSet = (uiWidth*uiHeight-1) >> MLS_CG_SIZE; subSet >= 0; subSet-- )
+    {
+      Int  subPos     = subSet << MLS_CG_SIZE;
+      Int  firstNZPosInCG=uiCGSize , lastNZPosInCG=-1 ;
+      absSum = 0 ;
+
+      for(n = uiCGSize-1; n >= 0; --n )
+      {
+        if( piDstCoeff[ codingParameters.scan[ n + subPos ]] )
+        {
+          lastNZPosInCG = n;
+          break;
+        }
+      }
+
+      for(n = 0; n <uiCGSize; n++ )
+      {
+        if( piDstCoeff[ codingParameters.scan[ n + subPos ]] )
+        {
+          firstNZPosInCG = n;
+          break;
+        }
+      }
+
+      for(n = firstNZPosInCG; n <=lastNZPosInCG; n++ )
+      {
+        absSum += Int(piDstCoeff[ codingParameters.scan[ n + subPos ]]);
+      }
+
+      if(lastNZPosInCG>=0 && lastCG==-1)
+      {
+        lastCG = 1;
+      }
+
+      if( lastNZPosInCG-firstNZPosInCG>=SBH_THRESHOLD )
+      {
+        UInt signbit = (piDstCoeff[codingParameters.scan[subPos+firstNZPosInCG]]>0?0:1);
+        if( signbit!=(absSum&0x1) )  // hide but need tune
+        {
+          // calculate the cost
+          Int64 minCostInc = std::numeric_limits<Int64>::max(), curCost = std::numeric_limits<Int64>::max();
+          Int minPos = -1, finalChange = 0, curChange = 0;
+
+          for( n = (lastCG==1?lastNZPosInCG:uiCGSize-1) ; n >= 0; --n )
+          {
+            UInt uiBlkPos   = codingParameters.scan[ n + subPos ];
+            if(piDstCoeff[ uiBlkPos ] != 0 )
+            {
+              Int64 costUp   = rdFactor * ( - deltaU[uiBlkPos] ) + rateIncUp[uiBlkPos];
+              Int64 costDown = rdFactor * (   deltaU[uiBlkPos] ) + rateIncDown[uiBlkPos]
+                               -   ((abs(piDstCoeff[uiBlkPos]) == 1) ? sigRateDelta[uiBlkPos] : 0);
+
+              if(lastCG==1 && lastNZPosInCG==n && abs(piDstCoeff[uiBlkPos])==1)
+              {
+                costDown -= (4<<15);
+              }
+
+              if(costUp<costDown)
+              {
+                curCost = costUp;
+                curChange =  1;
+              }
+              else
+              {
+                curChange = -1;
+                if(n==firstNZPosInCG && abs(piDstCoeff[uiBlkPos])==1)
+                {
+                  curCost = std::numeric_limits<Int64>::max();
+                }
+                else
+                {
+                  curCost = costDown;
+                }
+              }
+            }
+            else
+            {
+              curCost = rdFactor * ( - (abs(deltaU[uiBlkPos])) ) + (1<<15) + rateIncUp[uiBlkPos] + sigRateDelta[uiBlkPos] ;
+              curChange = 1 ;
+
+              if(n<firstNZPosInCG)
+              {
+                UInt thissignbit = (plSrcCoeff[uiBlkPos]>=0?0:1);
+                if(thissignbit != signbit )
+                {
+                  curCost = std::numeric_limits<Int64>::max();
+                }
+              }
+            }
+
+            if( curCost<minCostInc)
+            {
+              minCostInc = curCost;
+              finalChange = curChange;
+              minPos = uiBlkPos;
+            }
+          }
+
+          if(piDstCoeff[minPos] == entropyCodingMaximum || piDstCoeff[minPos] == entropyCodingMinimum)
+          {
+            finalChange = -1;
+          }
+
+          if(plSrcCoeff[minPos]>=0)
+          {
+            piDstCoeff[minPos] += finalChange ;
+          }
+          else
+          {
+            piDstCoeff[minPos] -= finalChange ;
+          }
+        }
+      }
+
+      if(lastCG==1)
+      {
+        lastCG=0 ;
+      }
+    }
+  }
+}
+
+
+/** Pattern decision for context derivation process of significant_coeff_flag
+ * \param sigCoeffGroupFlag pointer to prior coded significant coeff group
+ * \param uiCGPosX column of current coefficient group
+ * \param uiCGPosY row of current coefficient group
+ * \param widthInGroups width of the block
+ * \param heightInGroups height of the block
+ * \returns pattern for current coefficient group
+ */
+Int  TComTrQuant::calcPatternSigCtx( const UInt* sigCoeffGroupFlag, UInt uiCGPosX, UInt uiCGPosY, UInt widthInGroups, UInt heightInGroups )
+<<<<<<< HEAD
+{//ÔøΩÔøΩÔøΩÔøΩÔøΩ⁄ΩÔøΩÔøΩÔøΩCGÔøΩÔøΩCSBFÔøΩ√µÔøΩÔøΩÔøΩ«∞CGÔøΩÔøΩƒ£ Ω ÔøΩÔøΩÔøΩ⁄µ√µÔøΩCGÔøΩÔøΩ√øÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+  if ((widthInGroups <= 1) && (heightInGroups <= 1))//CGÔøΩÔøΩÕ∏ﬂ≤ÔøΩÔøΩÔøΩÔøΩÔøΩ1 ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ¬≤ÔøΩÔøΩÔøΩ“≤ÔøΩCG ÷±ÔøΩ”∑ÔøΩÔøΩÔøΩ0
+=======
+{//∏˘æ›¡⁄Ω¸µƒCGµƒCSBFµ√µΩµ±«∞CGµƒƒ£ Ω ”√”⁄µ√µΩCG÷–√ø∏ˆœµ ˝µƒ…œœ¬ŒƒÀ˜“˝
+  if ((widthInGroups <= 1) && (heightInGroups <= 1))//CGøÌ∫Õ∏ﬂ≤ª≥¨π˝1 º¥≤ª¥Ê‘⁄œ¬≤‡∫Õ”“≤‡CG ÷±Ω”∑µªÿ0
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    return 0;
+  }
+
+<<<<<<< HEAD
+  const Bool rightAvailable = uiCGPosX < (widthInGroups  - 1);//ÔøΩÔøΩÔøΩÔøΩÔøΩ“≤ÔøΩCG
+  const Bool belowAvailable = uiCGPosY < (heightInGroups - 1);//ÔøΩÔøΩÔøΩÔøΩÔøΩ¬≤ÔøΩCG
+=======
+  const Bool rightAvailable = uiCGPosX < (widthInGroups  - 1);//¥Ê‘⁄”“≤‡CG
+  const Bool belowAvailable = uiCGPosY < (heightInGroups - 1);//¥Ê‘⁄œ¬≤‡CG
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+  UInt sigRight = 0;
+  UInt sigLower = 0;
+
+  if (rightAvailable)
+  {
+<<<<<<< HEAD
+    sigRight = ((sigCoeffGroupFlag[ (uiCGPosY * widthInGroups) + uiCGPosX + 1 ] != 0) ? 1 : 0);//ÔøΩ“≤ÔøΩCGÔøΩÔøΩCSBF
+  }
+  if (belowAvailable)
+  {
+    sigLower = ((sigCoeffGroupFlag[ (uiCGPosY + 1) * widthInGroups + uiCGPosX ] != 0) ? 1 : 0);//ÔøΩ¬≤ÔøΩCGÔøΩÔøΩCSBF
+  }
+
+  return sigRight + (sigLower << 1);//ÔøΩÔøΩÔøΩÔøΩƒ£ Ω
+=======
+    sigRight = ((sigCoeffGroupFlag[ (uiCGPosY * widthInGroups) + uiCGPosX + 1 ] != 0) ? 1 : 0);//”“≤‡CGµƒCSBF
+  }
+  if (belowAvailable)
+  {
+    sigLower = ((sigCoeffGroupFlag[ (uiCGPosY + 1) * widthInGroups + uiCGPosX ] != 0) ? 1 : 0);//œ¬≤‡CGµƒCSBF
+  }
+
+  return sigRight + (sigLower << 1);//∑µªÿƒ£ Ω
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+}
+
+
+/** Context derivation process of coeff_abs_significant_flag
+ * \param patternSigCtx pattern for current coefficient group
+ * \param codingParameters coding parameters for the TU (includes the scan)
+ * \param scanPosition current position in scan order
+ * \param log2BlockWidth log2 width of the block
+ * \param log2BlockHeight log2 height of the block
+ * \param chanType channel type (CHANNEL_TYPE_LUMA/CHROMA)
+ * \returns ctxInc for current scan position
+ */
+Int TComTrQuant::getSigCtxInc    (       Int                        patternSigCtx,
+                                   const TUEntropyCodingParameters &codingParameters,
+                                   const Int                        scanPosition,
+                                   const Int                        log2BlockWidth,
+                                   const Int                        log2BlockHeight,
+                                   const ChannelType                chanType)
+<<<<<<< HEAD
+{//ÔøΩÔøΩCGÔøΩÔøΩƒ£ ΩÔøΩ√µÔøΩÔøΩÔøΩCGÔøΩ–∂ÔøΩ”¶ŒªÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩCtxInc(ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ»∑ÔøΩÔøΩ√øÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ)
+  if (codingParameters.firstSignificanceMapContext == significanceMapContextSetStart[chanType][CONTEXT_TYPE_SINGLE])
+  {//ÔøΩÔøΩŒ™ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩƒ£ Ω ÔøΩÔøΩ÷±ÔøΩ”∑ÔøΩÔøΩÔøΩsignificanceMapContextSetStartÔøΩÔøΩ ºÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩŒ™ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+=======
+{//”…CGµƒƒ£ Ωµ√µΩ∏√CG÷–∂‘”¶Œª÷√œµ ˝µƒCtxInc(…œœ¬ŒƒÀ˜“˝‘ˆº”¡ø ”√”⁄»∑∂®√ø∏ˆœµ ˝µƒ…œœ¬ŒƒÀ˜“˝)
+  if (codingParameters.firstSignificanceMapContext == significanceMapContextSetStart[chanType][CONTEXT_TYPE_SINGLE])
+  {//»ÙŒ™µ•…œœ¬Œƒƒ£ Ω ‘Ú÷±Ω”∑µªÿsignificanceMapContextSetStartø™ ºÀ˜“˝◊˜Œ™◊Ó÷’À˜“˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    //single context mode
+    return significanceMapContextSetStart[chanType][CONTEXT_TYPE_SINGLE];
+  }
+
+  const UInt rasterPosition = codingParameters.scan[scanPosition];
+<<<<<<< HEAD
+  const UInt posY           = rasterPosition >> log2BlockWidth;//ÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩTBÔøΩ–µÔøΩYÔøΩÔøΩÔøΩÔøΩ
+  const UInt posX           = rasterPosition - (posY << log2BlockWidth);//ÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩTBÔøΩ–µÔøΩXÔøΩÔøΩÔøΩÔøΩ
+
+  if ((posX + posY) == 0)//÷±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩTBÔøΩÔøΩÔøΩÔøΩÔøΩœΩÔøΩœµÔøΩÔøΩÔøΩÔøΩctxIdx÷±ÔøΩÔøΩŒ™0
+=======
+  const UInt posY           = rasterPosition >> log2BlockWidth;//∏√œµ ˝‘⁄TB÷–µƒY◊¯±Í
+  const UInt posX           = rasterPosition - (posY << log2BlockWidth);//∏√œµ ˝‘⁄TB÷–µƒX◊¯±Í
+
+  if ((posX + posY) == 0)//÷±¡˜∑÷¡ø£®TBøÈ◊Û…œΩ«œµ ˝£©ctxIdx÷±Ω”Œ™0
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    return 0; //special case for the DC context variable
+  }
+
+  Int offset = MAX_INT;
+
+<<<<<<< HEAD
+  if ((log2BlockWidth == 2) && (log2BlockHeight == 2)) //4x4 TBÔøΩÔøΩŒ™4*4
+  {
+    offset = ctxIndMap4x4[ (4 * posY) + posX ];//÷±ÔøΩÔøΩÔøΩ…±ÔøΩ√µÔøΩoffset
+  }
+  else//ÔøΩÔøΩTBÔøΩÔøΩŒ™4*4
+  {
+    Int cnt = 0;
+
+    switch (patternSigCtx)//ÔøΩ–∂ÔøΩCGƒ£ Ω
+=======
+  if ((log2BlockWidth == 2) && (log2BlockHeight == 2)) //4x4 TBøÈŒ™4*4
+  {
+    offset = ctxIndMap4x4[ (4 * posY) + posX ];//÷±Ω””…±Ìµ√µΩoffset
+  }
+  else//»ÙTB≤ªŒ™4*4
+  {
+    Int cnt = 0;
+
+    switch (patternSigCtx)//≈–∂œCGƒ£ Ω
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      //------------------
+
+      case 0: //neither neighbouring group is significant
+        {
+<<<<<<< HEAD
+          const Int posXinSubset     = posX & ((1 << MLS_CG_LOG2_WIDTH)  - 1);//ÔøΩ⁄µÔøΩ«∞CGÔøΩ–µÔøΩXÔøΩÔøΩÔøΩÔøΩ
+          const Int posYinSubset     = posY & ((1 << MLS_CG_LOG2_HEIGHT) - 1);//ÔøΩ⁄µÔøΩ«∞CGÔøΩ–µÔøΩYÔøΩÔøΩÔøΩÔøΩ
+=======
+          const Int posXinSubset     = posX & ((1 << MLS_CG_LOG2_WIDTH)  - 1);//‘⁄µ±«∞CG÷–µƒX◊¯±Í
+          const Int posYinSubset     = posY & ((1 << MLS_CG_LOG2_HEIGHT) - 1);//‘⁄µ±«∞CG÷–µƒY◊¯±Í
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+          const Int posTotalInSubset = posXinSubset + posYinSubset;
+
+          //first N coefficients in scan order use 2; the next few use 1; the rest use 0.
+          const UInt context1Threshold = NEIGHBOURHOOD_00_CONTEXT_1_THRESHOLD_4x4;
+          const UInt context2Threshold = NEIGHBOURHOOD_00_CONTEXT_2_THRESHOLD_4x4;
+
+<<<<<<< HEAD
+          cnt = (posTotalInSubset >= context1Threshold) ? 0 : ((posTotalInSubset >= context2Threshold) ? 1 : 2);//ÔøΩÔøΩCGÔøΩÔøΩÔøΩœ∂‘ΩÔøΩ“ªÔøΩÔøΩŒ™2 ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩŒ™1 ÔøΩÔøΩÔøΩÔøΩŒ™0
+=======
+          cnt = (posTotalInSubset >= context1Threshold) ? 0 : ((posTotalInSubset >= context2Threshold) ? 1 : 2);//∏√CG◊Û…œ∂‘Ω«“ª––Œ™2 ∂˛»˝––Œ™1 ∆‰”‡Œ™0
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        }
+        break;
+
+      //------------------
+
+      case 1: //right group is significant, below is not
+        {
+          const Int posYinSubset = posY & ((1 << MLS_CG_LOG2_HEIGHT) - 1);
+          const Int groupHeight  = 1 << MLS_CG_LOG2_HEIGHT;
+
+          cnt = (posYinSubset >= (groupHeight >> 1)) ? 0 : ((posYinSubset >= (groupHeight >> 2)) ? 1 : 2); //top quarter uses 2; second-from-top quarter uses 1; bottom half uses 0
+<<<<<<< HEAD
+        }//ÀÆ∆ΩÔøΩÔøΩ“ªÔøΩÔøΩŒ™2 ÔøΩ⁄∂ÔøΩÔøΩÔøΩŒ™1 ÔøΩÔøΩÔøΩÔøΩŒ™0
+=======
+        }//ÀÆ∆Ωµ⁄“ª––Œ™2 µ⁄∂˛––Œ™1 ∆‰”‡Œ™0
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        break;
+
+      //------------------
+
+      case 2: //below group is significant, right is not
+        {
+          const Int posXinSubset = posX & ((1 << MLS_CG_LOG2_WIDTH)  - 1);
+          const Int groupWidth   = 1 << MLS_CG_LOG2_WIDTH;
+
+          cnt = (posXinSubset >= (groupWidth >> 1)) ? 0 : ((posXinSubset >= (groupWidth >> 2)) ? 1 : 2); //left quarter uses 2; second-from-left quarter uses 1; right half uses 0
+<<<<<<< HEAD
+        }//ÔøΩÔøΩ÷±ÔøΩÔøΩ“ªÔøΩÔøΩŒ™2 ÔøΩ⁄∂ÔøΩÔøΩÔøΩŒ™1 ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩŒ™0
+=======
+        }//¥π÷±µ⁄“ª¡–Œ™2 µ⁄∂˛¡–Œ™1 ∆‰”‡¡–Œ™0
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        break;
+
+      //------------------
+
+      case 3: //both neighbouring groups are significant
+        {
+<<<<<<< HEAD
+          cnt = 2;//»´ÔøΩÔøΩŒ™2
+=======
+          cnt = 2;//»´≤øŒ™2
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+        }
+        break;
+
+      //------------------
+
+      default:
+        std::cerr << "ERROR: Invalid patternSigCtx \"" << Int(patternSigCtx) << "\" in getSigCtxInc" << std::endl;
+        exit(1);
+        break;
+    }
+
+    //------------------------------------------------
+
+<<<<<<< HEAD
+    const Bool notFirstGroup = ((posX >> MLS_CG_LOG2_WIDTH) + (posY >> MLS_CG_LOG2_HEIGHT)) > 0;//ÔøΩÔøΩŒ™TBÔøΩ–µÔøΩ“ªÔøΩÔøΩCG
+
+    offset = (notFirstGroup ? notFirstGroupNeighbourhoodContextOffset[chanType] : 0) + cnt;//ÔøΩÔøΩŒ™ÔøΩÔøΩ“ªÔøΩÔøΩCGÔøΩÔøΩÔøΩÔøΩœ∂ÔøΩ”¶∆´ÔøΩÔøΩ
+  }
+
+  return codingParameters.firstSignificanceMapContext + offset;//ÔøΩÔøΩÔøΩÔøΩCtxInc  ÔøΩÔøΩ»•lumaÔøΩÔøΩchroma offestÔøΩÔøΩÔøΩCtxIdx
+=======
+    const Bool notFirstGroup = ((posX >> MLS_CG_LOG2_WIDTH) + (posY >> MLS_CG_LOG2_HEIGHT)) > 0;//≤ªŒ™TB÷–µ⁄“ª∏ˆCG
+
+    offset = (notFirstGroup ? notFirstGroupNeighbourhoodContextOffset[chanType] : 0) + cnt;//≤ªŒ™µ⁄“ª∏ˆCG–Ëº”…œ∂‘”¶∆´÷√
+  }
+
+  return codingParameters.firstSignificanceMapContext + offset;//◊Ó÷’CtxInc  ≥˝»•luma∫Õchroma offest∫ÛµƒCtxIdx
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+}
+
+
+/** Get the best level in RD sense
+ *
+ * \returns best quantized transform level for given scan position
+ *
+ * This method calculates the best quantized transform level for a given scan position.
+ */
+__inline UInt TComTrQuant::xGetCodedLevel ( Double&          rd64CodedCost,          //< reference to coded cost
+                                            Double&          rd64CodedCost0,         //< reference to cost when coefficient is 0
+                                            Double&          rd64CodedCostSig,       //< rd64CodedCostSig reference to cost of significant coefficient
+                                            Intermediate_Int lLevelDouble,           //< reference to unscaled quantized level
+                                            UInt             uiMaxAbsLevel,          //< scaled quantized level
+                                            UShort           ui16CtxNumSig,          //< current ctxInc for coeff_abs_significant_flag
+                                            UShort           ui16CtxNumOne,          //< current ctxInc for coeff_abs_level_greater1 (1st bin of coeff_abs_level_minus1 in AVC)
+                                            UShort           ui16CtxNumAbs,          //< current ctxInc for coeff_abs_level_greater2 (remaining bins of coeff_abs_level_minus1 in AVC)
+                                            UShort           ui16AbsGoRice,          //< current Rice parameter for coeff_abs_level_minus3
+                                            UInt             c1Idx,                  //< 
+                                            UInt             c2Idx,                  //< 
+                                            Int              iQBits,                 //< quantization step size
+                                            Double           errorScale,             //< 
+                                            Bool             bLast,                  //< indicates if the coefficient is the last significant
+                                            Bool             useLimitedPrefixLength, //< 
+                                            const Int        maxLog2TrDynamicRange   //< 
+                                            ) const
+<<<<<<< HEAD
+{//ÔøΩÔøΩÔøΩÔøΩRDO◊ºÔøΩÔøΩ»∑ÔøΩÔøΩÔøΩÔøΩ«∞œµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ
+  Double dCurrCostSig   = 0;
+  UInt   uiBestAbsLevel = 0;
+
+  if( !bLast && uiMaxAbsLevel < 3 )//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µŒ™0ÔøΩÔøΩ1ÔøΩÔøΩ2 ±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩÔøΩŒ™0 ÔøΩÔøΩ ±ÔøΩÔøΩ0ÔøΩÔøΩŒ™ƒ¨ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ
+  {
+    rd64CodedCostSig    = xGetRateSigCoef( 0, ui16CtxNumSig );//ÔøΩÔøΩ«∞ÔøΩÔøΩÔøΩÔøΩ÷µŒ™0
+    rd64CodedCost       = rd64CodedCost0 + rd64CodedCostSig;//ÔøΩÔøΩÔøΩÔøΩ÷µŒ™0 ±ÔøΩÔøΩÔøΩÔøΩ ßÔøΩÔøΩÔøΩÔøΩÔøΩ
+    if( uiMaxAbsLevel == 0 )//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µŒ™0 ± ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩŒ™0
+=======
+{//¿˚”√RDO◊º‘Ú»∑∂®µ±«∞œµ ˝µƒ◊Ó”≈¡øªØ÷µ
+  Double dCurrCostSig   = 0;
+  UInt   uiBestAbsLevel = 0;
+
+  if( !bLast && uiMaxAbsLevel < 3 )//µ±¡øªØ÷µŒ™0°¢1°¢2 ±◊Ó”≈¡øªØ÷µø…ƒ‹Œ™0 ¥À ±Ω´0◊ÓŒ™ƒ¨»œ¡øªØ÷µ
+  {
+    rd64CodedCostSig    = xGetRateSigCoef( 0, ui16CtxNumSig );//µ±«∞¡øªØ÷µŒ™0
+    rd64CodedCost       = rd64CodedCost0 + rd64CodedCostSig;//¡øªØ÷µŒ™0 ±µƒ¬  ß’Ê¥˙º€
+    if( uiMaxAbsLevel == 0 )//»Ù¡øªØ÷µŒ™0 ± ◊Ó”≈¡øªØ÷µ‘ÚŒ™0
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      return uiBestAbsLevel;
+    }
+  }
+  else
+  {
+    rd64CodedCost       = MAX_DOUBLE;
+  }
+
+  if( !bLast )
+  {
+<<<<<<< HEAD
+    dCurrCostSig        = xGetRateSigCoef( 1, ui16CtxNumSig );//ÔøΩÔøΩ«∞ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩ0
+  }
+
+  UInt uiMinAbsLevel    = ( uiMaxAbsLevel > 1 ? uiMaxAbsLevel - 1 : 1 );//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩ⁄µÔøΩÔøΩÔøΩ3 ± ÔøΩÔøΩÔøΩ‹µÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µŒ™NÔøΩÔøΩN-1
+  for( Int uiAbsLevel  = uiMaxAbsLevel; uiAbsLevel >= uiMinAbsLevel ; uiAbsLevel-- )//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ‹µÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ
+  {
+    Double dErr         = Double( lLevelDouble  - ( Intermediate_Int(uiAbsLevel) << iQBits ) );//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+    Double dCurrCost    = dErr * dErr * errorScale + xGetICost( xGetICRate( uiAbsLevel, ui16CtxNumOne, ui16CtxNumAbs, ui16AbsGoRice, c1Idx, c2Idx, useLimitedPrefixLength, maxLog2TrDynamicRange ) );
+    dCurrCost          += dCurrCostSig;//ÔøΩ‹µÔøΩÔøΩÔøΩ ßÔøΩÔøΩÔøΩÔøΩÔøΩ
+
+    if( dCurrCost < rd64CodedCost )//—°ÔøΩÔøΩÔøΩÔøΩ ßÔøΩÔøΩÔøΩÔøΩ ßÔøΩÔøΩ–°ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µŒ™ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ
+=======
+    dCurrCostSig        = xGetRateSigCoef( 1, ui16CtxNumSig );//µ±«∞¡øªØ÷µ∑«0
+  }
+
+  UInt uiMinAbsLevel    = ( uiMaxAbsLevel > 1 ? uiMaxAbsLevel - 1 : 1 );//µ±¡øªØ÷µ¥Û”⁄µ»”⁄3 ± ø…ƒ‹µƒ◊Ó”≈¡øªØ÷µŒ™N°¢N-1
+  for( Int uiAbsLevel  = uiMaxAbsLevel; uiAbsLevel >= uiMinAbsLevel ; uiAbsLevel-- )//±È¿˙ø…ƒ‹µƒ◊Ó”≈¡øªØ÷µ
+  {
+    Double dErr         = Double( lLevelDouble  - ( Intermediate_Int(uiAbsLevel) << iQBits ) );//¡øªØŒÛ≤Ó
+    Double dCurrCost    = dErr * dErr * errorScale + xGetICost( xGetICRate( uiAbsLevel, ui16CtxNumOne, ui16CtxNumAbs, ui16AbsGoRice, c1Idx, c2Idx, useLimitedPrefixLength, maxLog2TrDynamicRange ) );
+    dCurrCost          += dCurrCostSig;//◊‹µƒ¬  ß’Ê¥˙º€
+
+    if( dCurrCost < rd64CodedCost )//—°‘Ò¬  ß’ÊÀ ß◊Ó–°µƒ¡øªØ÷µŒ™◊Ó”≈¡øªØ÷µ
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      uiBestAbsLevel    = uiAbsLevel;
+      rd64CodedCost     = dCurrCost;
+      rd64CodedCostSig  = dCurrCostSig;
+    }
+  }
+
+  return uiBestAbsLevel;
+}
+
+/** Calculates the cost for specific absolute transform level
+ * \param uiAbsLevel scaled quantized level
+ * \param ui16CtxNumOne current ctxInc for coeff_abs_level_greater1 (1st bin of coeff_abs_level_minus1 in AVC)
+ * \param ui16CtxNumAbs current ctxInc for coeff_abs_level_greater2 (remaining bins of coeff_abs_level_minus1 in AVC)
+ * \param ui16AbsGoRice Rice parameter for coeff_abs_level_minus3
+ * \param c1Idx
+ * \param c2Idx
+ * \param useLimitedPrefixLength
+ * \param maxLog2TrDynamicRange
+ * \returns cost of given absolute transform level
+ */
+__inline Int TComTrQuant::xGetICRate         ( const UInt    uiAbsLevel,
+                                               const UShort  ui16CtxNumOne,
+                                               const UShort  ui16CtxNumAbs,
+                                               const UShort  ui16AbsGoRice,
+                                               const UInt    c1Idx,
+                                               const UInt    c2Idx,
+                                               const Bool    useLimitedPrefixLength,
+                                               const Int     maxLog2TrDynamicRange
+                                               ) const
+<<<<<<< HEAD
+{//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩR÷µÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩ
+  Int  iRate      = Int(xGetIEPRate()); // cost of sign bit
+  UInt baseLevel  = (c1Idx < C1FLAG_NUMBER) ? (2 + (c2Idx < C2FLAG_NUMBER)) : 1;//largerThan1 flagÔøΩÔøΩÔøΩÔøΩÔøΩƒøŒ™8  largerThan2 flagÔøΩÔøΩÔøΩÔøΩÔøΩƒøŒ™1
+
+  if ( uiAbsLevel >= baseLevel )//ÔøΩÔøΩÔøΩÔøΩ÷µÔøΩÔøΩÔøΩ⁄µÔøΩÔøΩÔøΩbase Level ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩcoeff_abs_level_remaining
+  {
+    UInt symbol     = uiAbsLevel - baseLevel;
+    UInt length;
+    if (symbol < (COEF_REMAIN_BIN_REDUCTION << ui16AbsGoRice))//ALRem –°ÔøΩ⁄£ÔøΩ3<<kÔøΩÔøΩÔøΩÔøΩ◊∫ÔøΩÔøΩÔøΩ»πÃ∂ÔøΩŒ™k
+    {
+      length = symbol>>ui16AbsGoRice;//«∞◊∫ÔøΩÔøΩÔøΩÔøΩ
+      iRate += (length+1+ui16AbsGoRice)<< 15;//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ß
+    }
+    else if (useLimitedPrefixLength)//ÔøΩÔøΩÔøΩÔøΩ«∞◊∫ÔøΩÔøΩÔøΩÔøΩ
+    {
+      const UInt maximumPrefixLength = (32 - (COEF_REMAIN_BIN_REDUCTION + maxLog2TrDynamicRange));//ALRemÔøΩÔøΩÔøΩbinÔøΩÔøΩÔøΩÔøΩŒ™32
+=======
+{//º∆À„∏¯∂®¡øªØ÷µµƒR÷µ£®±‡¬Î±»Ãÿ÷µ£©
+  Int  iRate      = Int(xGetIEPRate()); // cost of sign bit
+  UInt baseLevel  = (c1Idx < C1FLAG_NUMBER) ? (2 + (c2Idx < C2FLAG_NUMBER)) : 1;//largerThan1 flag◊Ó¥Û ˝ƒøŒ™8  largerThan2 flag◊Ó¥Û ˝ƒøŒ™1
+
+  if ( uiAbsLevel >= baseLevel )//¡øªØ÷µ¥Û”⁄µ»”⁄base Level º¥¥Ê‘⁄coeff_abs_level_remaining
+  {
+    UInt symbol     = uiAbsLevel - baseLevel;
+    UInt length;
+    if (symbol < (COEF_REMAIN_BIN_REDUCTION << ui16AbsGoRice))//ALRem –°”⁄£®3<<k£©∫Û◊∫≥§∂»πÃ∂®Œ™k
+    {
+      length = symbol>>ui16AbsGoRice;//«∞◊∫≥§∂»
+      iRate += (length+1+ui16AbsGoRice)<< 15;//±‡¬ÎÀ ß
+    }
+    else if (useLimitedPrefixLength)//œﬁ÷∆«∞◊∫≥§∂»
+    {
+      const UInt maximumPrefixLength = (32 - (COEF_REMAIN_BIN_REDUCTION + maxLog2TrDynamicRange));//ALRem◊Ó¥Ûbin≥§∂»Œ™32
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+      UInt prefixLength = 0;
+      UInt suffix       = (symbol >> ui16AbsGoRice) - COEF_REMAIN_BIN_REDUCTION;
+
+      while ((prefixLength < maximumPrefixLength) && (suffix > ((2 << prefixLength) - 2)))
+      {
+        prefixLength++;
+      }
+
+      const UInt suffixLength = (prefixLength == maximumPrefixLength) ? (maxLog2TrDynamicRange - ui16AbsGoRice) : (prefixLength + 1/*separator*/);
+
+      iRate += (COEF_REMAIN_BIN_REDUCTION + prefixLength + suffixLength + ui16AbsGoRice) << 15;
+    }
+<<<<<<< HEAD
+    else//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ«∞◊∫ÔøΩÔøΩÔøΩÔøΩ ALRem ÔøΩÔøΩ–°ÔøΩ⁄£ÔøΩ3<<kÔøΩÔøΩ
+    {//ÔøΩÔøΩÔøΩÔøΩALRemÔøΩÔøΩ‘™ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩ÷µŒ™ log2((N-(3<<k)>>k)+1)ÔøΩÔøΩÔøΩÔøΩ»°ÔøΩÔøΩ+k 
+=======
+    else//≤ªœﬁ÷∆«∞◊∫≥§∂» ALRem ≤ª–°”⁄£®3<<k£©
+    {//º∆À„ALRem∂˛‘™ªØ≥§∂» ∆‰÷µŒ™ log2((N-(3<<k)>>k)+1)œÚœ¬»°’˚+k 
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+      length = ui16AbsGoRice;
+      symbol  = symbol - ( COEF_REMAIN_BIN_REDUCTION << ui16AbsGoRice);
+      while (symbol >= (1<<length))
+      {
+        symbol -=  (1<<(length++));
+      }
+      iRate += (COEF_REMAIN_BIN_REDUCTION+length+1-ui16AbsGoRice+length)<< 15;
+<<<<<<< HEAD
+    }//ÔøΩÔøΩÔøΩ„≤øÔøΩÔøΩ πÔøΩÔøΩÔøΩÔøΩŒªÔøΩÔøΩ—≠ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩŒ™ÔøΩÔøΩÔøΩÔøΩ÷µ
+
+    if (c1Idx < C1FLAG_NUMBER)//ÔøΩÔøΩc1ÔøΩÔøΩ–ß
+    {
+      iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 1 ];//ÔøΩÔøΩÔøΩÔøΩRateÔøΩÔøΩÔøΩÔøΩÔøΩlargerThan1 flagÔøΩƒ±ÔøΩÔøΩÔøΩRate
+
+      if (c2Idx < C2FLAG_NUMBER)//ÔøΩÔøΩc2ÔøΩÔøΩ–ß 
+      {
+        iRate += m_pcEstBitsSbac->m_levelAbsBits[ ui16CtxNumAbs ][ 1 ];//ÔøΩÔøΩÔøΩÔøΩRateÔøΩÔøΩÔøΩÔøΩÔøΩlargerThan2 flagÔøΩƒ±ÔøΩÔøΩÔøΩRate
+      }
+    }
+  }
+  else if( uiAbsLevel == 1 )//ÔøΩÔøΩÔøΩÔøΩ÷µŒ™1 ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩlargerThan1 flag2ÔøΩÔøΩALRem
+  {
+    iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 0 ];//ÔøΩÔøΩÔøΩÔøΩÔøΩ’±ÔøΩÔøΩÔøΩRateŒ™largerThan1 flag=0ÔøΩƒ±ÔøΩÔøΩÔøΩRate
+  }
+  else if( uiAbsLevel == 2 )//ÔøΩÔøΩÔøΩÔøΩ÷µŒ™2 ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩALRem
+  {
+    iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 1 ];//ÔøΩÔøΩÔøΩÔøΩÔøΩ’±ÔøΩÔøΩÔøΩRateŒ™largerThan1 flag=1ÔøΩÔøΩlargerThan1 flag=0ÔøΩƒ±ÔøΩÔøΩÔøΩRate
+=======
+    }//º∆À„≤ø∑÷ π”√“∆Œª°¢—≠ª∑ºı∑®ÕÍ≥… ∆‰Ω·π˚Œ™…œ ˆ÷µ
+
+    if (c1Idx < C1FLAG_NUMBER)//»Ùc1”––ß
+    {
+      iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 1 ];//±‡¬ÎRate–Ëº”…œlargerThan1 flagµƒ±‡¬ÎRate
+
+      if (c2Idx < C2FLAG_NUMBER)//»Ùc2”––ß 
+      {
+        iRate += m_pcEstBitsSbac->m_levelAbsBits[ ui16CtxNumAbs ][ 1 ];//±‡¬ÎRate–Ëº”…œlargerThan2 flagµƒ±‡¬ÎRate
+      }
+    }
+  }
+  else if( uiAbsLevel == 1 )//¡øªØ÷µŒ™1 º¥≤ª¥Ê‘⁄largerThan1 flag2∫ÕALRem
+  {
+    iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 0 ];//‘Ú◊Ó÷’±‡¬ÎRateŒ™largerThan1 flag=0µƒ±‡¬ÎRate
+  }
+  else if( uiAbsLevel == 2 )//¡øªØ÷µŒ™2 º¥≤ª¥Ê‘⁄ALRem
+  {
+    iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 1 ];//‘Ú◊Ó÷’±‡¬ÎRateŒ™largerThan1 flag=1∫ÕlargerThan1 flag=0µƒ±‡¬ÎRate
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    iRate += m_pcEstBitsSbac->m_levelAbsBits[ ui16CtxNumAbs ][ 0 ];
+  }
+  else
+  {
+    iRate = 0;
+  }
+
+  return  iRate;
+}
+
+__inline Double TComTrQuant::xGetRateSigCoeffGroup  ( UShort                    uiSignificanceCoeffGroup,
+                                                UShort                          ui16CtxNumSig ) const
+{
+<<<<<<< HEAD
+  return xGetICost( m_pcEstBitsSbac->significantCoeffGroupBits[ ui16CtxNumSig ][ uiSignificanceCoeffGroup ] );//significantCoeffGroupBitsÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩCGÔøΩ«∑ÔøΩÔøΩÔøΩ⁄∑ÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+=======
+  return xGetICost( m_pcEstBitsSbac->significantCoeffGroupBits[ ui16CtxNumSig ][ uiSignificanceCoeffGroup ] );//significantCoeffGroupBits±‡¬ÎÀ∫ƒ ±Ì√˜CG «∑Ò¥Ê‘⁄∑«¡„œµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+}
+
+/** Calculates the cost of signaling the last significant coefficient in the block
+ * \param uiPosX X coordinate of the last significant coefficient
+ * \param uiPosY Y coordinate of the last significant coefficient
+ * \param component colour component ID
+ * \returns cost of last significant coefficient
+ */
+/*
+ * \param uiWidth width of the transform unit (TU)
+*/
+__inline Double TComTrQuant::xGetRateLast   ( const UInt                      uiPosX,
+                                              const UInt                      uiPosY,
+                                              const ComponentID               component  ) const
+<<<<<<< HEAD
+{//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩŒªÔøΩ√µƒ±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+  UInt uiCtxX   = g_uiGroupIdx[uiPosX];//XÔøΩÔøΩÔøΩ⁄µÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+  UInt uiCtxY   = g_uiGroupIdx[uiPosY];//YÔøΩÔøΩÔøΩ⁄µÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+
+  Double uiCost = m_pcEstBitsSbac->lastXBits[toChannelType(component)][ uiCtxX ] + m_pcEstBitsSbac->lastYBits[toChannelType(component)][ uiCtxY ];//«∞◊∫ÔøΩƒ±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+
+  if( uiCtxX > 3 )//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ3 ± ÔøΩÔøΩÔøΩ⁄∫ÔøΩ◊∫ ÔøΩÔøΩ◊∫ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ¬∑ÔøΩÔøΩÔøΩÔøΩ
+  {
+    uiCost += xGetIEPRate() * ((uiCtxX-2)>>1);//ÔøΩÔøΩ◊∫ÔøΩƒ±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ (uiCtxX-2)>>1ÔøΩÔøΩŒ™ÔøΩÔøΩ◊∫binÔøΩÔøΩŒªÔøΩÔøΩ
+  }
+  if( uiCtxY > 3 )//YÔøΩÔøΩÔøΩÔøΩ Õ¨ X
+=======
+{//º∆À„◊Ó∫Û∑«¡„œµ ˝Œª÷√µƒ±‡¬ÎÀ∫ƒ
+  UInt uiCtxX   = g_uiGroupIdx[uiPosX];//XÀ˘‘⁄µƒ«¯º‰À˜“˝
+  UInt uiCtxY   = g_uiGroupIdx[uiPosY];//YÀ˘‘⁄µƒ«¯º‰À˜“˝
+
+  Double uiCost = m_pcEstBitsSbac->lastXBits[toChannelType(component)][ uiCtxX ] + m_pcEstBitsSbac->lastYBits[toChannelType(component)][ uiCtxY ];//«∞◊∫µƒ±‡¬ÎÀ∫ƒ
+
+  if( uiCtxX > 3 )//µ±«¯º‰À˜“˝¥Û”⁄3 ± ¥Ê‘⁄∫Û◊∫ ∫Û◊∫Ω¯––≈‘¬∑±‡¬Î
+  {
+    uiCost += xGetIEPRate() * ((uiCtxX-2)>>1);//∫Û◊∫µƒ±‡¬ÎÀ∫ƒ (uiCtxX-2)>>1£©Œ™∫Û◊∫binµƒŒª ˝
+  }
+  if( uiCtxY > 3 )//Yπ˝≥Ã Õ¨ X
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    uiCost += xGetIEPRate() * ((uiCtxY-2)>>1);
+  }
+  return xGetICost( uiCost );
+}
+
+__inline Double TComTrQuant::xGetRateSigCoef  ( UShort                          uiSignificance,
+                                                UShort                          ui16CtxNumSig ) const
+{
+<<<<<<< HEAD
+  return xGetICost( m_pcEstBitsSbac->significantBits[ ui16CtxNumSig ][ uiSignificance ] );//significantBitsÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩ«∑ÔøΩŒ™ÔøΩÔøΩ
+=======
+  return xGetICost( m_pcEstBitsSbac->significantBits[ ui16CtxNumSig ][ uiSignificance ] );//significantBits±‡¬ÎÀ∫ƒ ±Ì√˜¡øªØœµ ˝ «∑ÒŒ™¡„
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+}
+
+/** Get the cost for a specific rate
+ * \param dRate rate of a bit
+ * \returns cost at the specific rate
+ */
+__inline Double TComTrQuant::xGetICost        ( Double                          dRate         ) const
+{
+<<<<<<< HEAD
+  return m_dLambda * dRate;//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+=======
+  return m_dLambda * dRate;//º∆À„±‡¬ÎÀ∫ƒ
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+}
+
+/** Get the cost of an equal probable bit
+ * \returns cost of equal probable bit
+ */
+__inline Double TComTrQuant::xGetIEPRate      (                                               ) const
+<<<<<<< HEAD
+{//“ªÔøΩ»∏ÔøΩÔøΩÔøΩŒªÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩ¬∑ÔøΩÔøΩÔøΩÔøΩ
+=======
+{//“ªµ»∏≈¬ Œª±‡¬ÎÀ∫ƒ ≈‘¬∑±‡¬Î
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  return 32768;//1<<15
+}
+
+/** Context derivation process of coeff_abs_significant_flag
+ * \param uiSigCoeffGroupFlag significance map of L1
+ * \param uiCGPosX column of current scan position
+ * \param uiCGPosY row of current scan position
+ * \param widthInGroups width of the block
+ * \param heightInGroups height of the block
+ * \returns ctxInc for current scan position
+ */
+UInt TComTrQuant::getSigCoeffGroupCtxInc  (const UInt*  uiSigCoeffGroupFlag,
+                                           const UInt   uiCGPosX,
+                                           const UInt   uiCGPosY,
+                                           const UInt   widthInGroups,
+                                           const UInt   heightInGroups)
+<<<<<<< HEAD
+{//ÔøΩÔøΩ«∞CGÔøΩÔøΩcoeff_abs_significant_flagÔøΩÔøΩCtxIncÔøΩÔøΩÔøΩÔøΩÔøΩ¬∑ÔøΩÔøΩÔøΩÔøΩ“≤ÔøΩCGÔøΩÔøΩcoeff_abs_significant_flagÔøΩ–πÔøΩ
+  UInt sigRight = 0;
+  UInt sigLower = 0;
+
+  if (uiCGPosX < (widthInGroups  - 1))//ÔøΩÔøΩÔøΩÔøΩÔøΩ“≤ÔøΩCG
+  {
+    sigRight = ((uiSigCoeffGroupFlag[ (uiCGPosY * widthInGroups) + uiCGPosX + 1 ] != 0) ? 1 : 0);//ÔøΩ“≤ÔøΩCGÔøΩÔøΩcoeff_abs_significant_flag
+  }
+  if (uiCGPosY < (heightInGroups - 1))//ÔøΩÔøΩÔøΩÔøΩÔøΩ¬∑ÔøΩCG
+  {
+    sigLower = ((uiSigCoeffGroupFlag[ (uiCGPosY + 1) * widthInGroups + uiCGPosX ] != 0) ? 1 : 0);//ÔøΩ¬∑ÔøΩCGÔøΩÔøΩcoeff_abs_significant_flag
+=======
+{//µ±«∞CGµƒcoeff_abs_significant_flagµƒCtxInc”Î∆‰œ¬∑Ω∫Õ”“≤‡CGµƒcoeff_abs_significant_flag”–πÿ
+  UInt sigRight = 0;
+  UInt sigLower = 0;
+
+  if (uiCGPosX < (widthInGroups  - 1))//¥Ê‘⁄”“≤‡CG
+  {
+    sigRight = ((uiSigCoeffGroupFlag[ (uiCGPosY * widthInGroups) + uiCGPosX + 1 ] != 0) ? 1 : 0);//”“≤‡CGµƒcoeff_abs_significant_flag
+  }
+  if (uiCGPosY < (heightInGroups - 1))//¥Ê‘⁄œ¬∑ΩCG
+  {
+    sigLower = ((uiSigCoeffGroupFlag[ (uiCGPosY + 1) * widthInGroups + uiCGPosX ] != 0) ? 1 : 0);//œ¬∑ΩCGµƒcoeff_abs_significant_flag
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  }
+
+  return ((sigRight + sigLower) != 0) ? 1 : 0;
+}
+
+
+/** set quantized matrix coefficient for encode
+ * \param scalingList            quantized matrix address
+ * \param format                 chroma format
+ * \param maxLog2TrDynamicRange
+ * \param bitDepths              reference to bit depth array for all channels
+ */
+Void TComTrQuant::setScalingList(TComScalingList *scalingList, const Int maxLog2TrDynamicRange[MAX_NUM_CHANNEL_TYPE], const BitDepths &bitDepths)
+<<<<<<< HEAD
+{//ÔøΩÔøΩÔøΩÔøΩ ±Œ™ÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩ÷µ
+=======
+{//±‡¬Î ±Œ™¡øªØœµ ˝∏≥÷µ
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  const Int minimumQp = 0;
+  const Int maximumQp = SCALING_LIST_REM_NUM;
+
+  for(UInt size = 0; size < SCALING_LIST_SIZE_NUM; size++)//4*4 8*8 16*16 32*32
+  {
+    for(UInt list = 0; list < SCALING_LIST_NUM; list++)//MAX_NUM_COMPONENT * NUMBER_OF_PREDICTION_MODES
+    {
+<<<<<<< HEAD
+      for(Int qp = minimumQp; qp < maximumQp; qp++)//qpÔøΩÔøΩÔøΩÔøΩ6 QstepÔøΩÔøΩÔøΩÔøΩ“ªÔøΩÔøΩ
+=======
+      for(Int qp = minimumQp; qp < maximumQp; qp++)//qp‘ˆº”6 Qstep‘ˆ¥Û“ª±∂
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+      {
+        xSetScalingListEnc(scalingList,list,size,qp);
+        xSetScalingListDec(*scalingList,list,size,qp);
+        setErrScaleCoeff(list,size,qp,maxLog2TrDynamicRange, bitDepths);
+      }
+    }
+  }
+}
+/** set quantized matrix coefficient for decode
+ * \param scalingList quantized matrix address
+ * \param format      chroma format
+ */
+Void TComTrQuant::setScalingListDec(const TComScalingList &scalingList)
+<<<<<<< HEAD
+{//ÔøΩÔøΩÔøΩÔøΩÕ¨ÔøΩÔøΩ ÔøΩÔøΩ√øÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ÷µ
+=======
+{//π˝≥ÃÕ¨…œ ∂‘√ø÷÷«Èøˆ∏≥÷µ
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  const Int minimumQp = 0;
+  const Int maximumQp = SCALING_LIST_REM_NUM;
+
+  for(UInt size = 0; size < SCALING_LIST_SIZE_NUM; size++)
+  {
+    for(UInt list = 0; list < SCALING_LIST_NUM; list++)
+    {
+      for(Int qp = minimumQp; qp < maximumQp; qp++)
+      {
+        xSetScalingListDec(scalingList,list,size,qp);
+      }
+    }
+  }
+}
+/** set error scale coefficients
+ * \param list                   list ID
+ * \param size                   
+ * \param qp                     quantization parameter
+ * \param maxLog2TrDynamicRange
+ * \param bitDepths              reference to bit depth array for all channels
+ */
+Void TComTrQuant::setErrScaleCoeff(UInt list, UInt size, Int qp, const Int maxLog2TrDynamicRange[MAX_NUM_CHANNEL_TYPE], const BitDepths &bitDepths)
+{
+<<<<<<< HEAD
+  const UInt uiLog2TrSize = g_aucConvertToBit[ g_scalingListSizeX[size] ] + 2;//TBÔøΩÔøΩÔøΩ–°»°ÔøΩÔøΩÔøΩÔøΩ
+  const ChannelType channelType = ((list == 0) || (list == MAX_NUM_COMPONENT)) ? CHANNEL_TYPE_LUMA : CHANNEL_TYPE_CHROMA;//Õ®ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+
+  const Int channelBitDepth    = bitDepths.recon[channelType];//Õ®ÔøΩÔøΩŒªÔøΩÔøΩ
+  const Int iTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange[channelType]);  // Represents scaling through forward transform
+
+  UInt i,uiMaxNumCoeff = g_scalingListSize[size];//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+  Int *piQuantcoeff;
+  Double *pdErrScale;
+  piQuantcoeff   = getQuantCoeff(list, qp,size);//ÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+=======
+  const UInt uiLog2TrSize = g_aucConvertToBit[ g_scalingListSizeX[size] ] + 2;//TBøÈ¥Û–°»°∂‘ ˝
+  const ChannelType channelType = ((list == 0) || (list == MAX_NUM_COMPONENT)) ? CHANNEL_TYPE_LUMA : CHANNEL_TYPE_CHROMA;//Õ®µ¿¿‡–Õ
+
+  const Int channelBitDepth    = bitDepths.recon[channelType];//Õ®µ¿Œª…Ó
+  const Int iTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange[channelType]);  // Represents scaling through forward transform
+
+  UInt i,uiMaxNumCoeff = g_scalingListSize[size];//¡øªØæÿ’Ûœµ ˝◊‹ ˝
+  Int *piQuantcoeff;
+  Double *pdErrScale;
+  piQuantcoeff   = getQuantCoeff(list, qp,size);//¡øªØœµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  pdErrScale     = getErrScaleCoeff(list, size, qp);
+
+  Double dErrScale = (Double)(1<<SCALE_BITS);                                // Compensate for scaling of bitcount in Lagrange cost function
+  dErrScale = dErrScale*pow(2.0,(-2.0*iTransformShift));                     // Compensate for scaling through forward transform
+
+<<<<<<< HEAD
+  for(i=0;i<uiMaxNumCoeff;i++)//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+  {
+    pdErrScale[i] =  dErrScale / piQuantcoeff[i] / piQuantcoeff[i] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));//ÔøΩÔøΩÔøΩÔøΩ√øÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩErrScale
+  }
+
+  getErrScaleCoeffNoScalingList(list, size, qp) = dErrScale / g_quantScales[qp] / g_quantScales[qp] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));//Œ¥ πÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩErrScale
+=======
+  for(i=0;i<uiMaxNumCoeff;i++)//±È¿˙À˘”–¡øªØœµ ˝
+  {
+    pdErrScale[i] =  dErrScale / piQuantcoeff[i] / piQuantcoeff[i] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));//º∆À„√ø∏ˆœµ ˝µƒErrScale
+  }
+
+  getErrScaleCoeffNoScalingList(list, size, qp) = dErrScale / g_quantScales[qp] / g_quantScales[qp] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));//Œ¥ π”√¡øªØæÿ’ÛµƒErrScale
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+}
+
+/** set quantized matrix coefficient for encode
+ * \param scalingList quantized matrix address
+ * \param listId List index
+ * \param sizeId size index
+ * \param qp Quantization parameter
+ * \param format chroma format
+ */
+Void TComTrQuant::xSetScalingListEnc(TComScalingList *scalingList, UInt listId, UInt sizeId, Int qp)
+<<<<<<< HEAD
+{//ÔøΩÔøΩÔøΩÔøΩ ± ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+  UInt width  = g_scalingListSizeX[sizeId];//TBÔøΩÔøΩƒøÔøΩ
+  UInt height = g_scalingListSizeX[sizeId];//TBÔøΩÔøΩƒ∏ÔøΩ
+  UInt ratio  = g_scalingListSizeX[sizeId]/min(MAX_MATRIX_SIZE_NUM,(Int)g_scalingListSizeX[sizeId]);//ÔøΩœ≤ÔøΩÔøΩÔøΩÔøΩÔøΩ 16*16/32*32 ÔøΩÔøΩÕ®ÔøΩÔøΩ8*8ÔøΩœ≤ÔøΩÔøΩÔøΩÔøΩ√µÔøΩ
+  Int *quantcoeff;
+  Int *coeff  = scalingList->getScalingListAddress(sizeId,listId);//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩƒµÔøΩ÷∑
+  quantcoeff  = getQuantCoeff(listId, qp, sizeId);//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+=======
+{//±‡¬Î ± º∆À„¡øªØœµ ˝
+  UInt width  = g_scalingListSizeX[sizeId];//TBøÈµƒøÌ
+  UInt height = g_scalingListSizeX[sizeId];//TBøÈµƒ∏ﬂ
+  UInt ratio  = g_scalingListSizeX[sizeId]/min(MAX_MATRIX_SIZE_NUM,(Int)g_scalingListSizeX[sizeId]);//…œ≤…—˘±» 16*16/32*32 –ËÕ®π˝8*8…œ≤…—˘µ√µΩ
+  Int *quantcoeff;
+  Int *coeff  = scalingList->getScalingListAddress(sizeId,listId);//¡øªØæÿ’Ûµƒµÿ÷∑
+  quantcoeff  = getQuantCoeff(listId, qp, sizeId);//◊Ó÷’¡øªØœµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+  Int quantScales = g_quantScales[qp];
+
+  processScalingListEnc(coeff,
+                        quantcoeff,
+                        (quantScales << LOG2_SCALING_LIST_NEUTRAL_VALUE),
+                        height, width, ratio,
+                        min(MAX_MATRIX_SIZE_NUM, (Int)g_scalingListSizeX[sizeId]),
+<<<<<<< HEAD
+                        scalingList->getScalingListDC(sizeId,listId));//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+=======
+                        scalingList->getScalingListDC(sizeId,listId));//º∆À„¡øªØœµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+}
+
+/** set quantized matrix coefficient for decode
+ * \param scalingList quantaized matrix address
+ * \param listId List index
+ * \param sizeId size index
+ * \param qp Quantization parameter
+ * \param format chroma format
+ */
+Void TComTrQuant::xSetScalingListDec(const TComScalingList &scalingList, UInt listId, UInt sizeId, Int qp)
+<<<<<<< HEAD
+{//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ±ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ  ÔøΩÔøΩÔøΩÔøΩÕ¨ÔøΩÔøΩÔøΩÔøΩ 
+=======
+{//º∆À„Ω‚¬Î ±µƒ¡øªØœµ ˝  π˝≥ÃÕ¨±‡¬Î 
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  UInt width  = g_scalingListSizeX[sizeId];
+  UInt height = g_scalingListSizeX[sizeId];
+  UInt ratio  = g_scalingListSizeX[sizeId]/min(MAX_MATRIX_SIZE_NUM,(Int)g_scalingListSizeX[sizeId]);
+  Int *dequantcoeff;
+  const Int *coeff  = scalingList.getScalingListAddress(sizeId,listId);
+
+  dequantcoeff = getDequantCoeff(listId, qp, sizeId);
+
+  Int invQuantScale = g_invQuantScales[qp];
+
+  processScalingListDec(coeff,
+                        dequantcoeff,
+                        invQuantScale,
+                        height, width, ratio,
+                        min(MAX_MATRIX_SIZE_NUM, (Int)g_scalingListSizeX[sizeId]),
+                        scalingList.getScalingListDC(sizeId,listId));
+}
+
+/** set flat matrix value to quantized coefficient
+ */
+Void TComTrQuant::setFlatScalingList(const Int maxLog2TrDynamicRange[MAX_NUM_CHANNEL_TYPE], const BitDepths &bitDepths)
+<<<<<<< HEAD
+{//ÔøΩÔøΩ πÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ πÔøΩÔøΩÕ¨“ªqp÷µ ±TBÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+=======
+{//≤ª π”√¡øªØæÿ’Û∫Õ π”√Õ¨“ªqp÷µ ±TBøÈµƒ¡øªØœµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  const Int minimumQp = 0;
+  const Int maximumQp = SCALING_LIST_REM_NUM;
+
+  for(UInt size = 0; size < SCALING_LIST_SIZE_NUM; size++)
+  {
+    for(UInt list = 0; list < SCALING_LIST_NUM; list++)
+    {
+      for(Int qp = minimumQp; qp < maximumQp; qp++)
+      {
+        xsetFlatScalingList(list,size,qp);
+        setErrScaleCoeff(list,size,qp,maxLog2TrDynamicRange, bitDepths);
+      }
+    }
+  }
+}
+
+/** set flat matrix value to quantized coefficient
+ * \param list List ID
+ * \param size size index
+ * \param qp Quantization parameter
+ * \param format chroma format
+ */
+Void TComTrQuant::xsetFlatScalingList(UInt list, UInt size, Int qp)
+<<<<<<< HEAD
+{//ÔøΩÔøΩ πÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ πÔøΩÔøΩÕ¨“ªqp÷µ ±TBÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ
+=======
+{//≤ª π”√¡øªØæÿ’Û∫Õ π”√Õ¨“ªqp÷µ ±TBøÈµƒ¡øªØœµ ˝
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  UInt i,num = g_scalingListSize[size];
+  Int *quantcoeff;
+  Int *dequantcoeff;
+
+  Int quantScales    = g_quantScales   [qp];
+  Int invQuantScales = g_invQuantScales[qp] << 4;
+
+  quantcoeff   = getQuantCoeff(list, qp, size);
+  dequantcoeff = getDequantCoeff(list, qp, size);
+
+  for(i=0;i<num;i++)
+  {
+    *quantcoeff++ = quantScales;
+    *dequantcoeff++ = invQuantScales;
+  }
+}
+
+/** set quantized matrix coefficient for encode
+ * \param coeff quantaized matrix address
+ * \param quantcoeff quantaized matrix address
+ * \param quantScales Q(QP%6)
+ * \param height height
+ * \param width width
+ * \param ratio ratio for upscale
+ * \param sizuNum matrix size
+ * \param dc dc parameter
+ */
+Void TComTrQuant::processScalingListEnc( Int *coeff, Int *quantcoeff, Int quantScales, UInt height, UInt width, UInt ratio, Int sizuNum, UInt dc)
+{
+<<<<<<< HEAD
+  for(UInt j=0;j<height;j++)//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+  {
+    for(UInt i=0;i<width;i++)//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+    {
+      quantcoeff[j*width + i] = quantScales / coeff[sizuNum * (j / ratio) + i / ratio];//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩTBÔøΩÔøΩÔøΩÔøΩ√øÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ+qpÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+    }
+  }
+
+  if(ratio > 1)//ÔøΩÔøΩÔøΩÔøΩÔøΩœ≤ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩDCÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ¬ºÔøΩÔøΩÔøΩ
+=======
+  for(UInt j=0;j<height;j++)//±È¿˙––
+  {
+    for(UInt i=0;i<width;i++)//±È¿˙¡–
+    {
+      quantcoeff[j*width + i] = quantScales / coeff[sizuNum * (j / ratio) + i / ratio];//”…¡øªØæÿ’Ûº∆À„TBøÈ÷–√ø∏ˆ¡øªØœµ ˝£®¡øªØæÿ’ÛÀı∑≈+qp¡øªØ£©
+    }
+  }
+
+  if(ratio > 1)//æ≠π˝…œ≤…—˘∫ÛµƒDC¡øªØœµ ˝–Ë÷ÿ–¬º∆À„
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    quantcoeff[0] = quantScales / dc;
+  }
+}
+
+/** set quantized matrix coefficient for decode
+ * \param coeff quantaized matrix address
+ * \param dequantcoeff quantaized matrix address
+ * \param invQuantScales IQ(QP%6))
+ * \param height height
+ * \param width width
+ * \param ratio ratio for upscale
+ * \param sizuNum matrix size
+ * \param dc dc parameter
+ */
+Void TComTrQuant::processScalingListDec( const Int *coeff, Int *dequantcoeff, Int invQuantScales, UInt height, UInt width, UInt ratio, Int sizuNum, UInt dc)
+<<<<<<< HEAD
+{//ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩœµÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÕ¨ÔøΩÔøΩÔøΩÔøΩ
+=======
+{//Ω‚¬Îπ˝≥Ã”…¡øªØæÿ’Ûº∆À„¡øªØœµ ˝ π˝≥ÃÕ¨±‡¬Î
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  for(UInt j=0;j<height;j++)
+  {
+    for(UInt i=0;i<width;i++)
+    {
+      dequantcoeff[j*width + i] = invQuantScales * coeff[sizuNum * (j / ratio) + i / ratio];
+    }
+  }
+
+  if(ratio > 1)
+  {
+    dequantcoeff[0] = invQuantScales * dc;
+  }
+}
+
+/** initialization process of scaling list array
+ */
+<<<<<<< HEAD
+//ÔøΩÔøΩ ºÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ
+=======
+//≥ı ºªØ…˘√˜À˘–Ëæÿ’Û
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+Void TComTrQuant::initScalingList()
+{
+  for(UInt sizeId = 0; sizeId < SCALING_LIST_SIZE_NUM; sizeId++)
+  {
+    for(UInt qp = 0; qp < SCALING_LIST_REM_NUM; qp++)
+    {
+      for(UInt listId = 0; listId < SCALING_LIST_NUM; listId++)
+      {
+        m_quantCoef   [sizeId][listId][qp] = new Int    [g_scalingListSize[sizeId]];
+        m_dequantCoef [sizeId][listId][qp] = new Int    [g_scalingListSize[sizeId]];
+        m_errScale    [sizeId][listId][qp] = new Double [g_scalingListSize[sizeId]];
+      } // listID loop
+    }
+  }
+}
+
+/** destroy quantization matrix array
+ */
+<<<<<<< HEAD
+//…æÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÕ∑ÔøΩÔøΩÔøΩ‘¥
+=======
+//…æ≥˝æÿ’Û  Õ∑≈◊ ‘¥
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+Void TComTrQuant::destroyScalingList()   
+{
+  for(UInt sizeId = 0; sizeId < SCALING_LIST_SIZE_NUM; sizeId++)
+  {
+    for(UInt listId = 0; listId < SCALING_LIST_NUM; listId++)
+    {
+      for(UInt qp = 0; qp < SCALING_LIST_REM_NUM; qp++)
+      {
+        if(m_quantCoef[sizeId][listId][qp])
+        {
+          delete [] m_quantCoef[sizeId][listId][qp];
+        }
+        if(m_dequantCoef[sizeId][listId][qp])
+        {
+          delete [] m_dequantCoef[sizeId][listId][qp];
+        }
+        if(m_errScale[sizeId][listId][qp])
+        {
+          delete [] m_errScale[sizeId][listId][qp];
+        }
+      }
+    }
+  }
+}
+
+Void TComTrQuant::transformSkipQuantOneSample(TComTU &rTu, const ComponentID compID, const TCoeff resiDiff, TCoeff* pcCoeff, const UInt uiPos, const QpParam &cQP, const Bool bUseHalfRoundingPoint)
+<<<<<<< HEAD
+{//ÂØπÂçï‰∏™ÁÇπËøõË°åtransformSkipÂíåQuant
+        TComDataCU    *pcCU                           = rTu.getCU();//TuÊâÄÂú®CU‰ø°ÊÅØ
+  const UInt           uiAbsPartIdx                   = rTu.GetAbsPartIdxTU();//TUÂùóÁöÑ‰ΩçÁΩÆ
+  const TComRectangle &rect                           = rTu.getRect(compID);
+  const UInt           uiWidth                        = rect.width;//TuÂùóÁöÑÂÆΩÂíåÈ´ò
+  const UInt           uiHeight                       = rect.height;
+  const Int            maxLog2TrDynamicRange          = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
+  const Int            channelBitDepth                = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));//ÈÄöÈÅì‰ΩçÊ∑±
+  const Int            iTransformShift                = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(compID), maxLog2TrDynamicRange);
+  const Int            scalingListType                = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);//ÈáèÂåñÁü©ÈòµÁ±ªÂûã
+  const Bool           enableScalingLists             = getUseScalingList(uiWidth, uiHeight, true);//ÊòØÂê¶‰ΩøÁî®ÈáèÂåñÁü©Èòµ
+  const Int            defaultQuantisationCoefficient = g_quantScales[cQP.rem];//ÈªòËÆ§ÈáèÂåñÁ≥ªÊï∞Ôºà‰∏ç‰ΩøÁî®ÈáèÂåñÁü©ÈòµÊó∂ÁöÑÈáèÂåñÁ≥ªÊï∞Ôºâ
+
+  assert( scalingListType < SCALING_LIST_NUM );
+  const Int *const piQuantCoeff = getQuantCoeff( scalingListType, cQP.rem, (rTu.GetEquivalentLog2TrSize(compID)-2) );//ÈáèÂåñÁ≥ªÊï∞ÁöÑËµ∑Âßã‰ΩçÁΩÆ
+=======
+{
+        TComDataCU    *pcCU                           = rTu.getCU();
+  const UInt           uiAbsPartIdx                   = rTu.GetAbsPartIdxTU();
+  const TComRectangle &rect                           = rTu.getRect(compID);
+  const UInt           uiWidth                        = rect.width;
+  const UInt           uiHeight                       = rect.height;
+  const Int            maxLog2TrDynamicRange          = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
+  const Int            channelBitDepth                = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+  const Int            iTransformShift                = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(compID), maxLog2TrDynamicRange);
+  const Int            scalingListType                = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
+  const Bool           enableScalingLists             = getUseScalingList(uiWidth, uiHeight, true);
+  const Int            defaultQuantisationCoefficient = g_quantScales[cQP.rem];
+
+  assert( scalingListType < SCALING_LIST_NUM );
+  const Int *const piQuantCoeff = getQuantCoeff( scalingListType, cQP.rem, (rTu.GetEquivalentLog2TrSize(compID)-2) );
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+
+  /* for 422 chroma blocks, the effective scaling applied during transformation is not a power of 2, hence it cannot be
+  * implemented as a bit-shift (the quantised result will be sqrt(2) * larger than required). Alternatively, adjust the
+  * uiLog2TrSize applied in iTransformShift, such that the result is 1/sqrt(2) the required result (i.e. smaller)
+  * Then a QP+3 (sqrt(2)) or QP-3 (1/sqrt(2)) method could be used to get the required result
+  */
+
+<<<<<<< HEAD
+  const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;//‰πò‰ª•ÈáèÂåñÁ≥ªÊï∞ÂêéÁöÑÁº©Â∞èÈáè„ÄÄ14+floor(QP/6)+i_shift
+  // QBits will be OK for any internal bit depth as the reduction in transform shift is balanced by an increase in Qp_per due to QpBDOffset
+
+  const Int iAdd = ( bUseHalfRoundingPoint ? 256 : (pcCU->getSlice()->getSliceType() == I_SLICE ? 171 : 85) ) << (iQBits - 9);//ËàçÂÖ•ÂÅèÁßªÈáè„ÄÄ‰ΩøÁî®HalfRoundingPointÊó∂‰∏∫0.5 Âê¶ÂàôIÂ∏ß‰∏∫1/3 PÊàñBÂõæÂÉè‰∏∫1/6
+
+  TCoeff transformedCoefficient;
+
+  // transform-skip//‰∏çËøõË°åÂèòÊç¢„ÄÄÂè™ËøõË°åÁõ∏Â∫îÂèòÊç¢‰ΩçÁßª
+=======
+  const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;
+  // QBits will be OK for any internal bit depth as the reduction in transform shift is balanced by an increase in Qp_per due to QpBDOffset
+
+  const Int iAdd = ( bUseHalfRoundingPoint ? 256 : (pcCU->getSlice()->getSliceType() == I_SLICE ? 171 : 85) ) << (iQBits - 9);
+
+  TCoeff transformedCoefficient;
+
+  // transform-skip
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  if (iTransformShift >= 0)
+  {
+    transformedCoefficient = resiDiff << iTransformShift;
+  }
+  else // for very high bit depths
+  {
+    const Int iTrShiftNeg  = -iTransformShift;
+    const Int offset       = 1 << (iTrShiftNeg - 1);
+    transformedCoefficient = ( resiDiff + offset ) >> iTrShiftNeg;
+  }
+
+<<<<<<< HEAD
+  // quantizationÈáèÂåñÈÉ®ÂàÜ
+  const TCoeff iSign = (transformedCoefficient < 0 ? -1: 1);//ÂèòÊç¢ÂêéÁ≥ªÊï∞Ê≠£Ë¥ü„ÄÄ
+
+  const Int quantisationCoefficient = enableScalingLists ? piQuantCoeff[uiPos] : defaultQuantisationCoefficient;//Ê†πÊçÆÊòØÂê¶‰ΩøÁî®ÈáèÂåñÁü©ÈòµÈÄâÊã©ÂØπÂ∫îÈáèÂåñÁ≥ªÊï∞
+
+  const Int64 tmpLevel = (Int64)abs(transformedCoefficient) * quantisationCoefficient;//ÈáèÂåñ‰∏≠Èó¥ÂÄºÔºàdij*MFÔºâ
+
+  const TCoeff quantisedCoefficient = (TCoeff((tmpLevel + iAdd ) >> iQBits)) * iSign;//ÊúÄÁªàÈáèÂåñÂÄº
+
+  const TCoeff entropyCodingMinimum = -(1 << maxLog2TrDynamicRange);
+  const TCoeff entropyCodingMaximum =  (1 << maxLog2TrDynamicRange) - 1;
+  pcCoeff[ uiPos ] = Clip3<TCoeff>( entropyCodingMinimum, entropyCodingMaximum, quantisedCoefficient );//Â∞ÜÈôêÂÆöÂ§ßÂ∞èÂêéÁöÑÈáèÂåñÁªìÊûúËµãÂÄºÁªôpcCoeff
+=======
+  // quantization
+  const TCoeff iSign = (transformedCoefficient < 0 ? -1: 1);
+
+  const Int quantisationCoefficient = enableScalingLists ? piQuantCoeff[uiPos] : defaultQuantisationCoefficient;
+
+  const Int64 tmpLevel = (Int64)abs(transformedCoefficient) * quantisationCoefficient;
+
+  const TCoeff quantisedCoefficient = (TCoeff((tmpLevel + iAdd ) >> iQBits)) * iSign;
+
+  const TCoeff entropyCodingMinimum = -(1 << maxLog2TrDynamicRange);
+  const TCoeff entropyCodingMaximum =  (1 << maxLog2TrDynamicRange) - 1;
+  pcCoeff[ uiPos ] = Clip3<TCoeff>( entropyCodingMinimum, entropyCodingMaximum, quantisedCoefficient );
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+}
+
+
+Void TComTrQuant::invTrSkipDeQuantOneSample( TComTU &rTu, ComponentID compID, TCoeff inSample, Pel &reconSample, const QpParam &cQP, UInt uiPos )
+<<<<<<< HEAD
+{//ÂØπÂçï‰∏™ÁÇπËøõË°åinvTrSkipÂíåDeQuant
+        TComDataCU    *pcCU               = rTu.getCU();//TuÊâÄÂú®CU‰ø°ÊÅØ
+  const UInt           uiAbsPartIdx       = rTu.GetAbsPartIdxTU();//TUÂùóÁöÑ‰ΩçÁΩÆ
+  const TComRectangle &rect               = rTu.getRect(compID);
+  const UInt           uiWidth            = rect.width;//TuÂùóÁöÑÂÆΩÂíåÈ´ò
+  const UInt           uiHeight           = rect.height;
+  const Int            QP_per             = cQP.per;//Qp/6
+  const Int            QP_rem             = cQP.rem;//Qp%6
+=======
+{
+        TComDataCU    *pcCU               = rTu.getCU();
+  const UInt           uiAbsPartIdx       = rTu.GetAbsPartIdxTU();
+  const TComRectangle &rect               = rTu.getRect(compID);
+  const UInt           uiWidth            = rect.width;
+  const UInt           uiHeight           = rect.height;
+  const Int            QP_per             = cQP.per;
+  const Int            QP_rem             = cQP.rem;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  const Int            maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
+#if O0043_BEST_EFFORT_DECODING
+  const Int            channelBitDepth    = pcCU->getSlice()->getSPS()->getStreamBitDepth(toChannelType(compID));
+#else
+  const Int            channelBitDepth    = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
+#endif
+  const Int            iTransformShift    = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(compID), maxLog2TrDynamicRange);
+<<<<<<< HEAD
+  const Int            scalingListType    = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);//ÈáèÂåñÁü©ÈòµÁ±ªÂûã
+  const Bool           enableScalingLists = getUseScalingList(uiWidth, uiHeight, true);//ÊòØÂê¶‰ΩøÁî®ÈáèÂåñÁü©Èòµ
+  const UInt           uiLog2TrSize       = rTu.GetEquivalentLog2TrSize(compID);//Tu log2Â§ßÂ∞è
+=======
+  const Int            scalingListType    = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);
+  const Bool           enableScalingLists = getUseScalingList(uiWidth, uiHeight, true);
+  const UInt           uiLog2TrSize       = rTu.GetEquivalentLog2TrSize(compID);
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+  assert( scalingListType < SCALING_LIST_NUM );
+
+  const Int rightShift = (IQUANT_SHIFT - (iTransformShift + QP_per)) + (enableScalingLists ? LOG2_SCALING_LIST_NEUTRAL_VALUE : 0);
+
+  const TCoeff transformMinimum = -(1 << maxLog2TrDynamicRange);
+  const TCoeff transformMaximum =  (1 << maxLog2TrDynamicRange) - 1;
+
+<<<<<<< HEAD
+  // Dequantisation//ÂèçÈáèÂåñÈÉ®ÂàÜ
+
+  TCoeff dequantisedSample;
+
+  if(enableScalingLists)//Â¶ÇÊûú‰ΩøÁî®ÈáèÂåñÁü©Èòµ
+  {
+    const UInt             dequantCoefBits     = 1 + IQUANT_SHIFT + SCALING_LIST_BITS;//ÂèçÈáèÂåñÁ≥ªÊï∞Áßª‰ΩçÈáè
+=======
+  // Dequantisation
+
+  TCoeff dequantisedSample;
+
+  if(enableScalingLists)
+  {
+    const UInt             dequantCoefBits     = 1 + IQUANT_SHIFT + SCALING_LIST_BITS;
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    const UInt             targetInputBitDepth = std::min<UInt>((maxLog2TrDynamicRange + 1), (((sizeof(Intermediate_Int) * 8) + rightShift) - dequantCoefBits));
+
+    const Intermediate_Int inputMinimum        = -(1 << (targetInputBitDepth - 1));
+    const Intermediate_Int inputMaximum        =  (1 << (targetInputBitDepth - 1)) - 1;
+
+<<<<<<< HEAD
+    Int *piDequantCoef = getDequantCoeff(scalingListType,QP_rem,uiLog2TrSize-2);//ÂæóÂà∞ÂèçÈáèÂåñÁ≥ªÊï∞
+
+    if(rightShift > 0)//‰∏≠Èó¥ÂèçÈáèÂåñÁ≥ªÊï∞ÂêëÂè≥Áßª‰Ωç
+    {
+      const Intermediate_Int iAdd      = 1 << (rightShift - 1);//Â∞èÊï∞ÂõõËàç‰∫îÂÖ•ÂèñÊï¥Êó∂ÁöÑÂÅèÊâß
+      const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));//ÈôêÂà∂ÈúÄË¶ÅÂèçÈáèÂåñÂÄºÁöÑÂ§ßÂ∞è
+      const Intermediate_Int iCoeffQ   = ((Intermediate_Int(clipQCoef) * piDequantCoef[uiPos]) + iAdd ) >> rightShift;//ÂæóÂà∞ÂèçÈáèÂåñÁªìÊûú
+
+      dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));//ÈôêÂà∂ÂèçÈáèÂåñÁªìÊûúÂ§ßÂ∞è
+    }
+    else//‰∏≠Èó¥ÂèçÈáèÂåñÁ≥ªÊï∞ÂêëÂ∑¶Áßª‰Ωç
+=======
+    Int *piDequantCoef = getDequantCoeff(scalingListType,QP_rem,uiLog2TrSize-2);
+
+    if(rightShift > 0)
+    {
+      const Intermediate_Int iAdd      = 1 << (rightShift - 1);
+      const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
+      const Intermediate_Int iCoeffQ   = ((Intermediate_Int(clipQCoef) * piDequantCoef[uiPos]) + iAdd ) >> rightShift;
+
+      dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
+    }
+    else
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      const Int              leftShift = -rightShift;
+      const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
+      const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * piDequantCoef[uiPos]) << leftShift;
+
+      dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
+    }
+  }
+<<<<<<< HEAD
+  else//‰∏ç‰ΩøÁî®ÈáèÂåñÁü©Èòµ (Èô§ÂèçÈáèÂåñÁ≥ªÊï∞ÊîπÂèòÂ§ñ„ÄÄÂÖ∂‰ªñÂêå‰∏ä)
+=======
+  else
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+  {
+    const Int scale     =  g_invQuantScales[QP_rem];
+    const Int scaleBits =     (IQUANT_SHIFT + 1)   ;
+
+    const UInt             targetInputBitDepth = std::min<UInt>((maxLog2TrDynamicRange + 1), (((sizeof(Intermediate_Int) * 8) + rightShift) - scaleBits));
+    const Intermediate_Int inputMinimum        = -(1 << (targetInputBitDepth - 1));
+    const Intermediate_Int inputMaximum        =  (1 << (targetInputBitDepth - 1)) - 1;
+
+    if (rightShift > 0)
+    {
+      const Intermediate_Int iAdd      = 1 << (rightShift - 1);
+      const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
+      const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * scale + iAdd) >> rightShift;
+
+      dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
+    }
+    else
+    {
+      const Int              leftShift = -rightShift;
+      const TCoeff           clipQCoef = TCoeff(Clip3<Intermediate_Int>(inputMinimum, inputMaximum, inSample));
+      const Intermediate_Int iCoeffQ   = (Intermediate_Int(clipQCoef) * scale) << leftShift;
+
+      dequantisedSample = TCoeff(Clip3<Intermediate_Int>(transformMinimum,transformMaximum,iCoeffQ));
+    }
+  }
+
+<<<<<<< HEAD
+  // Inverse transform-skip//‰∏çËøõË°åÂèçÂèòÂåñ„ÄÄÂè™ËøõË°å‰ΩçÁßª„ÄÄÁº©ÊîæËøòÂéüÊàêÂèòÊç¢ÂâçÊï∞ÈáèÁ∫ß
+=======
+  // Inverse transform-skip
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+
+  if (iTransformShift >= 0)
+  {
+    const TCoeff offset = iTransformShift==0 ? 0 : (1 << (iTransformShift - 1));
+    reconSample =  Pel(( dequantisedSample + offset ) >> iTransformShift);
+  }
+  else //for very high bit depths
+  {
+    const Int iTrShiftNeg = -iTransformShift;
+    reconSample = Pel(dequantisedSample << iTrShiftNeg);
+  }
+}
+
+<<<<<<< HEAD
+//ccpÊäÄÊúØ„ÄÄÊ∂àÈô§Ëâ≤Â∫¶‰∏é‰∫ÆÂ∫¶Èó¥ÁöÑÁõ∏ÂÖ≥ÊÄß„ÄÄÊèêÈ´òÁºñÁ†ÅÊïàÁéá
+=======
+
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+Void TComTrQuant::crossComponentPrediction(       TComTU      & rTu,
+                                            const ComponentID   compID,
+                                            const Pel         * piResiL,
+                                            const Pel         * piResiC,
+                                                  Pel         * piResiT,
+                                            const Int           width,
+                                            const Int           height,
+                                            const Int           strideL,
+                                            const Int           strideC,
+                                            const Int           strideT,
+                                            const Bool          reverse )
+<<<<<<< HEAD
+{//Ëâ≤Â∫¶ÊÆãÂ∑ÆÁöÑÈ¢ÑÊµã„ÄÄÂåÖÊã¨Ê≠£ÂêëÁöÑÈ¢ÑÊµãÂíåÂèçÂêëÁöÑÈáçÊûÑÔºöÈ¢ÑÊµãËÆ°ÁÆó‰∏∫y'=y-(alpha*x) ÈáçÊûÑËÆ°ÁÆó‰∏∫y'=y+(alpha*x) ÂÖ∂‰∏≠alphaÔºùsum(x*y)/sum(x*x)
+  const Pel *pResiL = piResiL;//‰∫ÆÂ∫¶ÊÆãÂ∑Æ
+  const Pel *pResiC = piResiC;//ÂéüÂßãËâ≤Â∫¶ÊÆãÂ∑Æ
+        Pel *pResiT = piResiT;//È¢ÑÊµã(ÈáçÊûÑ)ÂêéÁöÑËâ≤Â∫¶ÊÆãÂ∑ÆÂÄº
+
+  TComDataCU *pCU = rTu.getCU();
+  const Int alpha = pCU->getCrossComponentPredictionAlpha( rTu.GetAbsPartIdxTU( compID ), compID );
+  const Int diffBitDepth = pCU->getSlice()->getSPS()->getDifferentialLumaChromaBitDepth();//‰∏∫Ëâ≤Â∫¶Âíå‰∫ÆÂ∫¶ÁöÑ‰ΩçÊ∑±Â∑ÆÂºÇÂÄº
+
+  for( Int y = 0; y < height; y++ )//ÈÅçÂéÜÊâÄÊúâÊÆãÂ∑ÆÂÄº
+  {
+    if (reverse)//ÂèçÂêëÈáçÊûÑ
+=======
+{
+  const Pel *pResiL = piResiL;
+  const Pel *pResiC = piResiC;
+        Pel *pResiT = piResiT;
+
+  TComDataCU *pCU = rTu.getCU();
+  const Int alpha = pCU->getCrossComponentPredictionAlpha( rTu.GetAbsPartIdxTU( compID ), compID );
+  const Int diffBitDepth = pCU->getSlice()->getSPS()->getDifferentialLumaChromaBitDepth();
+
+  for( Int y = 0; y < height; y++ )
+  {
+    if (reverse)
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      // A constraint is to be added to the HEVC Standard to limit the size of pResiL and pResiC at this point.
+      // The likely form of the constraint is to either restrict the values to CoeffMin to CoeffMax,
+      // or to be representable in a bitDepthY+4 or bitDepthC+4 signed integer.
+      //  The result of the constraint is that for 8/10/12bit profiles, the input values
+      //  can be represented within a 16-bit Pel-type.
+#if RExt__HIGH_BIT_DEPTH_SUPPORT
+      for( Int x = 0; x < width; x++ )
+      {
+        pResiT[x] = pResiC[x] + (( alpha * rightShift( pResiL[x], diffBitDepth) ) >> 3);
+      }
+#else
+<<<<<<< HEAD
+      const Int minPel=std::numeric_limits<Pel>::min();//ÂÖÅËÆ∏ÊÆãÂ∑ÆÁöÑÊúÄÂ§ßÊúÄ‰∏ãÂÄº
+      const Int maxPel=std::numeric_limits<Pel>::max();
+      for( Int x = 0; x < width; x++ )
+      {//rightShift<Int>(Int(pResiL[x]), diffBitDepth)Â§ÑÁêÜ‰∫ÆÂ∫¶ÂíåËâ≤Â∫¶ÁªÑÊàêÈó¥ÁöÑbitÊ∑±Â∫¶Â∑ÆÂºÇ‰ΩøËâ≤Â∫¶‰∫ÆÂ∫¶‰ΩçÊ∑±Áõ∏Âêå„ÄÄ>>3‰ΩçÊòØÂõ†‰∏∫‰πòÊ≥ïËÆ°ÁÆó‰∏≠ÂéüÊú¨alphaÂ±û‰∫éÔºª-1.0,1.0ÔºΩË¢´Êò†Â∞ÑÂà∞Ôºª-8,8ÔºΩÊâÄ‰ª•ÈúÄÂè≥Áßª‰∏â‰Ωç
+        pResiT[x] = Clip3<Int>(minPel, maxPel, pResiC[x] + (( alpha * rightShift<Int>(Int(pResiL[x]), diffBitDepth) ) >> 3));//y'=y+(alpha*x)
+      }
+#endif
+    }
+    else//Ê≠£ÂêëÈ¢ÑÊµã
+=======
+      const Int minPel=std::numeric_limits<Pel>::min();
+      const Int maxPel=std::numeric_limits<Pel>::max();
+      for( Int x = 0; x < width; x++ )
+      {
+        pResiT[x] = Clip3<Int>(minPel, maxPel, pResiC[x] + (( alpha * rightShift<Int>(Int(pResiL[x]), diffBitDepth) ) >> 3));
+      }
+#endif
+    }
+    else
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+    {
+      // Forward does not need clipping. Pel type should always be big enough.
+      for( Int x = 0; x < width; x++ )
+      {
+<<<<<<< HEAD
+        pResiT[x] = pResiC[x] - (( alpha * rightShift<Int>(Int(pResiL[x]), diffBitDepth) ) >> 3);//y'=y-(alpha*x)
+=======
+        pResiT[x] = pResiC[x] - (( alpha * rightShift<Int>(Int(pResiL[x]), diffBitDepth) ) >> 3);
+>>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
+      }
+    }
+
+    pResiL += strideL;
+    pResiC += strideC;
+    pResiT += strideT;
+  }
+}
+
+//! \}
