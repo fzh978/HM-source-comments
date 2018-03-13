@@ -35,7 +35,7 @@
     \brief    CU data structure
     \todo     not all entities are documented
 */
-
+//TComDataCU包含了CU所有的语法元素　存储了CU中所有4*4小块的信息　TComDataCU既能表示CTU　也能表示由CTU划分的CU
 #include "TComDataCU.h"
 #include "TComTU.h"
 #include "TComPic.h"
@@ -47,7 +47,7 @@
 // Constructor / destructor / create / destroy
 // ====================================================================================================================
 
-TComDataCU::TComDataCU()
+TComDataCU::TComDataCU()//构造函数
 {
   m_pcPic              = NULL;
   m_pcSlice            = NULL;
@@ -103,11 +103,11 @@ TComDataCU::TComDataCU()
   m_bDecSubCu          = false;
 }
 
-TComDataCU::~TComDataCU()
+TComDataCU::~TComDataCU()//析构函数
 {
 }
 
-Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt uiWidth, UInt uiHeight, Bool bDecSubCu, Int unitSize
+Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt uiWidth, UInt uiHeight, Bool bDecSubCu, Int unitSize//声明需要用到的变量　分配资源
 #if ADAPTIVE_QP_SELECTION
                         , TCoeff *pParentARLBuffer
 #endif
@@ -211,7 +211,7 @@ Void TComDataCU::create( ChromaFormat chromaFormatIDC, UInt uiNumPartition, UInt
   }
 }
 
-Void TComDataCU::destroy()
+Void TComDataCU::destroy()//销毁变量　释放资源
 {
   // encoder-side buffer free
   if ( !m_bDecSubCu )
@@ -381,40 +381,40 @@ Void TComDataCU::destroy()
 }
 
 Bool TComDataCU::CUIsFromSameTile            ( const TComDataCU *pCU /* Can be NULL */) const
-{
+{//判断当前CU和参数中给定的CU是否来自同一个Tile 
   return pCU!=NULL &&
          pCU->getSlice() != NULL &&
          m_pcPic->getPicSym()->getTileIdxMap( pCU->getCtuRsAddr() ) == m_pcPic->getPicSym()->getTileIdxMap(getCtuRsAddr());
 }
 
 Bool TComDataCU::CUIsFromSameSliceAndTile    ( const TComDataCU *pCU /* Can be NULL */) const
-{
+{//判断当前CU和参数中给定的CU是否来自同一个Tile和Slice
   return pCU!=NULL &&
          pCU->getSlice() != NULL &&
-         pCU->getSlice()->getSliceCurStartCtuTsAddr() == getSlice()->getSliceCurStartCtuTsAddr() &&
-         m_pcPic->getPicSym()->getTileIdxMap( pCU->getCtuRsAddr() ) == m_pcPic->getPicSym()->getTileIdxMap(getCtuRsAddr())
+         pCU->getSlice()->getSliceCurStartCtuTsAddr() == getSlice()->getSliceCurStartCtuTsAddr() &&//是否来自同一个Slice(Slice起始CTU的位置相同则说明为同一Slice)
+         m_pcPic->getPicSym()->getTileIdxMap( pCU->getCtuRsAddr() ) == m_pcPic->getPicSym()->getTileIdxMap(getCtuRsAddr())//是否来自同一个Tile
          ;
 }
 
 Bool TComDataCU::CUIsFromSameSliceTileAndWavefrontRow( const TComDataCU *pCU /* Can be NULL */) const
-{
+{//判断当前CU和参数中给定的CU是否来自同一个Tile和Slice且能否波前并行处理
   return CUIsFromSameSliceAndTile(pCU)
          && (!getSlice()->getPPS()->getEntropyCodingSyncEnabledFlag() || getPic()->getCtu(getCtuRsAddr())->getCUPelY() == getPic()->getCtu(pCU->getCtuRsAddr())->getCUPelY());
 }
 
-Bool TComDataCU::isLastSubCUOfCtu(const UInt absPartIdx)
-{
+Bool TComDataCU::isLastSubCUOfCtu(const UInt absPartIdx)//absPartIdx为4*4的小块在其CTU中z order的位置
+{//判断absPartIdx位置的CU是否为所属CTU的最后一个CU
   const TComSPS &sps=*(getSlice()->getSPS());
 
   const UInt picWidth = sps.getPicWidthInLumaSamples();
   const UInt picHeight = sps.getPicHeightInLumaSamples();
   const UInt granularityWidth = sps.getMaxCUWidth();
 
-  const UInt cuPosX = getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[absPartIdx] ];
+  const UInt cuPosX = getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[absPartIdx] ];//该CU（左上像素）的X Y坐标
   const UInt cuPosY = getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[absPartIdx] ];
 
   return (((cuPosX+getWidth( absPartIdx))%granularityWidth==0||(cuPosX+getWidth( absPartIdx)==picWidth ))
-       && ((cuPosY+getHeight(absPartIdx))%granularityWidth==0||(cuPosY+getHeight(absPartIdx)==picHeight)));
+       && ((cuPosY+getHeight(absPartIdx))%granularityWidth==0||(cuPosY+getHeight(absPartIdx)==picHeight)));//该CU的右、下边界是否为CTU或图像的右、下边界
 }
 
 // ====================================================================================================================
@@ -431,58 +431,58 @@ Bool TComDataCU::isLastSubCUOfCtu(const UInt absPartIdx)
  \param  pcPic       picture (TComPic) class pointer
  \param  ctuRsAddr   CTU address in raster scan order
  */
-Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
+Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )//初始化CTU信息 
 {
 
-  const UInt maxCUWidth = pcPic->getPicSym()->getSPS().getMaxCUWidth();
-  const UInt maxCUHeight= pcPic->getPicSym()->getSPS().getMaxCUHeight();
+  const UInt maxCUWidth = pcPic->getPicSym()->getSPS().getMaxCUWidth();//最大CU宽度（默认下为64）
+  const UInt maxCUHeight= pcPic->getPicSym()->getSPS().getMaxCUHeight();//最大CU高度（默认下为64）
   m_pcPic              = pcPic;
   m_pcSlice            = pcPic->getSlice(pcPic->getCurrSliceIdx());
-  m_ctuRsAddr          = ctuRsAddr;
-  m_uiCUPelX           = ( ctuRsAddr % pcPic->getFrameWidthInCtus() ) * maxCUWidth;
+  m_ctuRsAddr          = ctuRsAddr;//CTU在一帧图像中的位置索引　raster　scan
+  m_uiCUPelX           = ( ctuRsAddr % pcPic->getFrameWidthInCtus() ) * maxCUWidth;//该CTU（左上角像素）在图像中的坐标位置
   m_uiCUPelY           = ( ctuRsAddr / pcPic->getFrameWidthInCtus() ) * maxCUHeight;
-  m_absZIdxInCtu       = 0;
-  m_dTotalCost         = MAX_DOUBLE;
-  m_uiTotalDistortion  = 0;
-  m_uiTotalBits        = 0;
-  m_uiTotalBins        = 0;
-  m_uiNumPartition     = pcPic->getNumPartitionsInCtu();
+  m_absZIdxInCtu       = 0;//该CU起始4*4小块在该CU属于的CTU中的位置(z order)
+  m_dTotalCost         = MAX_DOUBLE;//总的代价
+  m_uiTotalDistortion  = 0;//总的失真
+  m_uiTotalBits        = 0;//编码后总的比特数
+  m_uiTotalBins        = 0;//编码前二元化后的总的二进制数
+  m_uiNumPartition     = pcPic->getNumPartitionsInCtu();//CTU中4*4小块的个数（默认为256）
+  //用数组给CTU中每个4*4小块附上初始化信息
+  memset( m_skipFlag          , false,                      m_uiNumPartition * sizeof( *m_skipFlag ) );//跳过标志
 
-  memset( m_skipFlag          , false,                      m_uiNumPartition * sizeof( *m_skipFlag ) );
-
-  memset( m_pePartSize        , NUMBER_OF_PART_SIZES,       m_uiNumPartition * sizeof( *m_pePartSize ) );
-  memset( m_pePredMode        , NUMBER_OF_PREDICTION_MODES, m_uiNumPartition * sizeof( *m_pePredMode ) );
-  memset( m_CUTransquantBypass, false,                      m_uiNumPartition * sizeof( *m_CUTransquantBypass) );
-  memset( m_puhDepth          , 0,                          m_uiNumPartition * sizeof( *m_puhDepth ) );
-  memset( m_puhTrIdx          , 0,                          m_uiNumPartition * sizeof( *m_puhTrIdx ) );
-  memset( m_puhWidth          , maxCUWidth,                 m_uiNumPartition * sizeof( *m_puhWidth ) );
-  memset( m_puhHeight         , maxCUHeight,                m_uiNumPartition * sizeof( *m_puhHeight ) );
-  for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
+  memset( m_pePartSize        , NUMBER_OF_PART_SIZES,       m_uiNumPartition * sizeof( *m_pePartSize ) );//帧间预测PU块划分模式
+  memset( m_pePredMode        , NUMBER_OF_PREDICTION_MODES, m_uiNumPartition * sizeof( *m_pePredMode ) );//预测模式（帧间/帧内）
+  memset( m_CUTransquantBypass, false,                      m_uiNumPartition * sizeof( *m_CUTransquantBypass) );//是否为lossless模式(跳过变换和量化)
+  memset( m_puhDepth          , 0,                          m_uiNumPartition * sizeof( *m_puhDepth ) );//当前CU块深度
+  memset( m_puhTrIdx          , 0,                          m_uiNumPartition * sizeof( *m_puhTrIdx ) );//一个CU中变换块的索引
+  memset( m_puhWidth          , maxCUWidth,                 m_uiNumPartition * sizeof( *m_puhWidth ) );//CTU的宽度为最大CU宽度
+  memset( m_puhHeight         , maxCUHeight,                m_uiNumPartition * sizeof( *m_puhHeight ) );//CTU的高度为最大CU高度
+  for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)//初始化每个参考图像列表中运动矢量预测的索引（在候选列表中的位置）和可能的个数
   {
     const RefPicList rpl=RefPicList(i);
     memset( m_apiMVPIdx[rpl]  , -1,                         m_uiNumPartition * sizeof( *m_apiMVPIdx[rpl] ) );
     memset( m_apiMVPNum[rpl]  , -1,                         m_uiNumPartition * sizeof( *m_apiMVPNum[rpl] ) );
   }
-  memset( m_phQP              , getSlice()->getSliceQp(),   m_uiNumPartition * sizeof( *m_phQP ) );
-  memset( m_ChromaQpAdj       , 0,                          m_uiNumPartition * sizeof( *m_ChromaQpAdj ) );
-  for(UInt comp=0; comp<MAX_NUM_COMPONENT; comp++)
+  memset( m_phQP              , getSlice()->getSliceQp(),   m_uiNumPartition * sizeof( *m_phQP ) );//该CTU的QP值
+  memset( m_ChromaQpAdj       , 0,                          m_uiNumPartition * sizeof( *m_ChromaQpAdj ) );//色度分量QP相对亮度分量的调整值
+  for(UInt comp=0; comp<MAX_NUM_COMPONENT; comp++)//为每种组成类型初始化
   {
-    memset( m_crossComponentPredictionAlpha[comp] , 0,                     m_uiNumPartition * sizeof( *m_crossComponentPredictionAlpha[comp] ) );
-    memset( m_puhTransformSkip[comp]              , 0,                     m_uiNumPartition * sizeof( *m_puhTransformSkip[comp]) );
-    memset( m_puhCbf[comp]                        , 0,                     m_uiNumPartition * sizeof( *m_puhCbf[comp] ) );
-    memset( m_explicitRdpcmMode[comp]             , NUMBER_OF_RDPCM_MODES, m_uiNumPartition * sizeof( *m_explicitRdpcmMode[comp] ) );
+    memset( m_crossComponentPredictionAlpha[comp] , 0,                     m_uiNumPartition * sizeof( *m_crossComponentPredictionAlpha[comp] ) );//CCP中的alpha值
+    memset( m_puhTransformSkip[comp]              , 0,                     m_uiNumPartition * sizeof( *m_puhTransformSkip[comp]) );//TransformSkip标志
+    memset( m_puhCbf[comp]                        , 0,                     m_uiNumPartition * sizeof( *m_puhCbf[comp] ) );//cbf标志（变换块是否存在非零系数）
+    memset( m_explicitRdpcmMode[comp]             , NUMBER_OF_RDPCM_MODES, m_uiNumPartition * sizeof( *m_explicitRdpcmMode[comp] ) );//RDPCM模式
   }
-  memset( m_pbMergeFlag       , false,                    m_uiNumPartition * sizeof( *m_pbMergeFlag ) );
-  memset( m_puhMergeIndex     , 0,                        m_uiNumPartition * sizeof( *m_puhMergeIndex ) );
-  for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
+  memset( m_pbMergeFlag       , false,                    m_uiNumPartition * sizeof( *m_pbMergeFlag ) );//merge标志
+  memset( m_puhMergeIndex     , 0,                        m_uiNumPartition * sizeof( *m_puhMergeIndex ) );//merge索引（候选列表中最优运动矢量在列表中的位置）
+  for (UInt ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)//为每个通道初始化
   {
-    memset( m_puhIntraDir[ch] , ((ch==0) ? DC_IDX : 0),   m_uiNumPartition * sizeof( *(m_puhIntraDir[ch]) ) );
+    memset( m_puhIntraDir[ch] , ((ch==0) ? DC_IDX : 0),   m_uiNumPartition * sizeof( *(m_puhIntraDir[ch]) ) );//帧内预测模式
   }
-  memset( m_puhInterDir       , 0,                        m_uiNumPartition * sizeof( *m_puhInterDir ) );
-  memset( m_pbIPCMFlag        , false,                    m_uiNumPartition * sizeof( *m_pbIPCMFlag ) );
+  memset( m_puhInterDir       , 0,                        m_uiNumPartition * sizeof( *m_puhInterDir ) );//帧间预测方向
+  memset( m_pbIPCMFlag        , false,                    m_uiNumPartition * sizeof( *m_pbIPCMFlag ) );//PCM模式标志
 
-  const UInt numCoeffY    = maxCUWidth*maxCUHeight;
-  for (UInt comp=0; comp<MAX_NUM_COMPONENT; comp++)
+  const UInt numCoeffY    = maxCUWidth*maxCUHeight;//CTU中系数个数
+  for (UInt comp=0; comp<MAX_NUM_COMPONENT; comp++)//为每种组成初始化量化值
   {
     const UInt componentShift = m_pcPic->getComponentScaleX(ComponentID(comp)) + m_pcPic->getComponentScaleY(ComponentID(comp));
     memset( m_pcTrCoeff[comp], 0, sizeof(TCoeff)* numCoeffY>>componentShift );
@@ -491,50 +491,50 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
 #endif
   }
 
-  for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
+  for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)//初始化每个帧间预测参考图像列表的运动矢量信息
   {
     m_acCUMvField[i].clearMvField();
   }
 
   // Setting neighbor CU
-  m_pCtuLeft        = NULL;
-  m_pCtuAbove       = NULL;
-  m_pCtuAboveLeft   = NULL;
-  m_pCtuAboveRight  = NULL;
+  m_pCtuLeft        = NULL;//该CTU左侧CTU
+  m_pCtuAbove       = NULL;//该CTU上方CTU
+  m_pCtuAboveLeft   = NULL;//该CTU左上CTU
+  m_pCtuAboveRight  = NULL;//该CTU右上CTU
 
 
-  for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
+  for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)//声明该CTU在REF_PIC_LIST_0和REF_PIC_LIST_１中同位的CTU
   {
     m_apcCUColocated[i]  = NULL;
   }
 
-  UInt frameWidthInCtus = pcPic->getFrameWidthInCtus();
+  UInt frameWidthInCtus = pcPic->getFrameWidthInCtus();//一帧图像宽度(以CTU的宽度为单位)
   if ( m_ctuRsAddr % frameWidthInCtus )
   {
-    m_pCtuLeft = pcPic->getCtu( m_ctuRsAddr - 1 );
+    m_pCtuLeft = pcPic->getCtu( m_ctuRsAddr - 1 );//该CTU左侧CTU
   }
 
   if ( m_ctuRsAddr / frameWidthInCtus )
   {
-    m_pCtuAbove = pcPic->getCtu( m_ctuRsAddr - frameWidthInCtus );
+    m_pCtuAbove = pcPic->getCtu( m_ctuRsAddr - frameWidthInCtus );//该CTU上方CTU
   }
 
   if ( m_pCtuLeft && m_pCtuAbove )
   {
-    m_pCtuAboveLeft = pcPic->getCtu( m_ctuRsAddr - frameWidthInCtus - 1 );
+    m_pCtuAboveLeft = pcPic->getCtu( m_ctuRsAddr - frameWidthInCtus - 1 );//该CTU左上CTU
   }
 
   if ( m_pCtuAbove && ( (m_ctuRsAddr%frameWidthInCtus) < (frameWidthInCtus-1) )  )
   {
-    m_pCtuAboveRight = pcPic->getCtu( m_ctuRsAddr - frameWidthInCtus + 1 );
+    m_pCtuAboveRight = pcPic->getCtu( m_ctuRsAddr - frameWidthInCtus + 1 );//该CTU右上CTU
   }
 
-  for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
+  for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)//得到该CTU在REF_PIC_LIST_0和REF_PIC_LIST_１中同位的CTU
   {
     const RefPicList rpl=RefPicList(i);
-    if ( getSlice()->getNumRefIdx( rpl ) > 0 )
+    if ( getSlice()->getNumRefIdx( rpl ) > 0 )//参考图像有效
     {
-      m_apcCUColocated[rpl] = getSlice()->getRefPic( rpl, 0)->getCtu( m_ctuRsAddr );
+      m_apcCUColocated[rpl] = getSlice()->getRefPic( rpl, 0)->getCtu( m_ctuRsAddr );//同位CTU为 在参考图像列表中第一帧图像中和该CTU相同位置的CTU
     }
   }
 }
@@ -550,7 +550,7 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )
 * \param  bTransquantBypass  true for transquant bypass
 */
 Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTransquantBypass )
-{
+{//用给定的uiDepth　qp　bTransquantBypass初始化该CU的部分信息　(变量含义已在上叙述过)
   m_dTotalCost         = MAX_DOUBLE;
   m_uiTotalDistortion  = 0;
   m_uiTotalBits        = 0;
@@ -620,33 +620,33 @@ Void TComDataCU::initEstData( const UInt uiDepth, const Int qp, const Bool bTran
 
 
 // initialize Sub partition
-Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, Int qp )
+Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, Int qp )//用给定的CU及Depth qp初始化其子CU
 {
-  assert( uiPartUnitIdx<4 );
+  assert( uiPartUnitIdx<4 );//子CU索引一定小于４(一个CU十字划分成等大的四个子CU)
 
-  UInt uiPartOffset = ( pcCU->getTotalNumPart()>>2 )*uiPartUnitIdx;
+  UInt uiPartOffset = ( pcCU->getTotalNumPart()>>2 )*uiPartUnitIdx;//uiPartUnitIdx位置的子CU较CU的位置的偏移量(以4*4小块为单位)
 
   m_pcPic              = pcCU->getPic();
   m_pcSlice            = pcCU->getSlice();
-  m_ctuRsAddr          = pcCU->getCtuRsAddr();
-  m_absZIdxInCtu       = pcCU->getZorderIdxInCtu() + uiPartOffset;
+  m_ctuRsAddr          = pcCU->getCtuRsAddr();//该子CU所在CTU的位置
+  m_absZIdxInCtu       = pcCU->getZorderIdxInCtu() + uiPartOffset;//该子CU在CTU中的位置（z order 4*4小块）
 
-  const UChar uhWidth  = getSlice()->getSPS()->getMaxCUWidth()  >> uiDepth;
-  const UChar uhHeight = getSlice()->getSPS()->getMaxCUHeight() >> uiDepth;
-
-  m_uiCUPelX           = pcCU->getCUPelX() + ( uhWidth )*( uiPartUnitIdx &  1 );
-  m_uiCUPelY           = pcCU->getCUPelY() + ( uhHeight)*( uiPartUnitIdx >> 1 );
+  const UChar uhWidth  = getSlice()->getSPS()->getMaxCUWidth()  >> uiDepth;//该子CU的宽
+  const UChar uhHeight = getSlice()->getSPS()->getMaxCUHeight() >> uiDepth;//该子CU的高
+　////该CTU（左上角像素）在图像中的坐标位置
+  m_uiCUPelX           = pcCU->getCUPelX() + ( uhWidth )*( uiPartUnitIdx &  1 ); //uiPartUnitIdx &  1为 uiPartUnitIdx%2 偏移的行（以一个子CU为单位）
+  m_uiCUPelY           = pcCU->getCUPelY() + ( uhHeight)*( uiPartUnitIdx >> 1 );//uiPartUnitIdx >> 1为 uiPartUnitIdx/2　偏移的列（以一个子CU为单位）
 
   m_dTotalCost         = MAX_DOUBLE;
   m_uiTotalDistortion  = 0;
   m_uiTotalBits        = 0;
   m_uiTotalBins        = 0;
-  m_uiNumPartition     = pcCU->getTotalNumPart() >> 2;
+  m_uiNumPartition     = pcCU->getTotalNumPart() >> 2;//该子CU 4*4小块的个数
 
   Int iSizeInUchar = sizeof( UChar  ) * m_uiNumPartition;
   Int iSizeInBool  = sizeof( Bool   ) * m_uiNumPartition;
   Int sizeInChar = sizeof( Char  ) * m_uiNumPartition;
-
+  //初始化部分基本同initCtu　不在叙述
   memset( m_phQP,              qp,  sizeInChar );
   memset( m_pbMergeFlag,        0, iSizeInBool  );
   memset( m_puhMergeIndex,      0, iSizeInUchar );
@@ -713,7 +713,7 @@ Void TComDataCU::initSubCU( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth, 
   }
 }
 
-Void TComDataCU::setOutsideCUPart( UInt uiAbsPartIdx, UInt uiDepth )
+Void TComDataCU::setOutsideCUPart( UInt uiAbsPartIdx, UInt uiDepth )//设置位置为uiAbsPartIdx 深度为uiDepth的CU的Depth　Width　Height信息
 {
   const UInt     uiNumPartition = m_uiNumPartition >> (uiDepth << 1);
   const UInt     uiSizeInUchar  = sizeof( UChar  ) * uiNumPartition;
@@ -729,7 +729,7 @@ Void TComDataCU::setOutsideCUPart( UInt uiAbsPartIdx, UInt uiDepth )
 // Copy
 // --------------------------------------------------------------------------------------------------------------------
 
-Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
+Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )//复制pcCU中位置为uiAbsPartIdx的子CU的信息到当前CU(uiAbsPartIdx为CTU　z order　4*4小块的索引)
 {
   UInt uiPart = uiAbsPartIdx;
 
@@ -738,9 +738,9 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
   m_ctuRsAddr          = pcCU->getCtuRsAddr();
   m_absZIdxInCtu       = uiAbsPartIdx;
 
-  m_uiCUPelX           = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];
+  m_uiCUPelX           = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsPartIdx] ];//位置uiAbsPartIdx的子CU的在图像中的X Y坐标
   m_uiCUPelY           = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsPartIdx] ];
-
+  //当前CU的信息数组的起始位置为pcCU的信息数组中的uiAbsPartIdx　以此来完成信息的复制
   m_skipFlag=pcCU->getSkipFlag()          + uiPart;
 
   m_phQP=pcCU->getQP()                    + uiPart;
@@ -774,7 +774,7 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
 
   m_pbIPCMFlag         = pcCU->getIPCMFlag()        + uiPart;
 
-  m_pCtuAboveLeft      = pcCU->getCtuAboveLeft();
+  m_pCtuAboveLeft      = pcCU->getCtuAboveLeft();//当前CU为pcCU子CU信息的复制　所以相邻CTU任为pcCU的相邻CTU
   m_pCtuAboveRight     = pcCU->getCtuAboveRight();
   m_pCtuAbove          = pcCU->getCtuAbove();
   m_pCtuLeft           = pcCU->getCtuLeft();
@@ -811,8 +811,8 @@ Void TComDataCU::copySubCU( TComDataCU* pcCU, UInt uiAbsPartIdx )
   }
 }
 
-// Copy inter prediction info from the biggest CU
-Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList )
+// Copy inter prediction info from the biggest CU（从大到小）
+Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList )//从最大的CU中位置为uiAbsPartIdx的子CU中复制与帧间预测相关的信息到当前CU
 {
   m_pcPic              = pcCU->getPic();
   m_pcSlice            = pcCU->getSlice();
@@ -823,7 +823,7 @@ Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx,
   m_uiCUPelX           = pcCU->getCUPelX() + m_pcPic->getMinCUWidth ()*( iRastPartIdx % m_pcPic->getNumPartInCtuWidth() );
   m_uiCUPelY           = pcCU->getCUPelY() + m_pcPic->getMinCUHeight()*( iRastPartIdx / m_pcPic->getNumPartInCtuWidth() );
 
-  m_pCtuAboveLeft      = pcCU->getCtuAboveLeft();
+  m_pCtuAboveLeft      = pcCU->getCtuAboveLeft();//当前CU为pcCU子CU信息的复制　所以相邻CTU任为pcCU的相邻CTU
   m_pCtuAboveRight     = pcCU->getCtuAboveRight();
   m_pCtuAbove          = pcCU->getCtuAbove();
   m_pCtuLeft           = pcCU->getCtuLeft();
@@ -854,9 +854,9 @@ Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx,
   m_acCUMvField[ eRefPicList ].linkToWithOffset( pcCU->getCUMvField(eRefPicList), uiAbsPartIdx );
 }
 
-// Copy small CU to bigger CU.
+// Copy small CU to bigger CU.（从小到大）
 // One of quarter parts overwritten by predicted sub part.
-Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth )
+Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth )//将深度为uiDepth的cCU的信息复制到当前CU中索引为uiPartUnitIdx的子CU
 {
   assert( uiPartUnitIdx<4 );
 
@@ -942,7 +942,7 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
 
 // Copy current predicted part to a CU in picture.
 // It is used to predict for next part
-Void TComDataCU::copyToPic( UChar uhDepth )
+Void TComDataCU::copyToPic( UChar uhDepth )//复制当前CU的信息到到其所属的CTU所在的位置
 {
   TComDataCU* pCtu = m_pcPic->getCtu( m_ctuRsAddr );
   const UInt numValidComp=pCtu->getPic()->getNumberValidComponents();
@@ -1020,36 +1020,37 @@ Void TComDataCU::copyToPic( UChar uhDepth )
 // --------------------------------------------------------------------------------------------------------------------
 // Other public functions
 // --------------------------------------------------------------------------------------------------------------------
-
+//得到不同方位PU的方法较为巧妙　不易理解　大体思路为：不需要准确得到相邻PU的起始位置　只需要表示出当前PU相邻的小块在整帧图的位置　因为最终的目标是相邻PU中的信息（预测模式），
+//而属于相邻PU的小块已经包含相邻PU全部的信息　表示的方法是用小块所在的CTU或CU和相对其CTU或CU位置的PartUnitIdx来共同表示
 TComDataCU* TComDataCU::getPULeft( UInt& uiLPartUnitIdx,
                                    UInt uiCurrPartUnitIdx,
                                    Bool bEnforceSliceRestriction,
                                    Bool bEnforceTileRestriction )
 {
-  UInt uiAbsPartIdx       = g_auiZscanToRaster[uiCurrPartUnitIdx];
-  UInt uiAbsZorderCUIdx   = g_auiZscanToRaster[m_absZIdxInCtu];
+  UInt uiAbsPartIdx       = g_auiZscanToRaster[uiCurrPartUnitIdx];//uiCurrPartUnitIdx为当前CU中PU(左上小块)在CTU中的位置
+  UInt uiAbsZorderCUIdx   = g_auiZscanToRaster[m_absZIdxInCtu];//当前CU(左上小块)在CTU中的位置（当前CU表示PU所在的CU）
   const UInt numPartInCtuWidth = m_pcPic->getNumPartInCtuWidth();
 
-  if ( !RasterAddress::isZeroCol( uiAbsPartIdx, numPartInCtuWidth ) )
+  if ( !RasterAddress::isZeroCol( uiAbsPartIdx, numPartInCtuWidth ) )//如果当前PU与其所在CTU的左边界不相邻
   {
-    uiLPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx - 1 ];
-    if ( RasterAddress::isEqualCol( uiAbsPartIdx, uiAbsZorderCUIdx, numPartInCtuWidth ) )
+    uiLPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx - 1 ];//则当前PU左侧PU可用左侧相邻小块表示
+    if ( RasterAddress::isEqualCol( uiAbsPartIdx, uiAbsZorderCUIdx, numPartInCtuWidth ) )//若当前PU与其所在CU的的左边界相邻（说明左侧PU不在同一个CU中　而在同一个CTU中）
     {
-      return m_pcPic->getCtu( getCtuRsAddr() );
+      return m_pcPic->getCtu( getCtuRsAddr() );//返回该CTU
     }
-    else
+    else//若当前PU与其所在CU的的左边界不相邻（说明当前PU和其左侧PU在同一个CU中）
     {
-      uiLPartUnitIdx -= m_absZIdxInCtu;
-      return this;
+      uiLPartUnitIdx -= m_absZIdxInCtu;//该PU左侧相邻小块相对于当前CU!的位置　而不是相对当前CU所属的CTU的位置　因为返回的TComDataCU*不同
+      return this; //返回当前CU
     }
   }
-
-  uiLPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx + numPartInCtuWidth - 1 ];
-  if ( (bEnforceSliceRestriction && !CUIsFromSameSlice(m_pCtuLeft)) || (bEnforceTileRestriction && !CUIsFromSameTile(m_pCtuLeft)) )
+  //如果该PU相邻其所在CTU的左边界(说明左侧PU在该CTU的左侧CTU中)
+  uiLPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx + numPartInCtuWidth - 1 ];//该PU左侧相邻小块在m_pCtuLeft中的位置
+  if ( (bEnforceSliceRestriction && !CUIsFromSameSlice(m_pCtuLeft)) || (bEnforceTileRestriction && !CUIsFromSameTile(m_pCtuLeft)) )//无法获得左侧CTU
   {
     return NULL;
   }
-  return m_pCtuLeft;
+  return m_pCtuLeft;//返回左侧CTU
 }
 
 
@@ -1057,7 +1058,7 @@ TComDataCU* TComDataCU::getPUAbove( UInt& uiAPartUnitIdx,
                                     UInt uiCurrPartUnitIdx,
                                     Bool bEnforceSliceRestriction,
                                     Bool planarAtCtuBoundary,
-                                    Bool bEnforceTileRestriction )
+                                    Bool bEnforceTileRestriction )//获得当前PU上方的PU 过程同上　不在叙述
 {
   UInt uiAbsPartIdx       = g_auiZscanToRaster[uiCurrPartUnitIdx];
   UInt uiAbsZorderCUIdx   = g_auiZscanToRaster[m_absZIdxInCtu];
@@ -1091,100 +1092,102 @@ TComDataCU* TComDataCU::getPUAbove( UInt& uiAPartUnitIdx,
   return m_pCtuAbove;
 }
 
-TComDataCU* TComDataCU::getPUAboveLeft( UInt& uiALPartUnitIdx, UInt uiCurrPartUnitIdx, Bool bEnforceSliceRestriction )
+TComDataCU* TComDataCU::getPUAboveLeft( UInt& uiALPartUnitIdx, UInt uiCurrPartUnitIdx, Bool bEnforceSliceRestriction )//获得位置为uiCurrPartUnitIdx的PU的左上方PU
 {
   UInt uiAbsPartIdx       = g_auiZscanToRaster[uiCurrPartUnitIdx];
   UInt uiAbsZorderCUIdx   = g_auiZscanToRaster[m_absZIdxInCtu];
   const UInt numPartInCtuWidth = m_pcPic->getNumPartInCtuWidth();
 
-  if ( !RasterAddress::isZeroCol( uiAbsPartIdx, numPartInCtuWidth ) )
+  if ( !RasterAddress::isZeroCol( uiAbsPartIdx, numPartInCtuWidth ) )//如果当前PU与其所在CTU的左边界不相邻
   {
-    if ( !RasterAddress::isZeroRow( uiAbsPartIdx, numPartInCtuWidth ) )
+    if ( !RasterAddress::isZeroRow( uiAbsPartIdx, numPartInCtuWidth ) )//如果当前PU与其所在CTU的上边界不相邻
     {
-      uiALPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx - numPartInCtuWidth - 1 ];
-      if ( RasterAddress::isEqualRowOrCol( uiAbsPartIdx, uiAbsZorderCUIdx, numPartInCtuWidth ) )
+      uiALPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx - numPartInCtuWidth - 1 ];//说明左上PU在当前CU或CTU中　计算PU在其所在CTU中的位置
+      if ( RasterAddress::isEqualRowOrCol( uiAbsPartIdx, uiAbsZorderCUIdx, numPartInCtuWidth ) )//若当前PU与其所在CU的的左边界或上边界相邻（说明左上方PU不在同一个CU中　而在同一个CTU中）
       {
-        return m_pcPic->getCtu( getCtuRsAddr() );
+        return m_pcPic->getCtu( getCtuRsAddr() );//放回当前CTU
       }
-      else
+      else//左上方PU在同一个CU中
       {
-        uiALPartUnitIdx -= m_absZIdxInCtu;
+        uiALPartUnitIdx -= m_absZIdxInCtu;//该PU左上方相邻小块相对于当前CU的位置
         return this;
       }
     }
-    uiALPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx + getPic()->getNumPartitionsInCtu() - numPartInCtuWidth - 1 ];
+    //当前PU与其所在CTU的上边界相邻 与其所在CTU的左边界不相邻 说明左上方PU在当前CTU的上方的CTU中
+    uiALPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx + getPic()->getNumPartitionsInCtu() - numPartInCtuWidth - 1 ];//当前PU左上方PU在当前CTU上方CTU中的位置
     if ( bEnforceSliceRestriction && !CUIsFromSameSliceAndTile(m_pCtuAbove) )
     {
       return NULL;
     }
-    return m_pCtuAbove;
+    return m_pCtuAbove;//返回上方CTU
   }
 
-  if ( !RasterAddress::isZeroRow( uiAbsPartIdx, numPartInCtuWidth ) )
+  if ( !RasterAddress::isZeroRow( uiAbsPartIdx, numPartInCtuWidth ) )//当前PU与其所在CTU的左边界相邻 与其所在CTU的上边界不相邻 说明左上方PU在当前CTU的左侧的CTU中
   {
-    uiALPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx - 1 ];
+    uiALPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdx - 1 ];//当前PU左上方PU在当前CTU左侧CTU中的位置
     if ( bEnforceSliceRestriction && !CUIsFromSameSliceAndTile(m_pCtuLeft) )
     {
       return NULL;
     }
-    return m_pCtuLeft;
+    return m_pCtuLeft;//返回左侧CTU
   }
-
-  uiALPartUnitIdx = g_auiRasterToZscan[ m_pcPic->getNumPartitionsInCtu() - 1 ];
+  //当前PU与其所在CTU的左边界相邻 与其所在CTU的上边界相邻 说明左上方PU在当前CTU的左上方的CTU中
+  uiALPartUnitIdx = g_auiRasterToZscan[ m_pcPic->getNumPartitionsInCtu() - 1 ];//当前PU左上方PU在当前CTU左上方CTU中的位置
   if ( bEnforceSliceRestriction && !CUIsFromSameSliceAndTile(m_pCtuAboveLeft) )
   {
     return NULL;
   }
-  return m_pCtuAboveLeft;
+  return m_pCtuAboveLeft;//返回左上方CTU
 }
 
-TComDataCU* TComDataCU::getPUBelowLeft(UInt& uiBLPartUnitIdx,  UInt uiCurrPartUnitIdx, UInt uiPartUnitOffset, Bool bEnforceSliceRestriction)
+TComDataCU* TComDataCU::getPUBelowLeft(UInt& uiBLPartUnitIdx,  UInt uiCurrPartUnitIdx, UInt uiPartUnitOffset, Bool bEnforceSliceRestriction)//uiPartUnitOffset表示当前PU向下的偏移量
 {
-  UInt uiAbsPartIdxLB     = g_auiZscanToRaster[uiCurrPartUnitIdx];
+  UInt uiAbsPartIdxLB     = g_auiZscanToRaster[uiCurrPartUnitIdx];//uiAbsPartIdxLB表示当前PU左下4*4小块的位置
   const UInt numPartInCtuWidth = m_pcPic->getNumPartInCtuWidth();
   UInt uiAbsZorderCUIdxLB = g_auiZscanToRaster[ m_absZIdxInCtu ] + ((m_puhHeight[0] / m_pcPic->getMinCUHeight()) - 1)*numPartInCtuWidth;
 
   if( ( m_pcPic->getCtu(m_ctuRsAddr)->getCUPelY() + g_auiRasterToPelY[uiAbsPartIdxLB] + (m_pcPic->getPicSym()->getMinCUHeight() * uiPartUnitOffset)) >= m_pcSlice->getSPS()->getPicHeightInLumaSamples())
-  {
+  {//左下PU超出图像范围
     uiBLPartUnitIdx = MAX_UINT;
     return NULL;
   }
 
-  if ( RasterAddress::lessThanRow( uiAbsPartIdxLB, m_pcPic->getNumPartInCtuHeight() - uiPartUnitOffset, numPartInCtuWidth ) )
+  if ( RasterAddress::lessThanRow( uiAbsPartIdxLB, m_pcPic->getNumPartInCtuHeight() - uiPartUnitOffset, numPartInCtuWidth ) )//向下不要超出当前CTU
   {
-    if ( !RasterAddress::isZeroCol( uiAbsPartIdxLB, numPartInCtuWidth ) )
+    if ( !RasterAddress::isZeroCol( uiAbsPartIdxLB, numPartInCtuWidth ) )//当前PU与其所在CTU的左边界不相邻　(说明左下PU在当前CU或CTU中)
     {
-      if ( uiCurrPartUnitIdx > g_auiRasterToZscan[ uiAbsPartIdxLB + uiPartUnitOffset * numPartInCtuWidth - 1 ] )
-      {
-        uiBLPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdxLB + uiPartUnitOffset * numPartInCtuWidth - 1 ];
-        if ( RasterAddress::isEqualRowOrCol( uiAbsPartIdxLB, uiAbsZorderCUIdxLB, numPartInCtuWidth ) )
+      if ( uiCurrPartUnitIdx > g_auiRasterToZscan[ uiAbsPartIdxLB + uiPartUnitOffset * numPartInCtuWidth - 1 ] )//PU是针对一个CU划分的　除去SIZE_NxN的分割模式外左下PU与当前PU必定不在同一个CU中故存在z order索引的跳跃　左下方小块的索引一定小于当前小块　
+      {　//该判断语句不好理解　需对照CTU的z order索引表仔细观察　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　//而在SIZE_NxN的分割模式中最小PU块为8*8!!左下PU与当前PU也存在z order索引的跳跃 所以无论那种情况都有左下方小块的索引一定小于当前小块　该条判断语句就确保了左下方小块与当前小块不在同一个PU中
+        uiBLPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdxLB + uiPartUnitOffset * numPartInCtuWidth - 1 ];//左下小块的位置也代表左下PU的位置
+        if ( RasterAddress::isEqualRowOrCol( uiAbsPartIdxLB, uiAbsZorderCUIdxLB, numPartInCtuWidth ) )//若当前PU与其所在CU的的左边界或下边界相邻（说明左上方PU不在同一个CU中　而在同一个CTU中）
         {
-          return m_pcPic->getCtu( getCtuRsAddr() );
+          return m_pcPic->getCtu( getCtuRsAddr() );//返回当前CTU
         }
         else
         {
-          uiBLPartUnitIdx -= m_absZIdxInCtu;
-          return this;
+          uiBLPartUnitIdx -= m_absZIdxInCtu;////该PU左下方相邻小块相对于当前CU的位置
+          return this;//返回当前CU
         }
       }
       uiBLPartUnitIdx = MAX_UINT;
       return NULL;
     }
-    uiBLPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdxLB + (1+uiPartUnitOffset) * numPartInCtuWidth - 1 ];
+    //当前PU与其所在CTU的左边界相邻 向下不超出当前CTU　说明左下方PU在当前CTU的左侧的CTU中
+    uiBLPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdxLB + (1+uiPartUnitOffset) * numPartInCtuWidth - 1 ];//左下PU在左侧CTU中的位置
     if ( bEnforceSliceRestriction && !CUIsFromSameSliceAndTile(m_pCtuLeft) )
     {
       return NULL;
     }
-    return m_pCtuLeft;
+    return m_pCtuLeft;//
   }
-
+  //注意！　此处没有判断左下PU是否在左下的CTU中的原因是解码的过程中是以raster顺序解码的　故无法获得左下的CTU
   uiBLPartUnitIdx = MAX_UINT;
   return NULL;
 }
 
 TComDataCU* TComDataCU::getPUAboveRight(UInt&  uiARPartUnitIdx, UInt uiCurrPartUnitIdx, UInt uiPartUnitOffset, Bool bEnforceSliceRestriction)
-{
-  UInt uiAbsPartIdxRT     = g_auiZscanToRaster[uiCurrPartUnitIdx];
+{//获得当前PU右上PU　过程基本同上　不在在于需判断右上PU是否在右上CTU中　因为raster顺序解码可以获得右上CTU的信息　不在叙述
+  UInt uiAbsPartIdxRT     = g_auiZscanToRaster[uiCurrPartUnitIdx];//uiAbsPartIdxLB表示当前PU右上4*4小块的位置
   UInt uiAbsZorderCUIdx   = g_auiZscanToRaster[ m_absZIdxInCtu ] + (m_puhWidth[0] / m_pcPic->getMinCUWidth()) - 1;
   const UInt numPartInCtuWidth = m_pcPic->getNumPartInCtuWidth();
 
@@ -1242,26 +1245,27 @@ TComDataCU* TComDataCU::getPUAboveRight(UInt&  uiARPartUnitIdx, UInt uiCurrPartU
 *\param   uiCurrAbsIdxInCtu
 *\returns TComDataCU*   point of TComDataCU of left QpMinCu
 */
+//quantization group（QG）量化组　一个CTU中可以包含一个或多个固定大小的QG,同一个QG内的所有含有非零系数的CU共享一个QP，不同的QG可以使用不同的QP
 TComDataCU* TComDataCU::getQpMinCuLeft( UInt& uiLPartUnitIdx, UInt uiCurrAbsIdxInCtu )
 {
   const UInt numPartInCtuWidth = m_pcPic->getNumPartInCtuWidth();
   const UInt maxCUDepth        = getSlice()->getSPS()->getMaxTotalCUDepth();
-  const UInt maxCuDQPDepth     = getSlice()->getPPS()->getMaxCuDQPDepth();
-  const UInt doubleDepthDifference = ((maxCUDepth - maxCuDQPDepth)<<1);
-  UInt absZorderQpMinCUIdx = (uiCurrAbsIdxInCtu>>doubleDepthDifference)<<doubleDepthDifference;
+  const UInt maxCuDQPDepth     = getSlice()->getPPS()->getMaxCuDQPDepth();//QG的深度 决定了QG的大小
+  const UInt doubleDepthDifference = ((maxCUDepth - maxCuDQPDepth)<<1);//QG深度与CU最大深度差的2倍
+  UInt absZorderQpMinCUIdx = (uiCurrAbsIdxInCtu>>doubleDepthDifference)<<doubleDepthDifference;//得到包含uiCurrAbsIdxInCtu位置小块的QG（左上4*4小块）的位置 uiCurrAbsIdxInCtu>>doubleDepthDifference为将CTU分成QG块大小的QG块的位置索引
   UInt absRorderQpMinCUIdx = g_auiZscanToRaster[absZorderQpMinCUIdx];
 
   // check for left CTU boundary
-  if ( RasterAddress::isZeroCol(absRorderQpMinCUIdx, numPartInCtuWidth) )
+  if ( RasterAddress::isZeroCol(absRorderQpMinCUIdx, numPartInCtuWidth) )//该QG是否在CTU的边界
   {
-    return NULL;
+    return NULL;//只能用当前CTU内的QG做参考
   }
 
   // get index of left-CU relative to top-left corner of current quantization group
-  uiLPartUnitIdx = g_auiRasterToZscan[absRorderQpMinCUIdx - 1];
+  uiLPartUnitIdx = g_auiRasterToZscan[absRorderQpMinCUIdx - 1];//得到左侧QG位置（因为absRorderQpMinCUIdx的小块为当前QG左上小块　所以absRorderQpMinCUIdx - 1的小块必属于左侧QG）
 
   // return pointer to current CTU
-  return m_pcPic->getCtu( getCtuRsAddr() );
+  return m_pcPic->getCtu( getCtuRsAddr() );//返回左侧QG所在的CTU 也是当前QG所在的CTU
 }
 
 /** Get Above QpMinCu
@@ -1270,7 +1274,7 @@ TComDataCU* TComDataCU::getQpMinCuLeft( UInt& uiLPartUnitIdx, UInt uiCurrAbsIdxI
 *\returns TComDataCU*   point of TComDataCU of above QpMinCu
 */
 TComDataCU* TComDataCU::getQpMinCuAbove( UInt& uiAPartUnitIdx, UInt uiCurrAbsIdxInCtu )
-{
+{//得到当前QG上方QG 同上　不在叙述
   const UInt numPartInCtuWidth = m_pcPic->getNumPartInCtuWidth();
   const UInt maxCUDepth        = getSlice()->getSPS()->getMaxTotalCUDepth();
   const UInt maxCuDQPDepth     = getSlice()->getPPS()->getMaxCuDQPDepth();
@@ -1297,8 +1301,8 @@ TComDataCU* TComDataCU::getQpMinCuAbove( UInt& uiAPartUnitIdx, UInt uiCurrAbsIdx
 *\param   uiCurrAbsIdxInCtu
 *\returns Char   reference QP value
 */
-Char TComDataCU::getRefQP( UInt uiCurrAbsIdxInCtu )
-{
+Char TComDataCU::getRefQP( UInt uiCurrAbsIdxInCtu )//计算当前QG的预测QP　用当前QG的左侧QG和上方QG的QP值取平均　如果左侧QG或上方QG无法获得则用最后一个能得到的编码的QP替换
+{//uiCurrAbsIdxInCtu为QG在当前Cu中的位置
   UInt lPartIdx = MAX_UINT;
   UInt aPartIdx = MAX_UINT;
   TComDataCU* cULeft  = getQpMinCuLeft ( lPartIdx, m_absZIdxInCtu + uiCurrAbsIdxInCtu );
@@ -1306,35 +1310,35 @@ Char TComDataCU::getRefQP( UInt uiCurrAbsIdxInCtu )
   return (((cULeft? cULeft->getQP( lPartIdx ): getLastCodedQP( uiCurrAbsIdxInCtu )) + (cUAbove? cUAbove->getQP( aPartIdx ): getLastCodedQP( uiCurrAbsIdxInCtu )) + 1) >> 1);
 }
 
-Int TComDataCU::getLastValidPartIdx( Int iAbsPartIdx )
+Int TComDataCU::getLastValidPartIdx( Int iAbsPartIdx )//得到最后一个可以得到QP的有效的位置索引
 {
   Int iLastValidPartIdx = iAbsPartIdx-1;
   while ( iLastValidPartIdx >= 0
        && getPredictionMode( iLastValidPartIdx ) == NUMBER_OF_PREDICTION_MODES )
   {
     UInt uiDepth = getDepth( iLastValidPartIdx );
-    iLastValidPartIdx -= m_uiNumPartition>>(uiDepth<<1);
+    iLastValidPartIdx -= m_uiNumPartition>>(uiDepth<<1);//从后向前寻找有效QP
   }
-  return iLastValidPartIdx;
+  return iLastValidPartIdx;//根据判断条件　iLastValidPartIdx为负说明当前CU无法得到有效的QP
 }
 
 Char TComDataCU::getLastCodedQP( UInt uiAbsPartIdx )
 {
-  UInt uiQUPartIdxMask = ~((1<<((getSlice()->getSPS()->getMaxTotalCUDepth() - getSlice()->getPPS()->getMaxCuDQPDepth())<<1))-1);
+  UInt uiQUPartIdxMask = ~((1<<((getSlice()->getSPS()->getMaxTotalCUDepth() - getSlice()->getPPS()->getMaxCuDQPDepth())<<1))-1);//uiAbsPartIdx&uiQUPartIdxMask在一个QG中的位置
   Int iLastValidPartIdx = getLastValidPartIdx( uiAbsPartIdx&uiQUPartIdxMask ); // A idx will be invalid if it is off the right or bottom edge of the picture.
   // If this CU is in the first CTU of the slice and there is no valid part before this one, use slice QP
-  if ( getPic()->getPicSym()->getCtuTsToRsAddrMap(getSlice()->getSliceCurStartCtuTsAddr()) == getCtuRsAddr() && Int(getZorderIdxInCtu())+iLastValidPartIdx<0)
+  if ( getPic()->getPicSym()->getCtuTsToRsAddrMap(getSlice()->getSliceCurStartCtuTsAddr()) == getCtuRsAddr() && Int(getZorderIdxInCtu())+iLastValidPartIdx<0)//当前CTU为Slice第一个CTU并且最后一个能得到有效QP的位置在当前CTU之前的CTu
   {
-    return getSlice()->getSliceQp();
+    return getSlice()->getSliceQp();//当前slice的QP作为可得到的QP
   }
-  else if ( iLastValidPartIdx >= 0 )
+  else if ( iLastValidPartIdx >= 0 )//当前子CU存在可得到的QP
   {
     // If there is a valid part within the current Sub-CU, use it
-    return getQP( iLastValidPartIdx );
+    return getQP( iLastValidPartIdx );//直接获取该QP
   }
-  else
+  else//当前子CU不存在可得到的QP
   {
-    if ( getZorderIdxInCtu() > 0 )
+    if ( getZorderIdxInCtu() > 0 )//当前CU不是CTU中的第一个子CU 则在当前CTU寻找可获得的有效的QP(寻找有效qp的方法是从给定位置从前往后寻找　若当前CU不为CTU中第一个子CU则有效qp可能存在在当前CTU中（CTU中该Cu之前的CU）　若当前CU为CTU中第一个子CU则有效qp在一定不在该CTU内　可能在前一个CTU中)
     {
       // If this wasn't the first sub-cu within the Ctu, explore the CTU itself.
       return getPic()->getCtu( getCtuRsAddr() )->getLastCodedQP( getZorderIdxInCtu() ); // TODO - remove this recursion
@@ -1343,9 +1347,10 @@ Char TComDataCU::getLastCodedQP( UInt uiAbsPartIdx )
       && CUIsFromSameSliceTileAndWavefrontRow(getPic()->getCtu(getPic()->getPicSym()->getCtuTsToRsAddrMap(getPic()->getPicSym()->getCtuRsToTsAddrMap(getCtuRsAddr())-1))) )
     {
       // If this isn't the first Ctu (how can it be due to the first 'if'?), and the previous Ctu is from the same tile, examine the previous Ctu.
+      //当前CTU和前一个CTU来自同一个tile 那么在前一个CTU中寻找可获得有效的QP
       return getPic()->getCtu( getPic()->getPicSym()->getCtuTsToRsAddrMap(getPic()->getPicSym()->getCtuRsToTsAddrMap(getCtuRsAddr())-1) )->getLastCodedQP( getPic()->getNumPartitionsInCtu() );  // TODO - remove this recursion
     }
-    else
+    else//没有其他寻找有效QP的方法　用slice QP作为有效Qp
     {
       // No other options available - use the slice-level QP.
       return getSlice()->getSliceQp();
@@ -1358,7 +1363,7 @@ Char TComDataCU::getLastCodedQP( UInt uiAbsPartIdx )
  * \param   absPartIdx
  * \returns true if the CU is coded in lossless coding mode; false if otherwise
  */
-Bool TComDataCU::isLosslessCoded(UInt absPartIdx)
+Bool TComDataCU::isLosslessCoded(UInt absPartIdx)//该CU是否为lossless模式
 {
   return (getSlice()->getPPS()->getTransquantBypassEnableFlag() && getCUTransquantBypass (absPartIdx));
 }
@@ -1370,7 +1375,7 @@ Bool TComDataCU::isLosslessCoded(UInt absPartIdx)
 *\param   [in]  uiAbsPartIdx
 *\param   [out] uiModeList pointer to chroma intra modes array
 */
-Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHROMA_MODE] )
+Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHROMA_MODE] )//得到允许的色度帧内预测模式
 {
   uiModeList[0] = PLANAR_IDX;
   uiModeList[1] = VER_IDX;
@@ -1381,7 +1386,7 @@ Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHR
 
   UInt uiLumaMode = getIntraDir( CHANNEL_TYPE_LUMA, uiAbsPartIdx );
 
-  for( Int i = 0; i < NUM_CHROMA_MODE - 1; i++ )
+  for( Int i = 0; i < NUM_CHROMA_MODE - 1; i++ )//若对应亮度预测模式为前4种模式中的一种　则将其替换为角度预测中的模式34
   {
     if( uiLumaMode == uiModeList[i] )
     {
@@ -1393,13 +1398,14 @@ Void TComDataCU::getAllowedChromaDir( UInt uiAbsPartIdx, UInt uiModeList[NUM_CHR
 
 /** Get most probable intra modes
 *\param   uiAbsPartIdx    partition index
-*\param   uiIntraDirPred  pointer to the array for MPM storage
+*\param   uiIntraDirPred  pointer to the array for MPM storage //帧内预测候选模式列表
 *\param   compID          colour component ID
 *\param   piMode          it is set with MPM mode in case both MPM are equal. It is used to restrict RD search at encode side.
 *\returns Number of MPM
 */
+//相邻块的帧内预测模式相同或相似的概率较大　故可以用相邻PU的模式来预测当前PU的预测模式　来降低冗余　提高编码效率
 Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM_MOST_PROBABLE_MODES], const ComponentID compID, Int* piMode  )
-{
+{//用相邻PU预测当前PU最有可能的帧间模式
   TComDataCU* pcCULeft, *pcCUAbove;
   UInt        LeftPartIdx  = MAX_UINT;
   UInt        AbovePartIdx = MAX_UINT;
@@ -1410,24 +1416,24 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
   const ChannelType chType = toChannelType(compID);
   const ChromaFormat chForm = getPic()->getChromaFormat();
   // Get intra direction of left PU
-  pcCULeft = getPULeft( LeftPartIdx, m_absZIdxInCtu + uiAbsPartIdx );
+  pcCULeft = getPULeft( LeftPartIdx, m_absZIdxInCtu + uiAbsPartIdx );//得到当前pu左侧pu
 
-  if (isChroma(compID))
+  if (isChroma(compID))//若为色度分量则需转换LeftPartIdx为色度分量对应的位置
   {
     LeftPartIdx = getChromasCorrespondingPULumaIdx(LeftPartIdx, chForm, partsPerMinCU);
   }
-  iLeftIntraDir  = pcCULeft ? ( pcCULeft->isIntra( LeftPartIdx ) ? pcCULeft->getIntraDir( chType, LeftPartIdx ) : DC_IDX ) : DC_IDX;
+  iLeftIntraDir  = pcCULeft ? ( pcCULeft->isIntra( LeftPartIdx ) ? pcCULeft->getIntraDir( chType, LeftPartIdx ) : DC_IDX ) : DC_IDX;//得到左侧pu的帧间模式　若左侧pu无法获得或不为帧间预测　则设为DC模式
 
   // Get intra direction of above PU
   pcCUAbove = getPUAbove( AbovePartIdx, m_absZIdxInCtu + uiAbsPartIdx, true, true );
 
-  if (isChroma(compID))
+  if (isChroma(compID))//若为色度分量则需转换LeftPartIdx为色度分量对应的位置
   {
     AbovePartIdx = getChromasCorrespondingPULumaIdx(AbovePartIdx, chForm, partsPerMinCU);
   }
-  iAboveIntraDir = pcCUAbove ? ( pcCUAbove->isIntra( AbovePartIdx ) ? pcCUAbove->getIntraDir( chType, AbovePartIdx ) : DC_IDX ) : DC_IDX;
+  iAboveIntraDir = pcCUAbove ? ( pcCUAbove->isIntra( AbovePartIdx ) ? pcCUAbove->getIntraDir( chType, AbovePartIdx ) : DC_IDX ) : DC_IDX;//得到上方pu的帧间模式　若左侧pu无法获得或不为帧间预测　则设为DC模式
 
-  if (isChroma(chType))
+  if (isChroma(chType))//若色度分量对应亮度分量模式　则色度分量模式为该位置亮度分量模式
   {
     if (iLeftIntraDir  == DM_CHROMA_IDX)
     {
@@ -1440,42 +1446,42 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
   }
 
   assert (2<NUM_MOST_PROBABLE_MODES);
-  if(iLeftIntraDir == iAboveIntraDir)
+  if(iLeftIntraDir == iAboveIntraDir)//若ModeA与ModeB相同
   {
     if( piMode )
     {
       *piMode = 1;
     }
 
-    if (iLeftIntraDir > 1) // angular modes
-    {
+    if (iLeftIntraDir > 1) // angular modes　//都为角度模式
+    {//uiIntraDirPred[0]为ModeA　uiIntraDirPred[1]和uiIntraDirPred[２]为与ModeA相邻的两个模式
       uiIntraDirPred[0] = iLeftIntraDir;
       uiIntraDirPred[1] = ((iLeftIntraDir + 29) % 32) + 2;
       uiIntraDirPred[2] = ((iLeftIntraDir - 1 ) % 32) + 2;
     }
-    else //non-angular
+    else //non-angular　//都为Planar或DC模式
     {
-      uiIntraDirPred[0] = PLANAR_IDX;
-      uiIntraDirPred[1] = DC_IDX;
-      uiIntraDirPred[2] = VER_IDX;
+      uiIntraDirPred[0] = PLANAR_IDX;//uiIntraDirPred[0]为Planar模式
+      uiIntraDirPred[1] = DC_IDX;//uiIntraDirPred[１]为DC模式
+      uiIntraDirPred[2] = VER_IDX;//uiIntraDirPred[2]为垂直模式
     }
   }
-  else
+  else//ModeA与ModeB不同
   {
     if( piMode )
     {
       *piMode = 2;
     }
-    uiIntraDirPred[0] = iLeftIntraDir;
-    uiIntraDirPred[1] = iAboveIntraDir;
-
+    uiIntraDirPred[0] = iLeftIntraDir;//uiIntraDirPred[0]为ModeA
+    uiIntraDirPred[1] = iAboveIntraDir;//uiIntraDirPred[1]为ModeB 
+    //uiIntraDirPred[３]需另外判断
     if (iLeftIntraDir && iAboveIntraDir ) //both modes are non-planar
     {
       uiIntraDirPred[2] = PLANAR_IDX;
     }
-    else
+    else//都不为Planar模式　
     {
-      uiIntraDirPred[2] =  (iLeftIntraDir+iAboveIntraDir)<2? VER_IDX : DC_IDX;
+      uiIntraDirPred[2] =  (iLeftIntraDir+iAboveIntraDir)<2? VER_IDX : DC_IDX;//若都不是垂直模式则uiIntraDirPred[2]为垂直模式　否则为DC模式
     }
   }
   for (UInt i=0; i<NUM_MOST_PROBABLE_MODES; i++)
@@ -1485,7 +1491,7 @@ Void TComDataCU::getIntraDirPredictor( UInt uiAbsPartIdx, Int uiIntraDirPred[NUM
 }
 
 UInt TComDataCU::getCtxSplitFlag( UInt uiAbsPartIdx, UInt uiDepth )
-{
+{//根据左侧和上方PU块所属的CU块是否存在及分割深度情况得到splitflag上下文索引(用于熵编码)
   TComDataCU* pcTempCU;
   UInt        uiTempPartIdx;
   UInt        uiCtx;
@@ -1501,7 +1507,7 @@ UInt TComDataCU::getCtxSplitFlag( UInt uiAbsPartIdx, UInt uiDepth )
 }
 
 UInt TComDataCU::getCtxQtCbf( TComTU &rTu, const ChannelType chType )
-{
+{//根据Tu块相对Cu块的深度得到cbf上下文索引(用于熵编码)
   const UInt transformDepth = rTu.GetTransformDepthRel();
 
   if (isChroma(chType))
@@ -1515,35 +1521,35 @@ UInt TComDataCU::getCtxQtCbf( TComTU &rTu, const ChannelType chType )
   }
 }
 
-UInt TComDataCU::getQuadtreeTULog2MinSizeInCU( UInt absPartIdx )
-{
-  UInt log2CbSize = g_aucConvertToBit[getWidth( absPartIdx )] + 2;
+UInt TComDataCU::getQuadtreeTULog2MinSizeInCU( UInt absPartIdx )//以absPartIdx处CU作为根节点能得到的最小的TU块的大小
+{//此处涉及到语法元素（intraSplitFlag和interSplitFlag）
+  UInt log2CbSize = g_aucConvertToBit[getWidth( absPartIdx )] + 2;//当前CU的log2大小
   PartSize  partSize  = getPartitionSize( absPartIdx );
-  UInt quadtreeTUMaxDepth = isIntra( absPartIdx ) ? m_pcSlice->getSPS()->getQuadtreeTUMaxDepthIntra() : m_pcSlice->getSPS()->getQuadtreeTUMaxDepthInter();
-  Int intraSplitFlag = ( isIntra( absPartIdx ) && partSize == SIZE_NxN ) ? 1 : 0;
-  Int interSplitFlag = ((quadtreeTUMaxDepth == 1) && isInter( absPartIdx ) && (partSize != SIZE_2Nx2N) );
+  UInt quadtreeTUMaxDepth = isIntra( absPartIdx ) ? m_pcSlice->getSPS()->getQuadtreeTUMaxDepthIntra() : m_pcSlice->getSPS()->getQuadtreeTUMaxDepthInter();//TU允许的最大深度(相对CU)
+  Int intraSplitFlag = ( isIntra( absPartIdx ) && partSize == SIZE_NxN ) ? 1 : 0;//intraSplitFlag若为真　则split_transform_flag被推断为1　TU必定会往下分割一次(可节约编码split_transform_flag所需的比特位)
+  Int interSplitFlag = ((quadtreeTUMaxDepth == 1) && isInter( absPartIdx ) && (partSize != SIZE_2Nx2N) );//intraSplitFlag若为真　则split_transform_flag被推断为1
 
   UInt log2MinTUSizeInCU = 0;
-  if (log2CbSize < (m_pcSlice->getSPS()->getQuadtreeTULog2MinSize() + quadtreeTUMaxDepth - 1 + interSplitFlag + intraSplitFlag) )
+  if (log2CbSize < (m_pcSlice->getSPS()->getQuadtreeTULog2MinSize() + quadtreeTUMaxDepth - 1 + interSplitFlag + intraSplitFlag) )//当前Cu能得到最小Tu块小于规定的最小Tu块大小
   {
     // when fully making use of signaled TUMaxDepth + inter/intraSplitFlag, resulting luma TB size is < QuadtreeTULog2MinSize
-    log2MinTUSizeInCU = m_pcSlice->getSPS()->getQuadtreeTULog2MinSize();
+    log2MinTUSizeInCU = m_pcSlice->getSPS()->getQuadtreeTULog2MinSize();//则当前Cu最小TU为规定的最小Tu块大小
   }
   else
   {
     // when fully making use of signaled TUMaxDepth + inter/intraSplitFlag, resulting luma TB size is still >= QuadtreeTULog2MinSize
     log2MinTUSizeInCU = log2CbSize - ( quadtreeTUMaxDepth - 1 + interSplitFlag + intraSplitFlag); // stop when trafoDepth == hierarchy_depth = splitFlag
-    if ( log2MinTUSizeInCU > m_pcSlice->getSPS()->getQuadtreeTULog2MaxSize())
+    if ( log2MinTUSizeInCU > m_pcSlice->getSPS()->getQuadtreeTULog2MaxSize())//当前Cu能得到最小Tu块大于规定的最大Tu块大小
     {
       // when fully making use of signaled TUMaxDepth + inter/intraSplitFlag, resulting luma TB size is still > QuadtreeTULog2MaxSize
-      log2MinTUSizeInCU = m_pcSlice->getSPS()->getQuadtreeTULog2MaxSize();
+      log2MinTUSizeInCU = m_pcSlice->getSPS()->getQuadtreeTULog2MaxSize();//则当前Cu最小TU为规定的最大Tu块大小
     }
   }
   return log2MinTUSizeInCU;
 }
 
 UInt TComDataCU::getCtxSkipFlag( UInt uiAbsPartIdx )
-{
+{//左侧和上方PU块所属的CU是否skip的得到SkipFlag的上下文索引
   TComDataCU* pcTempCU;
   UInt        uiTempPartIdx;
   UInt        uiCtx = 0;
@@ -1560,12 +1566,12 @@ UInt TComDataCU::getCtxSkipFlag( UInt uiAbsPartIdx )
 }
 
 UInt TComDataCU::getCtxInterDir( UInt uiAbsPartIdx )
-{
+{//根据位置为uiAbsPartIdx的C的深度得到帧间预测方向的上下文索引
   return getDepth( uiAbsPartIdx );
 }
 
 
-UChar TComDataCU::getQtRootCbf( UInt uiIdx )
+UChar TComDataCU::getQtRootCbf( UInt uiIdx )//uiIdx位置的Cu中是否存在非零变换系数(包括各个有效分量)
 {
   const UInt numberValidComponents = getPic()->getNumberValidComponents();
   return getCbf( uiIdx, COMPONENT_Y, 0 )
@@ -1573,7 +1579,7 @@ UChar TComDataCU::getQtRootCbf( UInt uiIdx )
           || ((numberValidComponents > COMPONENT_Cr) && getCbf( uiIdx, COMPONENT_Cr, 0 ));
 }
 
-Void TComDataCU::setCbfSubParts( const UInt uiCbf[MAX_NUM_COMPONENT], UInt uiAbsPartIdx, UInt uiDepth )
+Void TComDataCU::setCbfSubParts( const UInt uiCbf[MAX_NUM_COMPONENT], UInt uiAbsPartIdx, UInt uiDepth )//为CTU中深度为uiDepth　位置为uiAbsPartIdx的子块设置cbf（包括各个分量）
 {
   UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
   for(UInt comp=0; comp<MAX_NUM_COMPONENT; comp++)
@@ -1582,7 +1588,7 @@ Void TComDataCU::setCbfSubParts( const UInt uiCbf[MAX_NUM_COMPONENT], UInt uiAbs
   }
 }
 
-Void TComDataCU::setCbfSubParts( UInt uiCbf, ComponentID compID, UInt uiAbsPartIdx, UInt uiDepth )
+Void TComDataCU::setCbfSubParts( UInt uiCbf, ComponentID compID, UInt uiAbsPartIdx, UInt uiDepth )//为CTU中深度为uiDepth　位置为uiAbsPartIdx　给定的分量的Cb设置cbf
 {
   UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
   memset( m_puhCbf[compID] + uiAbsPartIdx, uiCbf, sizeof( UChar ) * uiCurrPartNumb );
@@ -1595,17 +1601,17 @@ Void TComDataCU::setCbfSubParts( UInt uiCbf, ComponentID compID, UInt uiAbsPartI
  * \param uiPartIdx
  * \param uiDepth
  */
-Void TComDataCU::setCbfSubParts ( UInt uiCbf, ComponentID compID, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )
+Void TComDataCU::setCbfSubParts ( UInt uiCbf, ComponentID compID, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )//为CTU中深度为uiDepth　位置为uiAbsPartIdx的给定的分量的Pb块设置cbf
 {
   setSubPart<UChar>( uiCbf, m_puhCbf[compID], uiAbsPartIdx, uiDepth, uiPartIdx );
 }
 
-Void TComDataCU::setCbfPartRange ( UInt uiCbf, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes )
+Void TComDataCU::setCbfPartRange ( UInt uiCbf, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes )//为CTU中起始位置为uiAbsPartIdx　给定范围　给定分量的块 设置cbf
 {
   memset((m_puhCbf[compID] + uiAbsPartIdx), uiCbf, (sizeof(UChar) * uiCoveredPartIdxes));
 }
 
-Void TComDataCU::bitwiseOrCbfPartRange( UInt uiCbf, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes )
+Void TComDataCU::bitwiseOrCbfPartRange( UInt uiCbf, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes )//为CTU中起始位置为uiAbsPartIdx　给定范围　给定分量的块 按位与cbf
 {
   const UInt stopAbsPartIdx = uiAbsPartIdx + uiCoveredPartIdxes;
 
@@ -1615,42 +1621,42 @@ Void TComDataCU::bitwiseOrCbfPartRange( UInt uiCbf, ComponentID compID, UInt uiA
   }
 }
 
-Void TComDataCU::setDepthSubParts( UInt uiDepth, UInt uiAbsPartIdx )
+Void TComDataCU::setDepthSubParts( UInt uiDepth, UInt uiAbsPartIdx )////为CTU中深度为uiDepth　位置为uiAbsPartIdx的子块设置深度
 {
-  UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
+  UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);//深度为uiDepth的子块含有4*4小块的个数
   memset( m_puhDepth + uiAbsPartIdx, uiDepth, sizeof(UChar)*uiCurrPartNumb );
 }
 
-Bool TComDataCU::isFirstAbsZorderIdxInDepth (UInt uiAbsPartIdx, UInt uiDepth)
+Bool TComDataCU::isFirstAbsZorderIdxInDepth (UInt uiAbsPartIdx, UInt uiDepth)//判断uiAbsPartIdx位置是否为深度为uiDepth的子块的起始地址
 {
   UInt uiPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
   return (((m_absZIdxInCtu + uiAbsPartIdx)% uiPartNumb) == 0);
 }
 
-Void TComDataCU::setPartSizeSubParts( PartSize eMode, UInt uiAbsPartIdx, UInt uiDepth )
+Void TComDataCU::setPartSizeSubParts( PartSize eMode, UInt uiAbsPartIdx, UInt uiDepth )//为深度为uiDepth 位置为uiAbsPartIdx的CU设置Pu分割模式
 {
   assert( sizeof( *m_pePartSize) == 1 );
   memset( m_pePartSize + uiAbsPartIdx, eMode, m_pcPic->getNumPartitionsInCtu() >> ( 2 * uiDepth ) );
 }
 
-Void TComDataCU::setCUTransquantBypassSubParts( Bool flag, UInt uiAbsPartIdx, UInt uiDepth )
+Void TComDataCU::setCUTransquantBypassSubParts( Bool flag, UInt uiAbsPartIdx, UInt uiDepth )//为深度为uiDepth 位置为uiAbsPartIdx的CU设置TransquantBypass标志
 {
   memset( m_CUTransquantBypass + uiAbsPartIdx, flag, m_pcPic->getNumPartitionsInCtu() >> ( 2 * uiDepth ) );
 }
 
-Void TComDataCU::setSkipFlagSubParts( Bool skip, UInt absPartIdx, UInt depth )
+Void TComDataCU::setSkipFlagSubParts( Bool skip, UInt absPartIdx, UInt depth )//为深度为uiDepth 位置为uiAbsPartIdx的CU设置skip标志
 {
   assert( sizeof( *m_skipFlag) == 1 );
   memset( m_skipFlag + absPartIdx, skip, m_pcPic->getNumPartitionsInCtu() >> ( 2 * depth ) );
 }
 
-Void TComDataCU::setPredModeSubParts( PredMode eMode, UInt uiAbsPartIdx, UInt uiDepth )
+Void TComDataCU::setPredModeSubParts( PredMode eMode, UInt uiAbsPartIdx, UInt uiDepth )//为深度为uiDepth 位置为uiAbsPartIdx的CU设置预测模式（帧内／帧间）
 {
   assert( sizeof( *m_pePredMode) == 1 );
   memset( m_pePredMode + uiAbsPartIdx, eMode, m_pcPic->getNumPartitionsInCtu() >> ( 2 * uiDepth ) );
 }
 
-Void TComDataCU::setChromaQpAdjSubParts( UChar val, Int absPartIdx, Int depth )
+Void TComDataCU::setChromaQpAdjSubParts( UChar val, Int absPartIdx, Int depth )//为深度为uiDepth 位置为uiAbsPartIdx的CU设置色度分量QP的偏移值
 {
   assert( sizeof(*m_ChromaQpAdj) == 1 );
   memset( m_ChromaQpAdj + absPartIdx, val, m_pcPic->getNumPartitionsInCtu() >> ( 2 * depth ) );

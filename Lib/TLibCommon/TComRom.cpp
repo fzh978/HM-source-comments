@@ -281,14 +281,14 @@ Void destroyROM()
 // Data structure related table & variable
 // ====================================================================================================================
 
-UInt g_auiZscanToRaster [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ] = { 0, };
+UInt g_auiZscanToRaster [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ] = { 0, };//16*16
 UInt g_auiRasterToZscan [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ] = { 0, };
 UInt g_auiRasterToPelX  [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ] = { 0, };
 UInt g_auiRasterToPelY  [ MAX_NUM_PART_IDXS_IN_CTU_WIDTH*MAX_NUM_PART_IDXS_IN_CTU_WIDTH ] = { 0, };
 
 const UInt g_auiPUOffset[NUMBER_OF_PART_SIZES] = { 0, 8, 4, 4, 2, 10, 1, 5};
-
-Void initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpuiCurrIdx )
+//æŠŠæ¯ä¸€ä¸ªLCUéƒ½åˆ’åˆ†ä¸º4x4çš„å°å—ï¼Œåˆ†åˆ«ä»¥Rasterå’ŒZscançš„æ–¹å¼å¯¹4x4çš„å°å—è¿›è¡Œç¼–å·ï¼ˆä¹Ÿå°±æ˜¯ç´¢å¼•ï¼‰
+Void initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpuiCurrIdx )//åˆå§‹åŒ–Z orderç´¢å¼•åˆ°Rasterç´¢å¼•çš„æ˜ å°„æ•°ç»„  rpuiCurrIdxä¸ºæ•°ç»„é¦–åœ°å€
 {
   Int iStride = 1 << ( iMaxDepth - 1 );
 
@@ -356,7 +356,7 @@ const Int g_quantScales[SCALING_LIST_REM_NUM] =
   26214,23302,20560,18396,16384,14564
 };
 
-const Int g_invQuantScales[SCALING_LIST_REM_NUM] = //2^((qp-4)/6)*64  qp=0,1,2,3,4,5 ÓÃÓÚ¼ÆËãQstep
+const Int g_invQuantScales[SCALING_LIST_REM_NUM] = //2^((qp-4)/6)*64  qp=0,1,2,3,4,5 ï¿½ï¿½ï¿½Ú¼ï¿½ï¿½ï¿½Qstep
 {
   40,45,51,57,64,72
 };
@@ -586,7 +586,7 @@ UInt64 g_nSymbolCounter = 0;
 // scanning order table
 UInt* g_scanOrder[SCAN_NUMBER_OF_GROUP_TYPES][SCAN_NUMBER_OF_TYPES][ MAX_CU_DEPTH ][ MAX_CU_DEPTH ];
 
-const UInt ctxIndMap4x4[4*4] = //4*4 TBs sig_coeff_flag µÄÉÏÏÂÎÄË÷Òı
+const UInt ctxIndMap4x4[4*4] = //4*4 TBs sig_coeff_flag ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 {
   0, 1, 4, 5,
   2, 3, 4, 5,
@@ -689,7 +689,7 @@ const Int g_quantInterDefault8x8[8*8] =
   24,25,28,33,41,54,71,91
 };
 
-const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {16,64,256,1024};//Á¿»¯¾ØÕóÏµÊı×ÜÊı
-const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32};//Á¿»¯¾ØÕóÏµÊıÃ¿ĞĞÏµÊı¸öÊı
+const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {16,64,256,1024};//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32};//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½Ã¿ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 //! \}

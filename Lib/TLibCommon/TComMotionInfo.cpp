@@ -348,7 +348,7 @@ Void TComCUMvField::compress(Char* pePredMode, Int scale)//对存储好的运动
     cMv = m_pcMv[ uiPartIdx ];
     PredMode predMode = static_cast<PredMode>( pePredMode[ uiPartIdx ] );
     iRefIdx = m_piRefIdx[ uiPartIdx ];
-    for ( Int i = 0; i < N; i++ )//采样间隔类复制子采样到的信息
+    for ( Int i = 0; i < N; i++ )//采样间隔复制子采样到的信息
     {
       m_pcMv[ uiPartIdx + i ] = cMv;
       pePredMode[ uiPartIdx + i ] = predMode;
