@@ -63,7 +63,7 @@ class TComList : public std::list< C > // NOTE: should not inherit from STL clas
 public:
   typedef typename std::list<C>::iterator TComIterator;
 
-  TComList& operator += ( const TComList& rcTComList)
+  TComList& operator += ( const TComList& rcTComList)//重载加法运算符　完成两个列表的相加
   {
     if( ! rcTComList.empty() )
     {

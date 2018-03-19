@@ -44,8 +44,11 @@
 
 //! \ingroup TLibCommon
 //! \{
-
-TComSlice::TComSlice()
+/**该部分程序涉及到一些参考图像管理不好理解的概念 如RPS RPS预测 各种图像类型等
+ * 建议在阅读先仔细阅读理解《HEVC Algorithms and Archietectures》中第2章和
+ * 《software manual》中关于GOP structure的描述！
+ */
+TComSlice::TComSlice()//构造函数　为Slice中的参数附上默认值
 : m_iPPSId                        ( -1 )
 , m_PicOutputFlag                 ( true )
 , m_iPOC                          ( 0 )
@@ -144,12 +147,12 @@ TComSlice::TComSlice()
   }
 }
 
-TComSlice::~TComSlice()
+TComSlice::~TComSlice()//析构函数
 {
 }
 
 
-Void TComSlice::initSlice()
+Void TComSlice::initSlice()//为slice中部分参数附上初始值
 {
   for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
   {
@@ -176,7 +179,7 @@ Void TComSlice::initSlice()
   m_enableTMVPFlag = true;
 }
 
-Bool TComSlice::getRapPicFlag() const
+Bool TComSlice::getRapPicFlag() const//判断是否为IRAP（Intra random access point (IRAP) pictures）
 {
   return getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_W_RADL
       || getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_N_LP
@@ -187,7 +190,7 @@ Bool TComSlice::getRapPicFlag() const
 }
 
 
-Void  TComSlice::sortPicList        (TComList<TComPic*>& rcListPic)
+Void  TComSlice::sortPicList (TComList<TComPic*>& rcListPic)//冒泡排序法!　只不过该排序是根据图像的POC值对图像在列表中的位置排序
 {
   TComPic*    pcPicExtract;
   TComPic*    pcPicInsert;
@@ -223,11 +226,11 @@ Void  TComSlice::sortPicList        (TComList<TComPic*>& rcListPic)
 
     //  swap iterPicExtract and iterPicInsert, iterPicExtract = curr. / iterPicInsert = insertion position
     rcListPic.insert (iterPicInsert, iterPicExtract, iterPicExtract_1);
-    rcListPic.erase  (iterPicExtract);
+    rcListPic.erase  (iterPicExtract);//这两步完成相邻两幅图像在列表中位置的交换
   }
 }
 
-TComPic* TComSlice::xGetRefPic (TComList<TComPic*>& rcListPic, Int poc)
+TComPic* TComSlice::xGetRefPic (TComList<TComPic*>& rcListPic, Int poc)//在图像列表中找到POC值为poc的参考图像
 {
   TComList<TComPic*>::iterator  iterPic = rcListPic.begin();
   TComPic*                      pcPic = *(iterPic);
@@ -244,8 +247,8 @@ TComPic* TComSlice::xGetRefPic (TComList<TComPic*>& rcListPic, Int poc)
 }
 
 
-TComPic* TComSlice::xGetLongTermRefPic(TComList<TComPic*>& rcListPic, Int poc, Bool pocHasMsb)
-{
+TComPic* TComSlice::xGetLongTermRefPic(TComList<TComPic*>& rcListPic, Int poc, Bool pocHasMsb)//在图像列表中找到POC值为poc的参考图像
+{//Msb为最高有效位　pocHasMsb表示poc值是否不被限制有效位（最高位是否有效）
   TComList<TComPic*>::iterator  iterPic = rcListPic.begin();
   TComPic*                      pcPic = *(iterPic);
   TComPic*                      pcStPic = pcPic;
@@ -287,11 +290,11 @@ TComPic* TComSlice::xGetLongTermRefPic(TComList<TComPic*>& rcListPic, Int poc, B
   return  pcStPic;
 }
 
-Void TComSlice::setRefPOCList       ()
+Void TComSlice::setRefPOCList ()//依次将参考图像列表中的图像转换成其POC值
 {
   for (Int iDir = 0; iDir < NUM_REF_PIC_LIST_01; iDir++)
   {
-    for (Int iNumRefIdx = 0; iNumRefIdx < m_aiNumRefIdx[iDir]; iNumRefIdx++)
+    for (Int iNumRefIdx = 0; iNumRefIdx < m_aiNumRefIdx[iDir]; iNumRefIdx++)//参考图像索引数　注意:参考图像在参考图像列表中的索引表示在列表中的位置　POC表示其为哪一帧图像　二者一般不相等
     {
       m_aiRefPOCList[iDir][iNumRefIdx] = m_apcRefPicList[iDir][iNumRefIdx]->getPOC();
     }
@@ -299,7 +302,7 @@ Void TComSlice::setRefPOCList       ()
 
 }
 
-Void TComSlice::setList1IdxToList0Idx()
+Void TComSlice::setList1IdxToList0Idx()//建立list1参考图像索引到list0参考图像索引的映射表
 {
   Int idxL0, idxL1;
   for ( idxL1 = 0; idxL1 < getNumRefIdx( REF_PIC_LIST_1 ); idxL1++ )
@@ -307,9 +310,9 @@ Void TComSlice::setList1IdxToList0Idx()
     m_list1IdxToList0Idx[idxL1] = -1;
     for ( idxL0 = 0; idxL0 < getNumRefIdx( REF_PIC_LIST_0 ); idxL0++ )
     {
-      if ( m_apcRefPicList[REF_PIC_LIST_0][idxL0]->getPOC() == m_apcRefPicList[REF_PIC_LIST_1][idxL1]->getPOC() )
+      if ( m_apcRefPicList[REF_PIC_LIST_0][idxL0]->getPOC() == m_apcRefPicList[REF_PIC_LIST_1][idxL1]->getPOC() )//若两列表中存在相同的参考图像
       {
-        m_list1IdxToList0Idx[idxL1] = idxL0;
+        m_list1IdxToList0Idx[idxL1] = idxL0;//则添加list1中该图像的索引到list0中该图像索引的映射
         break;
       }
     }
@@ -320,7 +323,7 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
 {
   if (!checkNumPocTotalCurr)
   {
-    if (m_eSliceType == I_SLICE)
+    if (m_eSliceType == I_SLICE)//I帧为帧内预测　不存在参考图像直接返回
     {
       ::memset( m_apcRefPicList, 0, sizeof (m_apcRefPicList));
       ::memset( m_aiNumRefIdx,   0, sizeof ( m_aiNumRefIdx ));
@@ -328,8 +331,8 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
       return;
     }
 
-    m_aiNumRefIdx[REF_PIC_LIST_0] = getNumRefIdx(REF_PIC_LIST_0);
-    m_aiNumRefIdx[REF_PIC_LIST_1] = getNumRefIdx(REF_PIC_LIST_1);
+    m_aiNumRefIdx[REF_PIC_LIST_0] = getNumRefIdx(REF_PIC_LIST_0);//list0参考图像数
+    m_aiNumRefIdx[REF_PIC_LIST_1] = getNumRefIdx(REF_PIC_LIST_1);//list１参考图像数
   }
 
   TComPic*  pcRefPic= NULL;
@@ -342,38 +345,38 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
   UInt NumPicLtCurr = 0;
   Int i;
 
-  for(i=0; i < m_pRPS->getNumberOfNegativePictures(); i++)
+  for(i=0; i < m_pRPS->getNumberOfNegativePictures(); i++)//设置前向short term参考图像
   {
-    if(m_pRPS->getUsed(i))
+    if(m_pRPS->getUsed(i))//如果该图像被当前图像用作参考图像
     {
-      pcRefPic = xGetRefPic(rcListPic, getPOC()+m_pRPS->getDeltaPOC(i));
-      pcRefPic->setIsLongTerm(0);
+      pcRefPic = xGetRefPic(rcListPic, getPOC()+m_pRPS->getDeltaPOC(i));//得到该参考图像
+      pcRefPic->setIsLongTerm(0);//不为long term参考图像
       pcRefPic->getPicYuvRec()->extendPicBorder();
-      RefPicSetStCurr0[NumPicStCurr0] = pcRefPic;
-      NumPicStCurr0++;
-      pcRefPic->setCheckLTMSBPresent(false);
+      RefPicSetStCurr0[NumPicStCurr0] = pcRefPic;//将该图像添加至RefPicSetStCurr0列表中
+      NumPicStCurr0++;//索引+1
+      pcRefPic->setCheckLTMSBPresent(false);//是否检查short term参考图像pOC值最高有效位
     }
   }
 
-  for(; i < m_pRPS->getNumberOfNegativePictures()+m_pRPS->getNumberOfPositivePictures(); i++)
+  for(; i < m_pRPS->getNumberOfNegativePictures()+m_pRPS->getNumberOfPositivePictures(); i++)//设置后向short term参考图像
   {
     if(m_pRPS->getUsed(i))
     {
       pcRefPic = xGetRefPic(rcListPic, getPOC()+m_pRPS->getDeltaPOC(i));
       pcRefPic->setIsLongTerm(0);
       pcRefPic->getPicYuvRec()->extendPicBorder();
-      RefPicSetStCurr1[NumPicStCurr1] = pcRefPic;
+      RefPicSetStCurr1[NumPicStCurr1] = pcRefPic;//将该图像添加至RefPicSetStCurr１列表中
       NumPicStCurr1++;
       pcRefPic->setCheckLTMSBPresent(false);
     }
   }
 
   for(i = m_pRPS->getNumberOfNegativePictures()+m_pRPS->getNumberOfPositivePictures()+m_pRPS->getNumberOfLongtermPictures()-1; i > m_pRPS->getNumberOfNegativePictures()+m_pRPS->getNumberOfPositivePictures()-1 ; i--)
-  {
+  {//设置long term参考图像　
     if(m_pRPS->getUsed(i))
     {
       pcRefPic = xGetLongTermRefPic(rcListPic, m_pRPS->getPOC(i), m_pRPS->getCheckLTMSBPresent(i));
-      pcRefPic->setIsLongTerm(1);
+      pcRefPic->setIsLongTerm(1);//为long term参考图像
       pcRefPic->getPicYuvRec()->extendPicBorder();
       RefPicSetLtCurr[NumPicLtCurr] = pcRefPic;
       NumPicLtCurr++;
@@ -388,19 +391,19 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
   // ref_pic_list_init
   TComPic*  rpsCurrList0[MAX_NUM_REF+1];
   TComPic*  rpsCurrList1[MAX_NUM_REF+1];
-  Int numPicTotalCurr = NumPicStCurr0 + NumPicStCurr1 + NumPicLtCurr;
+  Int numPicTotalCurr = NumPicStCurr0 + NumPicStCurr1 + NumPicLtCurr;//参考图像总数
 
-  if (checkNumPocTotalCurr)
+  if (checkNumPocTotalCurr)//检查参考图像总数
   {
     // The variable NumPocTotalCurr is derived as specified in subclause 7.4.7.2. It is a requirement of bitstream conformance that the following applies to the value of NumPocTotalCurr:
     // - If the current picture is a BLA or CRA picture, the value of NumPocTotalCurr shall be equal to 0.
     // - Otherwise, when the current picture contains a P or B slice, the value of NumPocTotalCurr shall not be equal to 0.
-    if (getRapPicFlag())
+    if (getRapPicFlag())//IPAP为帧内预测　不存在参考图像　故numPicTotalCurr一定为０
     {
       assert(numPicTotalCurr == 0);
     }
 
-    if (m_eSliceType == I_SLICE)
+    if (m_eSliceType == I_SLICE)//I帧为帧内预测　不存在参考图像直接返回
     {
       ::memset( m_apcRefPicList, 0, sizeof (m_apcRefPicList));
       ::memset( m_aiNumRefIdx,   0, sizeof ( m_aiNumRefIdx ));
@@ -408,30 +411,30 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
       return;
     }
 
-    assert(numPicTotalCurr > 0);
+    assert(numPicTotalCurr > 0);//不为I slice　一定存在参考图像
     // general tier and level limit:
-    assert(numPicTotalCurr <= 8);
+    assert(numPicTotalCurr <= 8);//general tier and level限制参考图像数不得大于8
 
     m_aiNumRefIdx[0] = getNumRefIdx(REF_PIC_LIST_0);
     m_aiNumRefIdx[1] = getNumRefIdx(REF_PIC_LIST_1);
   }
 
   Int cIdx = 0;
-  for ( i=0; i<NumPicStCurr0; i++, cIdx++)
+  for ( i=0; i<NumPicStCurr0; i++, cIdx++)//将得到的前向short term参考图像添加到rpsCurrList0中
   {
     rpsCurrList0[cIdx] = RefPicSetStCurr0[i];
   }
-  for ( i=0; i<NumPicStCurr1; i++, cIdx++)
+  for ( i=0; i<NumPicStCurr1; i++, cIdx++)//将得到的后向short term参考图像添加到rpsCurrList0中
   {
     rpsCurrList0[cIdx] = RefPicSetStCurr1[i];
   }
-  for ( i=0; i<NumPicLtCurr;  i++, cIdx++)
+  for ( i=0; i<NumPicLtCurr;  i++, cIdx++)//将得到的long term参考图像添加到rpsCurrList0中
   {
     rpsCurrList0[cIdx] = RefPicSetLtCurr[i];
   }
   assert(cIdx == numPicTotalCurr);
 
-  if (m_eSliceType==B_SLICE)
+  if (m_eSliceType==B_SLICE)//若为B slice则还需rpsCurrList1 双向预测为前后两个相反的方向　故list1中前向和后向参考图像与list0中相反
   {
     cIdx = 0;
     for ( i=0; i<NumPicStCurr1; i++, cIdx++)
@@ -451,21 +454,21 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
 
   ::memset(m_bIsUsedAsLongTerm, 0, sizeof(m_bIsUsedAsLongTerm));
 
-  for (Int rIdx = 0; rIdx < m_aiNumRefIdx[REF_PIC_LIST_0]; rIdx ++)
-  {
+  for (Int rIdx = 0; rIdx < m_aiNumRefIdx[REF_PIC_LIST_0]; rIdx ++)//构建最终指定大小的参考图像列表0　
+  {//RefPicSetIdx为codewords　构建最终的参考列表时用于指定暂时参考列表中的参考图像
     cIdx = m_RefPicListModification.getRefPicListModificationFlagL0() ? m_RefPicListModification.getRefPicSetIdxL0(rIdx) : rIdx % numPicTotalCurr;
     assert(cIdx >= 0 && cIdx < numPicTotalCurr);
     m_apcRefPicList[REF_PIC_LIST_0][rIdx] = rpsCurrList0[ cIdx ];
     m_bIsUsedAsLongTerm[REF_PIC_LIST_0][rIdx] = ( cIdx >= NumPicStCurr0 + NumPicStCurr1 );
   }
-  if ( m_eSliceType != B_SLICE )
+  if ( m_eSliceType != B_SLICE )//不为B slice　则list1为０
   {
     m_aiNumRefIdx[REF_PIC_LIST_1] = 0;
     ::memset( m_apcRefPicList[REF_PIC_LIST_1], 0, sizeof(m_apcRefPicList[REF_PIC_LIST_1]));
   }
   else
   {
-    for (Int rIdx = 0; rIdx < m_aiNumRefIdx[REF_PIC_LIST_1]; rIdx ++)
+    for (Int rIdx = 0; rIdx < m_aiNumRefIdx[REF_PIC_LIST_1]; rIdx ++)//构建最终指定大小的参考图像列表1
     {
       cIdx = m_RefPicListModification.getRefPicListModificationFlagL1() ? m_RefPicListModification.getRefPicSetIdxL1(rIdx) : rIdx % numPicTotalCurr;
       assert(cIdx >= 0 && cIdx < numPicTotalCurr);
@@ -475,11 +478,11 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
   }
 }
 
-Int TComSlice::getNumRpsCurrTempList() const
+Int TComSlice::getNumRpsCurrTempList() const//计算总的参考图像数
 {
   Int numRpsCurrTempList = 0;
 
-  if (m_eSliceType == I_SLICE)
+  if (m_eSliceType == I_SLICE)//I帧为帧内预测　不存在参考图像直接返回0
   {
     return 0;
   }
@@ -493,7 +496,7 @@ Int TComSlice::getNumRpsCurrTempList() const
   return numRpsCurrTempList;
 }
 
-Void TComSlice::initEqualRef()
+Void TComSlice::initEqualRef()//初始化参考图像列表中　两两参考图像是否相同的二维表　
 {
   for (Int iDir = 0; iDir < NUM_REF_PIC_LIST_01; iDir++)
   {
@@ -507,14 +510,14 @@ Void TComSlice::initEqualRef()
   }
 }
 
-Void TComSlice::checkColRefIdx(UInt curSliceIdx, TComPic* pic)
+Void TComSlice::checkColRefIdx(UInt curSliceIdx, TComPic* pic)//检查给定图像中不同slice的同位图像是不是同一帧图像
 {
   Int i;
   TComSlice* curSlice = pic->getSlice(curSliceIdx);
-  Int currColRefPOC =  curSlice->getRefPOC( RefPicList(1 - curSlice->getColFromL0Flag()), curSlice->getColRefIdx());
+  Int currColRefPOC =  curSlice->getRefPOC( RefPicList(1 - curSlice->getColFromL0Flag()), curSlice->getColRefIdx());//同位块所在的图像
   TComSlice* preSlice;
   Int preColRefPOC;
-  for(i=curSliceIdx-1; i>=0; i--)
+  for(i=curSliceIdx-1; i>=0; i--)//一帧图像中所有slice的同位图像应该为同一帧图像
   {
     preSlice = pic->getSlice(i);
     if(preSlice->getSliceType() != I_SLICE)
@@ -536,17 +539,17 @@ Void TComSlice::checkColRefIdx(UInt curSliceIdx, TComPic* pic)
 Void TComSlice::checkCRA(const TComReferencePictureSet *pReferencePictureSet, Int& pocCRA, NalUnitType& associatedIRAPType, TComList<TComPic *>& rcListPic)
 {
   for(Int i = 0; i < pReferencePictureSet->getNumberOfNegativePictures()+pReferencePictureSet->getNumberOfPositivePictures(); i++)
-  {
-    if(pocCRA < MAX_UINT && getPOC() > pocCRA)
+  {//该slice的short term参考图像
+    if(pocCRA < MAX_UINT && getPOC() > pocCRA)//如果当前slice在该CRA之后 则要确保该slice参考的图像也在该CRA之后（因为随机接入点在CRA时无法获得CRA之前的图像）
     {
       assert(getPOC()+pReferencePictureSet->getDeltaPOC(i) >= pocCRA);
     }
   }
   for(Int i = pReferencePictureSet->getNumberOfNegativePictures()+pReferencePictureSet->getNumberOfPositivePictures(); i < pReferencePictureSet->getNumberOfPictures(); i++)
-  {
-    if(pocCRA < MAX_UINT && getPOC() > pocCRA)
+  {//该slice的long term参考图像
+    if(pocCRA < MAX_UINT && getPOC() > pocCRA)//如果当前slice在该CRA之后 则要确保该slice参考的图像也在该CRA之后
     {
-      if (!pReferencePictureSet->getCheckLTMSBPresent(i))
+      if (!pReferencePictureSet->getCheckLTMSBPresent(i))//参考图像的最高有效位倍限制
       {
         assert(xGetLongTermRefPic(rcListPic, pReferencePictureSet->getPOC(i), false)->getPOC() >= pocCRA);
       }
@@ -556,22 +559,22 @@ Void TComSlice::checkCRA(const TComReferencePictureSet *pReferencePictureSet, In
       }
     }
   }
-  if ( getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_W_RADL || getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_N_LP ) // IDR picture found
+  if ( getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_W_RADL || getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_N_LP ) // IDR picture found//如果该slice属于IDR图像
   {
-    pocCRA = getPOC();
-    associatedIRAPType = getNalUnitType();
+    pocCRA = getPOC();//该slice所属图像即为CRA
+    associatedIRAPType = getNalUnitType();//得到具体IRAP类型
   }
-  else if ( getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA ) // CRA picture found
+  else if ( getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA ) // CRA picture found//如果该slice属于CRA图像
   {
     pocCRA = getPOC();
-    associatedIRAPType = getNalUnitType();
+    associatedIRAPType = getNalUnitType();//得到具体IRAP类型
   }
   else if ( getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_W_LP
          || getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_W_RADL
-         || getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_N_LP ) // BLA picture found
+         || getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_N_LP ) // BLA picture found//如果该slice属于BLA图像
   {
     pocCRA = getPOC();
-    associatedIRAPType = getNalUnitType();
+    associatedIRAPType = getNalUnitType();//得到具体IRAP类型
   }
 }
 
@@ -602,11 +605,11 @@ Void TComSlice::decodingRefreshMarking(Int& pocCRA, Bool& bRefreshPending, TComL
     || getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_W_RADL
     || getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_N_LP
     || getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_W_RADL
-    || getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_N_LP )  // IDR or BLA picture
+    || getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_N_LP )  // IDR or BLA picture //当前帧为IDR或BLA
   {
     // mark all pictures as not used for reference
     TComList<TComPic*>::iterator        iterPic       = rcListPic.begin();
-    while (iterPic != rcListPic.end())
+    while (iterPic != rcListPic.end())//除当前帧之前解码的所有帧不用作参考帧 因为当前IDR帧之后的帧一定不会继续参考前面这些帧
     {
       rpcPic = *(iterPic);
       rpcPic->setCurrSliceIdx(0);
@@ -618,22 +621,22 @@ Void TComSlice::decodingRefreshMarking(Int& pocCRA, Bool& bRefreshPending, TComL
     }
     if ( getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_W_LP
       || getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_W_RADL
-      || getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_N_LP )
+      || getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_N_LP )//当前帧为BLA
     {
       pocCRA = pocCurr;
     }
     if (bEfficientFieldIRAPEnabled)
     {
-      bRefreshPending = true;
+      bRefreshPending = true;//表示需要marking pending 将关键帧之前的帧去掉 以前的帧不用作参考帧
     }
   }
   else // CRA or No DR
   {
-    if(bEfficientFieldIRAPEnabled && (getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_IDR_N_LP || getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_IDR_W_RADL))
+    if(bEfficientFieldIRAPEnabled && (getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_IDR_N_LP || getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_IDR_W_RADL))//当前帧相近的帧为IDR
     {
       if (bRefreshPending==true && pocCurr > m_iLastIDR) // IDR reference marking pending 
-      {
-        TComList<TComPic*>::iterator        iterPic       = rcListPic.begin();
+      {//当前帧在IDR之后并且bRefreshPending为true 则IDR之前的帧不作参考图像
+        TComList<TComPic*>::iterator iterPic = rcListPic.begin();
         while (iterPic != rcListPic.end())
         {
           rpcPic = *(iterPic);
@@ -643,12 +646,12 @@ Void TComSlice::decodingRefreshMarking(Int& pocCRA, Bool& bRefreshPending, TComL
           }
           iterPic++;
         }
-        bRefreshPending = false; 
+        bRefreshPending = false;//bRefreshPending为false表示marking pending已完成 无IDR前置参考帧
       }
     }
     else
     {
-      if (bRefreshPending==true && pocCurr > pocCRA) // CRA reference marking pending
+      if (bRefreshPending==true && pocCurr > pocCRA) // CRA reference marking pending////当前帧相近的帧为CRA
       {
         TComList<TComPic*>::iterator iterPic = rcListPic.begin();
         while (iterPic != rcListPic.end())
@@ -660,79 +663,79 @@ Void TComSlice::decodingRefreshMarking(Int& pocCRA, Bool& bRefreshPending, TComL
           }
           iterPic++;
         }
-        bRefreshPending = false;
+        bRefreshPending = false;//bRefreshPending为false表示marking pending已完成 无CRA前置参考帧
       }
     }
-    if ( getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA ) // CRA picture found
+    if ( getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA ) // CRA picture found 更新CRA 需再次RefreshPending
     {
-      bRefreshPending = true;
+      bRefreshPending = true;//
       pocCRA = pocCurr;
     }
   }
 }
 
-Void TComSlice::copySliceInfo(TComSlice *pSrc)
+Void TComSlice::copySliceInfo(TComSlice *pSrc)//将给定的slice信息复制到当前slice
 {
   assert( pSrc != NULL );
 
   Int i, j, k;
 
-  m_iPOC                 = pSrc->m_iPOC;
-  m_eNalUnitType         = pSrc->m_eNalUnitType;
-  m_eSliceType           = pSrc->m_eSliceType;
-  m_iSliceQp             = pSrc->m_iSliceQp;
+  m_iPOC                 = pSrc->m_iPOC;//slice所在图像的POC值
+  m_eNalUnitType         = pSrc->m_eNalUnitType;//slice所在图像的NalUnitType(IRAP CRA BLA等)
+  m_eSliceType           = pSrc->m_eSliceType;//slice类型(I B P帧)
+  m_iSliceQp             = pSrc->m_iSliceQp;//sliceQP值
 #if ADAPTIVE_QP_SELECTION
   m_iSliceQpBase         = pSrc->m_iSliceQpBase;
 #endif
-  m_ChromaQpAdjEnabled = pSrc->m_ChromaQpAdjEnabled;
-  m_deblockingFilterDisable   = pSrc->m_deblockingFilterDisable;
-  m_deblockingFilterOverrideFlag = pSrc->m_deblockingFilterOverrideFlag;
-  m_deblockingFilterBetaOffsetDiv2 = pSrc->m_deblockingFilterBetaOffsetDiv2;
-  m_deblockingFilterTcOffsetDiv2 = pSrc->m_deblockingFilterTcOffsetDiv2;
+  m_ChromaQpAdjEnabled = pSrc->m_ChromaQpAdjEnabled;//是否调整色度分量QP值
+  m_deblockingFilterDisable   = pSrc->m_deblockingFilterDisable;//是否关闭去方块滤波
+  m_deblockingFilterOverrideFlag = pSrc->m_deblockingFilterOverrideFlag;//在slice的头部是否出现去方块滤波参数 
+  m_deblockingFilterBetaOffsetDiv2 = pSrc->m_deblockingFilterBetaOffsetDiv2;//slice的去方块参数beta/2的补偿值
+  m_deblockingFilterTcOffsetDiv2 = pSrc->m_deblockingFilterTcOffsetDiv2;//slice的去方块参数tc/2的补偿值
 
-  for (i = 0; i < NUM_REF_PIC_LIST_01; i++)
+  for (i = 0; i < NUM_REF_PIC_LIST_01; i++)//slice的参考图像数
   {
     m_aiNumRefIdx[i]     = pSrc->m_aiNumRefIdx[i];
   }
 
-  for (i = 0; i < MAX_NUM_REF; i++)
+  for (i = 0; i < MAX_NUM_REF; i++)//slice参考图像list1到list0的映射表（即给定参考图像在list1中的索引可以得到该图像在llist0中的索引）
   {
     m_list1IdxToList0Idx[i] = pSrc->m_list1IdxToList0Idx[i];
   }
 
   m_bCheckLDC             = pSrc->m_bCheckLDC;
-  m_iSliceQpDelta        = pSrc->m_iSliceQpDelta;
+  m_iSliceQpDelta        = pSrc->m_iSliceQpDelta;//slice的Delta QP值 计算最终的QP
   for (UInt component = 0; component < MAX_NUM_COMPONENT; component++)
   {
-    m_iSliceChromaQpDelta[component] = pSrc->m_iSliceChromaQpDelta[component];
+    m_iSliceChromaQpDelta[component] = pSrc->m_iSliceChromaQpDelta[component];//slice的色度分量Delta QP值 计算色度分量最终的QP
   }
   for (i = 0; i < NUM_REF_PIC_LIST_01; i++)
   {
     for (j = 0; j < MAX_NUM_REF; j++)
     {
-      m_apcRefPicList[i][j]  = pSrc->m_apcRefPicList[i][j];
-      m_aiRefPOCList[i][j]   = pSrc->m_aiRefPOCList[i][j];
-      m_bIsUsedAsLongTerm[i][j] = pSrc->m_bIsUsedAsLongTerm[i][j];
+      m_apcRefPicList[i][j]  = pSrc->m_apcRefPicList[i][j];//slice的参考图像
+      m_aiRefPOCList[i][j]   = pSrc->m_aiRefPOCList[i][j];//slice参考图像的POC值
+      m_bIsUsedAsLongTerm[i][j] = pSrc->m_bIsUsedAsLongTerm[i][j];//slice的参考图像是否为LongTerm
     }
     m_bIsUsedAsLongTerm[i][MAX_NUM_REF] = pSrc->m_bIsUsedAsLongTerm[i][MAX_NUM_REF];
   }
   m_iDepth               = pSrc->m_iDepth;
 
   // referenced slice
-  m_bRefenced            = pSrc->m_bRefenced;
+  m_bRefenced            = pSrc->m_bRefenced;//slice是否被用作参考
 
   // access channel
-  m_pRPS                = pSrc->m_pRPS;
-  m_iLastIDR             = pSrc->m_iLastIDR;
+  m_pRPS                = pSrc->m_pRPS;//slice的参考图像集
+  m_iLastIDR             = pSrc->m_iLastIDR;//slice最近的IDR的POC值
 
-  m_pcPic                = pSrc->m_pcPic;
+  m_pcPic                = pSrc->m_pcPic;//slice所在的图像
 
-  m_colFromL0Flag        = pSrc->m_colFromL0Flag;
-  m_colRefIdx            = pSrc->m_colRefIdx;
+  m_colFromL0Flag        = pSrc->m_colFromL0Flag;//slice的同位图像是否在list0中
+  m_colRefIdx            = pSrc->m_colRefIdx;//slice的同位图像在列表中的索引
 
   setLambdas(pSrc->getLambdas());
 
-  for (i = 0; i < NUM_REF_PIC_LIST_01; i++)
+  for (i = 0; i < NUM_REF_PIC_LIST_01; i++)//两参考图像列表中相同图像的映射表
   {
     for (j = 0; j < MAX_NUM_REF; j++)
     {
@@ -743,22 +746,22 @@ Void TComSlice::copySliceInfo(TComSlice *pSrc)
     }
   }
 
-  m_uiTLayer                      = pSrc->m_uiTLayer;
-  m_bTLayerSwitchingFlag          = pSrc->m_bTLayerSwitchingFlag;
+  m_uiTLayer                      = pSrc->m_uiTLayer;//slice所在的时域层
+  m_bTLayerSwitchingFlag          = pSrc->m_bTLayerSwitchingFlag;//slice是否可以进行时域层切换
 
-  m_sliceMode                     = pSrc->m_sliceMode;
+  m_sliceMode                     = pSrc->m_sliceMode;//slice的约束条件（CTU?byte?tiles?）
   m_sliceArgument                 = pSrc->m_sliceArgument;
-  m_sliceCurStartCtuTsAddr        = pSrc->m_sliceCurStartCtuTsAddr;
-  m_sliceCurEndCtuTsAddr          = pSrc->m_sliceCurEndCtuTsAddr;
-  m_sliceIdx                      = pSrc->m_sliceIdx;
+  m_sliceCurStartCtuTsAddr        = pSrc->m_sliceCurStartCtuTsAddr;//该slice起始CTu在图像中的位置（Tile-scan ）
+  m_sliceCurEndCtuTsAddr          = pSrc->m_sliceCurEndCtuTsAddr;//该slice最后一个CTu在图像中的位置（Tile-scan ）
+  m_sliceIdx                      = pSrc->m_sliceIdx;//slice在图像中的索引
   m_sliceSegmentMode              = pSrc->m_sliceSegmentMode;
   m_sliceSegmentArgument          = pSrc->m_sliceSegmentArgument;
   m_sliceSegmentCurStartCtuTsAddr = pSrc->m_sliceSegmentCurStartCtuTsAddr;
   m_sliceSegmentCurEndCtuTsAddr   = pSrc->m_sliceSegmentCurEndCtuTsAddr;
-  m_nextSlice                     = pSrc->m_nextSlice;
+  m_nextSlice                     = pSrc->m_nextSlice;//是否有下一个SLice
   m_nextSliceSegment              = pSrc->m_nextSliceSegment;
 
-  for ( UInt e=0 ; e<NUM_REF_PIC_LIST_01 ; e++ )
+  for ( UInt e=0 ; e<NUM_REF_PIC_LIST_01 ; e++ )//参考图像列表中的图像用作参考时的预测权重表
   {
     for ( UInt n=0 ; n<MAX_NUM_REF ; n++ )
     {
@@ -766,18 +769,18 @@ Void TComSlice::copySliceInfo(TComSlice *pSrc)
     }
   }
 
-  for( UInt ch = 0 ; ch < MAX_NUM_CHANNEL_TYPE; ch++)
+  for( UInt ch = 0 ; ch < MAX_NUM_CHANNEL_TYPE; ch++)//各通道是否使用样点自适应补偿(SAO)
   {
     m_saoEnabledFlag[ch] = pSrc->m_saoEnabledFlag[ch];
   }
 
-  m_cabacInitFlag                 = pSrc->m_cabacInitFlag;
+  m_cabacInitFlag                 = pSrc->m_cabacInitFlag;//该slice cabac是否初始化
 
-  m_bLMvdL1Zero                   = pSrc->m_bLMvdL1Zero;
-  m_LFCrossSliceBoundaryFlag      = pSrc->m_LFCrossSliceBoundaryFlag;
-  m_enableTMVPFlag                = pSrc->m_enableTMVPFlag;
-  m_maxNumMergeCand               = pSrc->m_maxNumMergeCand;
-  m_encCABACTableIdx              = pSrc->m_encCABACTableIdx;
+  m_bLMvdL1Zero                   = pSrc->m_bLMvdL1Zero;//该slice在list1中的Mvd是否为0?
+  m_LFCrossSliceBoundaryFlag      = pSrc->m_LFCrossSliceBoundaryFlag;//滤波是否允许跨过slice边界
+  m_enableTMVPFlag                = pSrc->m_enableTMVPFlag;//是否使用时域MV预测
+  m_maxNumMergeCand               = pSrc->m_maxNumMergeCand;//该slice merge最大候选矢量数
+  m_encCABACTableIdx              = pSrc->m_encCABACTableIdx;//编码该slice时所用CABAC表的索引
 }
 
 
@@ -794,19 +797,19 @@ Void TComSlice::setTLayerInfo( UInt uiTLayer )
 
 /** Function for checking if this is a switching-point
 */
-Bool TComSlice::isTemporalLayerSwitchingPoint(TComList<TComPic*>& rcListPic)
-{
+Bool TComSlice::isTemporalLayerSwitchingPoint(TComList<TComPic*>& rcListPic)//详见相关资料TSA的定义 switching-point意味着在该处可以安全的切换至其他时域层 
+{                                                                           //因为解码顺序在该图像之后的图像不依赖之前高时域层未解码图像
   TComPic* rpcPic;
   // loop through all pictures in the reference picture buffer
   TComList<TComPic*>::iterator iterPic = rcListPic.begin();
-  while ( iterPic != rcListPic.end())
+  while ( iterPic != rcListPic.end())//参考图列表中所有在当前图像之前的被用作参考的图像的时域层都小于当前slice所在图像的时域层 则说明该图像为时域层切换点
   {
     rpcPic = *(iterPic++);
     if(rpcPic->getSlice(0)->isReferenced() && rpcPic->getPOC() != getPOC())
     {
-      if(rpcPic->getTLayer() >= getTLayer())
+      if(rpcPic->getTLayer() >= getTLayer())//大于或等于TSA所在时域层之前的图像未解码
       {
-        return false;
+        return false;//否则 不为时域切换点
       }
     }
   }
@@ -815,7 +818,8 @@ Bool TComSlice::isTemporalLayerSwitchingPoint(TComList<TComPic*>& rcListPic)
 
 /** Function for checking if this is a STSA candidate
  */
-Bool TComSlice::isStepwiseTemporalLayerSwitchingPointCandidate(TComList<TComPic*>& rcListPic)
+//STSA和TSA的区别在于TSA可切换至任意高的时域层 而STSA只能切换至和STSA一样的时域层
+Bool TComSlice::isStepwiseTemporalLayerSwitchingPointCandidate(TComList<TComPic*>& rcListPic)//详见相关资料STSA的定义
 {
   TComPic* rpcPic;
 
@@ -823,9 +827,9 @@ Bool TComSlice::isStepwiseTemporalLayerSwitchingPointCandidate(TComList<TComPic*
   while ( iterPic != rcListPic.end())
   {
     rpcPic = *(iterPic++);
-    if(rpcPic->getSlice(0)->isReferenced() &&  (rpcPic->getUsedByCurr()==true) && rpcPic->getPOC() != getPOC())
+    if(rpcPic->getSlice(0)->isReferenced() &&  (rpcPic->getUsedByCurr()==true) && rpcPic->getPOC() != getPOC())//只需要对被当前帧参考的图像做参考的图像判断 因此TSA一定时STSA
     {
-      if(rpcPic->getTLayer() >= getTLayer())
+      if(rpcPic->getTLayer() >= getTLayer())//大于或等于TSA所在时域层之前的图像未解码
       {
         return false;
       }
@@ -835,17 +839,17 @@ Bool TComSlice::isStepwiseTemporalLayerSwitchingPointCandidate(TComList<TComPic*
 }
 
 
-Void TComSlice::checkLeadingPictureRestrictions(TComList<TComPic*>& rcListPic)
-{
+Void TComSlice::checkLeadingPictureRestrictions(TComList<TComPic*>& rcListPic)//检测当前slice所在图像是否满足LeadingPicture(LP)的限制 LP指输出顺序在邻近IRAP之前 解码顺序在邻近IRAP之后（详见LeadingPicture相关资料）
+{                                                                             //该限制的目的一是为了保证各种NAUL类型定义的正确性 二是在random access时消除不平坦的输出 确保输出时没有因缺失参考帧而无法解码的帧
   TComPic* rpcPic;
 
-  Int nalUnitType = this->getNalUnitType();
+  Int nalUnitType = this->getNalUnitType();//当前slice所属图像的NALU类型
 
   // When a picture is a leading picture, it shall be a RADL or RASL picture.
-  if(this->getAssociatedIRAPPOC() > this->getPOC())
+  if(this->getAssociatedIRAPPOC() > this->getPOC())//该slice所属图像的POC值小于其邻近的IRAP（输出顺序在IRAP之前） 说明为leading picture
   {
     // Do not check IRAP pictures since they may get a POC lower than their associated IRAP
-    if(nalUnitType < NAL_UNIT_CODED_SLICE_BLA_W_LP ||
+    if(nalUnitType < NAL_UNIT_CODED_SLICE_BLA_W_LP ||  //如果图像NAUL类型不为IRAP 则图像NAUL类型一定为RASL或RADL
        nalUnitType > NAL_UNIT_RESERVED_IRAP_VCL23)
     {
       assert(nalUnitType == NAL_UNIT_CODED_SLICE_RASL_N ||
@@ -856,52 +860,52 @@ Void TComSlice::checkLeadingPictureRestrictions(TComList<TComPic*>& rcListPic)
   }
 
   // When a picture is a trailing picture, it shall not be a RADL or RASL picture.
-  if(this->getAssociatedIRAPPOC() < this->getPOC())
+  if(this->getAssociatedIRAPPOC() < this->getPOC())//该slice所属图像的POC值大于其邻近的IRAP（输出顺序在IRAP之后） 说明为trailing picture
   {
     assert(nalUnitType != NAL_UNIT_CODED_SLICE_RASL_N &&
            nalUnitType != NAL_UNIT_CODED_SLICE_RASL_R &&
            nalUnitType != NAL_UNIT_CODED_SLICE_RADL_N &&
            nalUnitType != NAL_UNIT_CODED_SLICE_RADL_R);
-  }
+  }//trailing picture图像一定不为RASL或RADL
 
   // No RASL pictures shall be present in the bitstream that are associated
   // with a BLA picture having nal_unit_type equal to BLA_W_RADL or BLA_N_LP.
-  if(nalUnitType == NAL_UNIT_CODED_SLICE_RASL_N ||
+  if(nalUnitType == NAL_UNIT_CODED_SLICE_RASL_N ||   //如果该slice所属图像NAUL类型为RASL
      nalUnitType == NAL_UNIT_CODED_SLICE_RASL_R)
   {
     assert(this->getAssociatedIRAPType() != NAL_UNIT_CODED_SLICE_BLA_W_RADL &&
            this->getAssociatedIRAPType() != NAL_UNIT_CODED_SLICE_BLA_N_LP);
-  }
+  }//则其邻近的IRAP一定不为BLA_W_RADL（May have RADL leading）和BLA_N_LP（Without leading pictures）
 
   // No RASL pictures shall be present in the bitstream that are associated with
   // an IDR picture.
-  if(nalUnitType == NAL_UNIT_CODED_SLICE_RASL_N ||
+  if(nalUnitType == NAL_UNIT_CODED_SLICE_RASL_N ||   //如果该slice所属图像NAUL类型为RASL
      nalUnitType == NAL_UNIT_CODED_SLICE_RASL_R)
   {
     assert(this->getAssociatedIRAPType() != NAL_UNIT_CODED_SLICE_IDR_N_LP   &&
            this->getAssociatedIRAPType() != NAL_UNIT_CODED_SLICE_IDR_W_RADL);
-  }
+  }//则其邻近的IRAP一定不为IDR
 
   // No RADL pictures shall be present in the bitstream that are associated with
   // a BLA picture having nal_unit_type equal to BLA_N_LP or that are associated
   // with an IDR picture having nal_unit_type equal to IDR_N_LP.
-  if(nalUnitType == NAL_UNIT_CODED_SLICE_RADL_N ||
+  if(nalUnitType == NAL_UNIT_CODED_SLICE_RADL_N ||  //如果该slice所属图像NAUL类型为RADL
      nalUnitType == NAL_UNIT_CODED_SLICE_RADL_R)
   {
     assert(this->getAssociatedIRAPType() != NAL_UNIT_CODED_SLICE_BLA_N_LP   &&
            this->getAssociatedIRAPType() != NAL_UNIT_CODED_SLICE_IDR_N_LP);
-  }
+  }//则其邻近的IRAP一定不为IDR_N_LP和BLA_N_LP（Without leading pictures）
 
   // loop through all pictures in the reference picture buffer
   TComList<TComPic*>::iterator iterPic = rcListPic.begin();
-  while ( iterPic != rcListPic.end())
+  while ( iterPic != rcListPic.end())//遍历参考图像缓存中的所有图像
   {
     rpcPic = *(iterPic++);
-    if(!rpcPic->getReconMark())
+    if(!rpcPic->getReconMark())//该图像未被重建 则直接检测下一帧图像
     {
       continue;
     }
-    if (rpcPic->getPOC() == this->getPOC())
+    if (rpcPic->getPOC() == this->getPOC())//该图像为当前图像 则直接检测下一帧图像
     {
       continue;
     }
@@ -909,7 +913,7 @@ Void TComSlice::checkLeadingPictureRestrictions(TComList<TComPic*>& rcListPic)
     // Any picture that has PicOutputFlag equal to 1 that precedes an IRAP picture
     // in decoding order shall precede the IRAP picture in output order.
     // (Note that any picture following in output order would be present in the DPB)
-    if(rpcPic->getSlice(0)->getPicOutputFlag() == 1 && !this->getNoOutputPriorPicsFlag())
+    if(rpcPic->getSlice(0)->getPicOutputFlag() == 1 && !this->getNoOutputPriorPicsFlag())//该帧图像需要被输出且解码顺序在当前IRAP之前
     {
       if(nalUnitType == NAL_UNIT_CODED_SLICE_BLA_N_LP    ||
          nalUnitType == NAL_UNIT_CODED_SLICE_BLA_W_LP    ||
@@ -918,25 +922,25 @@ Void TComSlice::checkLeadingPictureRestrictions(TComList<TComPic*>& rcListPic)
          nalUnitType == NAL_UNIT_CODED_SLICE_IDR_N_LP    ||
          nalUnitType == NAL_UNIT_CODED_SLICE_IDR_W_RADL)
       {
-        assert(rpcPic->getPOC() < this->getPOC());
+        assert(rpcPic->getPOC() < this->getPOC());//则输出顺序应该在当前IRAP之前(若该帧图像输出顺序在IRAP之后 而解码在其之前 那么当前random access在该IRAP时 当前图像无法顺利解码 却要输出 则会导致不平坦的输出)
       }
     }
 
     // Any picture that has PicOutputFlag equal to 1 that precedes an IRAP picture
     // in decoding order shall precede any RADL picture associated with the IRAP
     // picture in output order.
-    if(rpcPic->getSlice(0)->getPicOutputFlag() == 1)
+    if(rpcPic->getSlice(0)->getPicOutputFlag() == 1)//该帧图像需要输出
     {
-      if((nalUnitType == NAL_UNIT_CODED_SLICE_RADL_N ||
+      if((nalUnitType == NAL_UNIT_CODED_SLICE_RADL_N ||  //当前图像为RADL
           nalUnitType == NAL_UNIT_CODED_SLICE_RADL_R))
       {
         // rpcPic precedes the IRAP in decoding order
-        if(this->getAssociatedIRAPPOC() > rpcPic->getSlice(0)->getAssociatedIRAPPOC())
+        if(this->getAssociatedIRAPPOC() > rpcPic->getSlice(0)->getAssociatedIRAPPOC())//该帧图像解码顺序在邻近的IRAP之前
         {
           // rpcPic must not be the IRAP picture
           if(this->getAssociatedIRAPPOC() != rpcPic->getPOC())
           {
-            assert(rpcPic->getPOC() < this->getPOC());
+            assert(rpcPic->getPOC() < this->getPOC());//则要保证该帧图像输出顺序在当前RADL图像之前 （同样是为了避免不平坦的输出）
           }
         }
       }
@@ -944,7 +948,7 @@ Void TComSlice::checkLeadingPictureRestrictions(TComList<TComPic*>& rcListPic)
 
     // When a picture is a leading picture, it shall precede, in decoding order,
     // all trailing pictures that are associated with the same IRAP picture.
-      if(nalUnitType == NAL_UNIT_CODED_SLICE_RASL_N ||
+      if(nalUnitType == NAL_UNIT_CODED_SLICE_RASL_N ||       //当前图像为LP
          nalUnitType == NAL_UNIT_CODED_SLICE_RASL_R ||
          nalUnitType == NAL_UNIT_CODED_SLICE_RADL_N ||
          nalUnitType == NAL_UNIT_CODED_SLICE_RADL_R)
@@ -953,37 +957,37 @@ Void TComSlice::checkLeadingPictureRestrictions(TComList<TComPic*>& rcListPic)
         {
           // rpcPic is a picture that preceded the leading in decoding order since it exist in the DPB
           // rpcPic would violate the constraint if it was a trailing picture
-          assert(rpcPic->getPOC() <= this->getAssociatedIRAPPOC());
+          assert(rpcPic->getPOC() <= this->getAssociatedIRAPPOC());//则该帧图像一定不为trailing picture
         }
       }
 
     // Any RASL picture associated with a CRA or BLA picture shall precede any
     // RADL picture associated with the CRA or BLA picture in output order
-    if(nalUnitType == NAL_UNIT_CODED_SLICE_RASL_N ||
+    if(nalUnitType == NAL_UNIT_CODED_SLICE_RASL_N || //当前图像为RASL
        nalUnitType == NAL_UNIT_CODED_SLICE_RASL_R)
     {
       if((this->getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_BLA_N_LP   ||
           this->getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_BLA_W_LP   ||
           this->getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_BLA_W_RADL ||
           this->getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_CRA)       &&
-          this->getAssociatedIRAPPOC() == rpcPic->getSlice(0)->getAssociatedIRAPPOC())
+          this->getAssociatedIRAPPOC() == rpcPic->getSlice(0)->getAssociatedIRAPPOC())//当前图像与该帧图像邻近的IRAP图像相同 且该IRAP为CRA or BLA
       {
-        if(rpcPic->getSlice(0)->getNalUnitType() == NAL_UNIT_CODED_SLICE_RADL_N ||
+        if(rpcPic->getSlice(0)->getNalUnitType() == NAL_UNIT_CODED_SLICE_RADL_N ||  //该帧图像为RADL
            rpcPic->getSlice(0)->getNalUnitType() == NAL_UNIT_CODED_SLICE_RADL_R)
         {
-          assert(rpcPic->getPOC() > this->getPOC());
+          assert(rpcPic->getPOC() > this->getPOC());//这该帧图像（RADL）输出顺序一定在当前图像（RASL）之后
         }
       }
     }
 
     // Any RASL picture associated with a CRA picture shall follow, in output
     // order, any IRAP picture that precedes the CRA picture in decoding order.
-    if(nalUnitType == NAL_UNIT_CODED_SLICE_RASL_N ||
+    if(nalUnitType == NAL_UNIT_CODED_SLICE_RASL_N || //当前图像为RASL
        nalUnitType == NAL_UNIT_CODED_SLICE_RASL_R)
     {
-      if(this->getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_CRA)
+      if(this->getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_CRA)//邻近IRAP图像为CRA
       {
-        if(rpcPic->getSlice(0)->getPOC() < this->getAssociatedIRAPPOC() &&
+        if(rpcPic->getSlice(0)->getPOC() < this->getAssociatedIRAPPOC() &&            //该帧图像为当前图像邻近CRA图像的前一帧IRAP图像
            (rpcPic->getSlice(0)->getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_N_LP   ||
             rpcPic->getSlice(0)->getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_W_LP   ||
             rpcPic->getSlice(0)->getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_W_RADL ||
@@ -991,7 +995,7 @@ Void TComSlice::checkLeadingPictureRestrictions(TComList<TComPic*>& rcListPic)
             rpcPic->getSlice(0)->getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_W_RADL ||
             rpcPic->getSlice(0)->getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA))
         {
-          assert(this->getPOC() > rpcPic->getSlice(0)->getPOC());
+          assert(this->getPOC() > rpcPic->getSlice(0)->getPOC());//任何RASL输出顺序应该在 解码顺序在其邻近的CRA之前的IRAP之后
         }
       }
     }
@@ -1002,47 +1006,47 @@ Void TComSlice::checkLeadingPictureRestrictions(TComList<TComPic*>& rcListPic)
 
 /** Function for applying picture marking based on the Reference Picture Set in pReferencePictureSet.
 */
-Void TComSlice::applyReferencePictureSet( TComList<TComPic*>& rcListPic, const TComReferencePictureSet *pReferencePictureSet)
+Void TComSlice::applyReferencePictureSet( TComList<TComPic*>& rcListPic, const TComReferencePictureSet *pReferencePictureSet)//applying picture marking 根据RPS标记参考图像缓存中的图像
 {
   TComPic* rpcPic;
   Int i, isReference;
 
-  checkLeadingPictureRestrictions(rcListPic);
+  checkLeadingPictureRestrictions(rcListPic);//检查参考图像缓存中的图像是否都满足不同类型图像之间的约束
 
   // loop through all pictures in the reference picture buffer
   TComList<TComPic*>::iterator iterPic = rcListPic.begin();
-  while ( iterPic != rcListPic.end())
+  while ( iterPic != rcListPic.end())//遍历参考图像缓存中的所有图像
   {
     rpcPic = *(iterPic++);
 
-    if(!rpcPic->getSlice( 0 )->isReferenced())
+    if(!rpcPic->getSlice( 0 )->isReferenced())//如果该帧图像不被用作参考 则直接执行下一帧图像
     {
       continue;
     }
 
-    isReference = 0;
+    isReference = 0;//初始化该帧图像不会被用作参考
     // loop through all pictures in the Reference Picture Set
     // to see if the picture should be kept as reference picture
-    for(i=0;i<pReferencePictureSet->getNumberOfPositivePictures()+pReferencePictureSet->getNumberOfNegativePictures();i++)
+    for(i=0;i<pReferencePictureSet->getNumberOfPositivePictures()+pReferencePictureSet->getNumberOfNegativePictures();i++)//遍历RPS中的short term参考图像
     {
-      if(!rpcPic->getIsLongTerm() && rpcPic->getPicSym()->getSlice(0)->getPOC() == this->getPOC() + pReferencePictureSet->getDeltaPOC(i))
+      if(!rpcPic->getIsLongTerm() && rpcPic->getPicSym()->getSlice(0)->getPOC() == this->getPOC() + pReferencePictureSet->getDeltaPOC(i))//参考图像缓存中该帧图像不为long term且存在于当前图像的RPS中
       {
-        isReference = 1;
-        rpcPic->setUsedByCurr(pReferencePictureSet->getUsed(i));
-        rpcPic->setIsLongTerm(0);
+        isReference = 1;//则该帧图像用作参考图像
+        rpcPic->setUsedByCurr(pReferencePictureSet->getUsed(i));//该帧图像是否为被当前图像用作参考
+        rpcPic->setIsLongTerm(0);//不为long term 参考图像
       }
     }
-    for(;i<pReferencePictureSet->getNumberOfPictures();i++)
+    for(;i<pReferencePictureSet->getNumberOfPictures();i++)//遍历RPS中的long term参考图像
     {
-      if(pReferencePictureSet->getCheckLTMSBPresent(i)==true)
+      if(pReferencePictureSet->getCheckLTMSBPresent(i)==true)// 根据m_bCheckLTMSB来决定long term 参考图像的POC值最高有效位的处理
       {
-        if(rpcPic->getIsLongTerm() && (rpcPic->getPicSym()->getSlice(0)->getPOC()) == pReferencePictureSet->getPOC(i))
+        if(rpcPic->getIsLongTerm() && (rpcPic->getPicSym()->getSlice(0)->getPOC()) == pReferencePictureSet->getPOC(i))//参考图像缓存中该帧图像为long term且存在于当前图像的RPS中
         {
-          isReference = 1;
-          rpcPic->setUsedByCurr(pReferencePictureSet->getUsed(i));
+          isReference = 1;//则该帧图像用作参考图像
+          rpcPic->setUsedByCurr(pReferencePictureSet->getUsed(i));//该帧图像是否被当前图像用作参考
         }
       }
-      else
+      else//同上 
       {
         Int pocCycle = 1<<rpcPic->getPicSym()->getSlice(0)->getSPS()->getBitsForPOC();
         Int curPoc = rpcPic->getPicSym()->getSlice(0)->getPOC() & (pocCycle-1);
@@ -1057,21 +1061,21 @@ Void TComSlice::applyReferencePictureSet( TComList<TComPic*>& rcListPic, const T
     }
     // mark the picture as "unused for reference" if it is not in
     // the Reference Picture Set
-    if(rpcPic->getPicSym()->getSlice(0)->getPOC() != this->getPOC() && isReference == 0)
+    if(rpcPic->getPicSym()->getSlice(0)->getPOC() != this->getPOC() && isReference == 0)//该帧图像不被用作参考
     {
-      rpcPic->getSlice( 0 )->setReferenced( false );
-      rpcPic->setUsedByCurr(0);
-      rpcPic->setIsLongTerm(0);
+      rpcPic->getSlice( 0 )->setReferenced( false );//该帧图像不为参考图像
+      rpcPic->setUsedByCurr(0);//该帧图像不被当前图像用作参考
+      rpcPic->setIsLongTerm(0);//不为参考图像自然也不是long term参考图像
     }
     //check that pictures of higher temporal layers are not used
-    assert(rpcPic->getSlice( 0 )->isReferenced()==0||rpcPic->getUsedByCurr()==0||rpcPic->getTLayer()<=this->getTLayer());
+    assert(rpcPic->getSlice( 0 )->isReferenced()==0||rpcPic->getUsedByCurr()==0||rpcPic->getTLayer()<=this->getTLayer());//低时域层图像不能参考高时域层图像
     //check that pictures of higher or equal temporal layer are not in the RPS if the current picture is a TSA picture
     if(this->getNalUnitType() == NAL_UNIT_CODED_SLICE_TSA_R || this->getNalUnitType() == NAL_UNIT_CODED_SLICE_TSA_N)
     {
-      assert(rpcPic->getSlice( 0 )->isReferenced()==0||rpcPic->getTLayer()<this->getTLayer());
+      assert(rpcPic->getSlice( 0 )->isReferenced()==0||rpcPic->getTLayer()<this->getTLayer());//TSA图像的RPS中没有时域层高于或等于TSA所在时域层的图像（TSA的定义）
     }
     //check that pictures marked as temporal layer non-reference pictures are not used for reference
-    if(rpcPic->getPicSym()->getSlice(0)->getPOC() != this->getPOC() && rpcPic->getTLayer()==this->getTLayer())
+    if(rpcPic->getPicSym()->getSlice(0)->getPOC() != this->getPOC() && rpcPic->getTLayer()==this->getTLayer())//参考图像缓存中与当前图像相同时域层但没用作参考的图像
     {
       assert(rpcPic->getSlice( 0 )->isReferenced()==0||rpcPic->getUsedByCurr()==0||rpcPic->getSlice( 0 )->getTemporalLayerNonReferenceFlag()==false);
     }
@@ -1080,8 +1084,9 @@ Void TComSlice::applyReferencePictureSet( TComList<TComPic*>& rcListPic, const T
 
 /** Function for applying picture marking based on the Reference Picture Set in pReferencePictureSet.
 */
-Int TComSlice::checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, const TComReferencePictureSet *pReferencePictureSet, Bool printErrors, Int pocRandomAccess, Bool bUseRecoveryPoint)
-{
+//pReferencePictureSet为当前slice的PRS
+Int TComSlice::checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, const TComReferencePictureSet *pReferencePictureSet, Bool printErrors, Int pocRandomAccess, Bool bUseRecoveryPoint)//LastRecoveryPicPOC
+{//pocRandomAccess为random access（随机接入）时可以获得的最近的图像的POC值 输出顺序在该图像之前的图像无法获得
   Int atLeastOneUnabledByRecoveryPoint = 0;
   Int atLeastOneFlushedByPreviousIDR = 0;
   TComPic* rpcPic;
@@ -1092,29 +1097,29 @@ Int TComSlice::checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, c
 
   // loop through all long-term pictures in the Reference Picture Set
   // to see if the picture should be kept as reference picture
-  for(i=pReferencePictureSet->getNumberOfNegativePictures()+pReferencePictureSet->getNumberOfPositivePictures();i<pReferencePictureSet->getNumberOfPictures();i++)
+  for(i=pReferencePictureSet->getNumberOfNegativePictures()+pReferencePictureSet->getNumberOfPositivePictures();i<pReferencePictureSet->getNumberOfPictures();i++)//遍历RPS中的long term参考图像
   {
-    isAvailable = 0;
+    isAvailable = 0;//初始化参考图像不可获得
     // loop through all pictures in the reference picture buffer
     TComList<TComPic*>::iterator iterPic = rcListPic.begin();
-    while ( iterPic != rcListPic.end())
+    while ( iterPic != rcListPic.end())//遍历参考图像缓存中的所有图像
     {
       rpcPic = *(iterPic++);
-      if(pReferencePictureSet->getCheckLTMSBPresent(i)==true)
+      if(pReferencePictureSet->getCheckLTMSBPresent(i)==true)// 根据m_bCheckLTMSB来决定long term 参考图像的POC值最高有效位的处理
       {
-        if(rpcPic->getIsLongTerm() && (rpcPic->getPicSym()->getSlice(0)->getPOC()) == pReferencePictureSet->getPOC(i) && rpcPic->getSlice(0)->isReferenced())
+        if(rpcPic->getIsLongTerm() && (rpcPic->getPicSym()->getSlice(0)->getPOC()) == pReferencePictureSet->getPOC(i) && rpcPic->getSlice(0)->isReferenced())//该帧图像为long term 被用作参考且为当前图像RPS中的参考图像
         {
-          if(bUseRecoveryPoint && this->getPOC() > pocRandomAccess && this->getPOC() + pReferencePictureSet->getDeltaPOC(i) < pocRandomAccess)
-          {
-            isAvailable = 0;
+          if(bUseRecoveryPoint && this->getPOC() > pocRandomAccess && this->getPOC() + pReferencePictureSet->getDeltaPOC(i) < pocRandomAccess)//当前图像的该参考图像在当前图像前面的pocRandomAccess的前面
+          {                                                                                                                                   //一定要保证当前图像的POC大于pocRandomAccess 否则当前图像就属于另一个RandomAccess后
+            isAvailable = 0;//说明参考图像无法获得
           }
           else
           {
-            isAvailable = 1;
+            isAvailable = 1;//否则可以获得该参考图像
           }
         }
       }
-      else
+      else//同上
       {
         Int pocCycle = 1<<rpcPic->getPicSym()->getSlice(0)->getSPS()->getBitsForPOC();
         Int curPoc = rpcPic->getPicSym()->getSlice(0)->getPOC() & (pocCycle-1);
@@ -1133,7 +1138,7 @@ Int TComSlice::checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, c
       }
     }
     // if there was no such long-term check the short terms
-    if(!isAvailable)
+    if(!isAvailable)//参考图像缓存中的long term参考图像没有PRS中的参考图像 继续在参考图像缓存中的short term中找
     {
       iterPic = rcListPic.begin();
       while ( iterPic != rcListPic.end())
@@ -1141,24 +1146,24 @@ Int TComSlice::checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, c
         rpcPic = *(iterPic++);
 
         Int pocCycle = 1 << rpcPic->getPicSym()->getSlice(0)->getSPS()->getBitsForPOC();
-        Int curPoc = rpcPic->getPicSym()->getSlice(0)->getPOC();
-        Int refPoc = pReferencePictureSet->getPOC(i);
+        Int curPoc = rpcPic->getPicSym()->getSlice(0)->getPOC();//当前图像的POC
+        Int refPoc = pReferencePictureSet->getPOC(i);//参考图像的POC
         if (!pReferencePictureSet->getCheckLTMSBPresent(i))
         {
           curPoc = curPoc & (pocCycle - 1);
           refPoc = refPoc & (pocCycle - 1);
         }
 
-        if (rpcPic->getSlice(0)->isReferenced() && curPoc == refPoc)
+        if (rpcPic->getSlice(0)->isReferenced() && curPoc == refPoc)//不用保证参考图像缓存中的图像为long term（因为short term可能在当前图像参考后变为long term）
         {
-          if(bUseRecoveryPoint && this->getPOC() > pocRandomAccess && this->getPOC() + pReferencePictureSet->getDeltaPOC(i) < pocRandomAccess)
+          if(bUseRecoveryPoint && this->getPOC() > pocRandomAccess && this->getPOC() + pReferencePictureSet->getDeltaPOC(i) < pocRandomAccess)//参考图像在pocRandomAccess之前 
           {
-            isAvailable = 0;
+            isAvailable = 0;//randomaccess时无法获得
           }
           else
           {
             isAvailable = 1;
-            rpcPic->setIsLongTerm(1);
+            rpcPic->setIsLongTerm(1);//从此将该参考图像标记成long term参考图像
             break;
           }
         }
@@ -1166,42 +1171,42 @@ Int TComSlice::checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, c
     }
     // report that a picture is lost if it is in the Reference Picture Set
     // but not available as reference picture
-    if(isAvailable == 0)
+    if(isAvailable == 0)//如果当前图像RPS中参考图像无法获得
     {
-      if (this->getPOC() + pReferencePictureSet->getDeltaPOC(i) >= pocRandomAccess)
+      if (this->getPOC() + pReferencePictureSet->getDeltaPOC(i) >= pocRandomAccess)//在RandomAccess时本应该可以获得该参考图像
       {
-        if(!pReferencePictureSet->getUsed(i) )
+        if(!pReferencePictureSet->getUsed(i) )//该参考图像不被当前图像用作参考
         {
           if(printErrors)
-          {
+          {//该参考图像不被当前用作参考而可能在缓存中错误的移除了
             printf("\nLong-term reference picture with POC = %3d seems to have been removed or not correctly decoded.", this->getPOC() + pReferencePictureSet->getDeltaPOC(i));
           }
-          atLeastOneRemoved = 1;
+          atLeastOneRemoved = 1;//设置标志
         }
-        else
+        else//该参考图像被当前图像用作参考
         {
           if(printErrors)
-          {
+          {//在缓存中产生错误而丢失
             printf("\nLong-term reference picture with POC = %3d is lost or not correctly decoded!", this->getPOC() + pReferencePictureSet->getDeltaPOC(i));
           }
-          atLeastOneLost = 1;
-          iPocLost=this->getPOC() + pReferencePictureSet->getDeltaPOC(i);
+          atLeastOneLost = 1;//设置标志
+          iPocLost=this->getPOC() + pReferencePictureSet->getDeltaPOC(i);//丢失的参考图像的POC值
         }
       }
-      else if(bUseRecoveryPoint && this->getPOC() > pocRandomAccess)
+      else if(bUseRecoveryPoint && this->getPOC() > pocRandomAccess)//因randomaccess时该参考图像在pocrandomaccess之前而无法恢复
       {
-        atLeastOneUnabledByRecoveryPoint = 1;
+        atLeastOneUnabledByRecoveryPoint = 1;//设置标志
       }
-      else if(bUseRecoveryPoint && (this->getAssociatedIRAPType()==NAL_UNIT_CODED_SLICE_IDR_N_LP || this->getAssociatedIRAPType()==NAL_UNIT_CODED_SLICE_IDR_W_RADL))
-      {
+      else if(bUseRecoveryPoint && (this->getAssociatedIRAPType()==NAL_UNIT_CODED_SLICE_IDR_N_LP || this->getAssociatedIRAPType()==NAL_UNIT_CODED_SLICE_IDR_W_RADL))//当前图像邻近IRAP为IDR
+      {//randomaccess时该参考图像在pocrandomaccess之前 当前图像也在pocrandomaccess之前 该情况下本应可以获得参考图像 但当前图像邻近IRAP为IDR时 IDR为CVS中解码第一帧 无法获得较IDR更之前的帧
         atLeastOneFlushedByPreviousIDR = 1;
       }
     }
   }
   // loop through all short-term pictures in the Reference Picture Set
   // to see if the picture should be kept as reference picture
-  for(i=0;i<pReferencePictureSet->getNumberOfNegativePictures()+pReferencePictureSet->getNumberOfPositivePictures();i++)
-  {
+  for(i=0;i<pReferencePictureSet->getNumberOfNegativePictures()+pReferencePictureSet->getNumberOfPositivePictures();i++)//遍历RPS中的short term参考图像
+  {//RPS中short term不用在参考图像缓存中的long term中找 因为参考图像缓存中的long term不可能转换成short term 其他基本同上 不在叙述
     isAvailable = 0;
     // loop through all pictures in the reference picture buffer
     TComList<TComPic*>::iterator iterPic = rcListPic.begin();
@@ -1227,7 +1232,7 @@ Int TComSlice::checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, c
     {
       if (this->getPOC() + pReferencePictureSet->getDeltaPOC(i) >= pocRandomAccess)
       {
-        if(!pReferencePictureSet->getUsed(i) )
+        if(!pReferencePictureSet->getUsed(i) )//不用作参考图像 被移除
         {
           if(printErrors)
           {
@@ -1235,7 +1240,7 @@ Int TComSlice::checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, c
           }
           atLeastOneRemoved = 1;
         }
-        else
+        else//用作参考图形 但不存在于rcListPic中  说明该帧图像丢失
         {
           if(printErrors)
           {
@@ -1283,8 +1288,8 @@ Void TComSlice::createExplicitReferencePictureSetFromReference( TComList<TComPic
   Int k = 0;
   Int nrOfNegativePictures = 0;
   Int nrOfPositivePictures = 0;
-  TComReferencePictureSet* pLocalRPS = this->getLocalRPS();
-  (*pLocalRPS)=TComReferencePictureSet();
+  TComReferencePictureSet* pLocalRPS = this->getLocalRPS();//当前slice LocalRPS的地址 LocalRPS指的是在slice header中PRS 而不是通过PRS索引在SPS中对应的RPS
+  (*pLocalRPS)=TComReferencePictureSet();//LocalRPS初始化 置成默认值
 
   Bool irapIsInRPS = false; // Used when bEfficientFieldIRAPEnabled==true
 
@@ -1329,7 +1334,7 @@ Void TComSlice::createExplicitReferencePictureSetFromReference( TComList<TComPic
 
   Bool useNewRPS = false;
   // if current picture is complimentary field associated to IRAP, add the IRAP to its RPS. 
-  if(bEfficientFieldIRAPEnabled && m_pcPic->isField() && !irapIsInRPS)
+  if(bEfficientFieldIRAPEnabled && m_pcPic->isField() && !irapIsInRPS)//IRAP不在RPS中
   {
     TComList<TComPic*>::iterator iterPic = rcListPic.begin();
     while ( iterPic != rcListPic.end())
@@ -1358,7 +1363,7 @@ Void TComSlice::createExplicitReferencePictureSetFromReference( TComList<TComPic
   }
   else
   {
-    Int rIdx =  this->getRPSidx() - pReferencePictureSet->getDeltaRIdxMinus1() - 1;
+    Int rIdx =  this->getRPSidx() - pReferencePictureSet->getDeltaRIdxMinus1() - 1;//
     Int deltaRPS = pReferencePictureSet->getDeltaRPS();
     const TComReferencePictureSet* pcRefRPS = this->getSPS()->getRPSList()->getReferencePictureSet(rIdx);
     Int iRefPics = pcRefRPS->getNumberOfPictures();
@@ -2051,17 +2056,17 @@ Bool TComScalingList::xParseScalingList(Char* pchFile)
  * \returns pointer of quantization matrix
  */
 const Int* TComScalingList::getScalingListDefaultAddress(UInt sizeId, UInt listId)
-{//����Ĭ�����������ַ
+{//����Ĭ�����������ַ
   const Int *src = 0;
-  switch(sizeId)//�ж����������С
+  switch(sizeId)//�ж����������С
   {
-    case SCALING_LIST_4x4://4*4��Сֱ�ӵõ�
+    case SCALING_LIST_4x4://4*4��Сֱ�ӵõ�
       src = g_quantTSDefault4x4;
       break;
     case SCALING_LIST_8x8:
     case SCALING_LIST_16x16:
     case SCALING_LIST_32x32:
-      src = (listId < (SCALING_LIST_NUM/NUMBER_OF_PREDICTION_MODES) ) ? g_quantIntraDefault8x8 : g_quantInterDefault8x8;//������С��ѡ���Ӧģʽ8*8�������� 16*16 32*32��8*8�ϲ����õ�
+      src = (listId < (SCALING_LIST_NUM/NUMBER_OF_PREDICTION_MODES) ) ? g_quantIntraDefault8x8 : g_quantInterDefault8x8;//������С��ѡ���Ӧģʽ8*8�������� 16*16 32*32��8*8�ϲ����õ�
       break;
     default:
       assert(0);

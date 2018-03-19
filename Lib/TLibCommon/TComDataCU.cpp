@@ -437,7 +437,7 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )//初始化CTU信息
   const UInt maxCUWidth = pcPic->getPicSym()->getSPS().getMaxCUWidth();//最大CU宽度（默认下为64）
   const UInt maxCUHeight= pcPic->getPicSym()->getSPS().getMaxCUHeight();//最大CU高度（默认下为64）
   m_pcPic              = pcPic;
-  m_pcSlice            = pcPic->getSlice(pcPic->getCurrSliceIdx());
+  m_pcSlice            = pcPic->getSlice(pcPic->getCurrSliceIdx());//该CTU所属的slice
   m_ctuRsAddr          = ctuRsAddr;//CTU在一帧图像中的位置索引　raster　scan
   m_uiCUPelX           = ( ctuRsAddr % pcPic->getFrameWidthInCtus() ) * maxCUWidth;//该CTU（左上角像素）在图像中的坐标位置
   m_uiCUPelY           = ( ctuRsAddr / pcPic->getFrameWidthInCtus() ) * maxCUHeight;
@@ -1142,7 +1142,7 @@ TComDataCU* TComDataCU::getPUAboveLeft( UInt& uiALPartUnitIdx, UInt uiCurrPartUn
 
 TComDataCU* TComDataCU::getPUBelowLeft(UInt& uiBLPartUnitIdx,  UInt uiCurrPartUnitIdx, UInt uiPartUnitOffset, Bool bEnforceSliceRestriction)//uiPartUnitOffset表示当前PU向下的偏移量
 {
-  UInt uiAbsPartIdxLB     = g_auiZscanToRaster[uiCurrPartUnitIdx];//uiAbsPartIdxLB表示当前PU左下4*4小块的位置
+  UInt uiAbsPartIdxLB     = g_auiZscanToRaster[uiCurrPartUnitIdx];//uiAbsPartIdxLB表示当前PU左下4*4小块的位置！！
   const UInt numPartInCtuWidth = m_pcPic->getNumPartInCtuWidth();
   UInt uiAbsZorderCUIdxLB = g_auiZscanToRaster[ m_absZIdxInCtu ] + ((m_puhHeight[0] / m_pcPic->getMinCUHeight()) - 1)*numPartInCtuWidth;
 
@@ -1156,9 +1156,9 @@ TComDataCU* TComDataCU::getPUBelowLeft(UInt& uiBLPartUnitIdx,  UInt uiCurrPartUn
   {
     if ( !RasterAddress::isZeroCol( uiAbsPartIdxLB, numPartInCtuWidth ) )//当前PU与其所在CTU的左边界不相邻　(说明左下PU在当前CU或CTU中)
     {
-      if ( uiCurrPartUnitIdx > g_auiRasterToZscan[ uiAbsPartIdxLB + uiPartUnitOffset * numPartInCtuWidth - 1 ] )//PU是针对一个CU划分的　除去SIZE_NxN的分割模式外左下PU与当前PU必定不在同一个CU中故存在z order索引的跳跃　左下方小块的索引一定小于当前小块　
-      {　//该判断语句不好理解　需对照CTU的z order索引表仔细观察　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　//而在SIZE_NxN的分割模式中最小PU块为8*8!!左下PU与当前PU也存在z order索引的跳跃 所以无论那种情况都有左下方小块的索引一定小于当前小块　该条判断语句就确保了左下方小块与当前小块不在同一个PU中
-        uiBLPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdxLB + uiPartUnitOffset * numPartInCtuWidth - 1 ];//左下小块的位置也代表左下PU的位置
+      if ( uiCurrPartUnitIdx > g_auiRasterToZscan[ uiAbsPartIdxLB + uiPartUnitOffset * numPartInCtuWidth - 1 ] )//左下角的PU z order顺序在当前PU之前　这样才能确保解码过程中先得到左下角信息　否则无法得到左下角PU!!
+      {　//该判断语句不好理解　需对照CTU的z order索引表仔细观察　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　
+        uiBLPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdxLB + uiPartUnitOffset * numPartInCtuWidth - 1 ];//左下小块的位置代表左下PU的位置
         if ( RasterAddress::isEqualRowOrCol( uiAbsPartIdxLB, uiAbsZorderCUIdxLB, numPartInCtuWidth ) )//若当前PU与其所在CU的的左边界或下边界相邻（说明左上方PU不在同一个CU中　而在同一个CTU中）
         {
           return m_pcPic->getCtu( getCtuRsAddr() );//返回当前CTU
@@ -1180,7 +1180,7 @@ TComDataCU* TComDataCU::getPUBelowLeft(UInt& uiBLPartUnitIdx,  UInt uiCurrPartUn
     }
     return m_pCtuLeft;//
   }
-  //注意！　此处没有判断左下PU是否在左下的CTU中的原因是解码的过程中是以raster顺序解码的　故无法获得左下的CTU
+  //注意！　此处没有判断左下PU是否在左下的CTU中的原因是解码的过程中左下CTU较当前CTU后解码　故无法获得左下的CTU的信息
   uiBLPartUnitIdx = MAX_UINT;
   return NULL;
 }
@@ -1201,7 +1201,7 @@ TComDataCU* TComDataCU::getPUAboveRight(UInt&  uiARPartUnitIdx, UInt uiCurrPartU
   {
     if ( !RasterAddress::isZeroRow( uiAbsPartIdxRT, numPartInCtuWidth ) )
     {
-      if ( uiCurrPartUnitIdx > g_auiRasterToZscan[ uiAbsPartIdxRT - numPartInCtuWidth + uiPartUnitOffset ] )
+      if ( uiCurrPartUnitIdx > g_auiRasterToZscan[ uiAbsPartIdxRT - numPartInCtuWidth + uiPartUnitOffset ] )//右上角的PU z order顺序在当前PU之前　这样才能确保解码过程中先得到右上角信息　否则无法得到右上角PU
       {
         uiARPartUnitIdx = g_auiRasterToZscan[ uiAbsPartIdxRT - numPartInCtuWidth + uiPartUnitOffset ];
         if ( RasterAddress::isEqualRowOrCol( uiAbsPartIdxRT, uiAbsZorderCUIdx, numPartInCtuWidth ) )
@@ -1664,26 +1664,26 @@ Void TComDataCU::setChromaQpAdjSubParts( UChar val, Int absPartIdx, Int depth )/
 
 Void TComDataCU::setQPSubCUs( Int qp, UInt absPartIdx, UInt depth, Bool &foundNonZeroCbf )
 {
-  UInt currPartNumb = m_pcPic->getNumPartitionsInCtu() >> (depth << 1);
-  UInt currPartNumQ = currPartNumb >> 2;
+  UInt currPartNumb = m_pcPic->getNumPartitionsInCtu() >> (depth << 1);//当前CU4*4小块的个数
+  UInt currPartNumQ = currPartNumb >> 2;//当前CU的下一深度的子CU4*4小块的个数
   const UInt numValidComp = m_pcPic->getNumberValidComponents();
 
-  if(!foundNonZeroCbf)
+  if(!foundNonZeroCbf)//如果当前CU不存在非零变换系数
   {
-    if(getDepth(absPartIdx) > depth)
+    if(getDepth(absPartIdx) > depth)//存在子CU
     {
-      for ( UInt partUnitIdx = 0; partUnitIdx < 4; partUnitIdx++ )
+      for ( UInt partUnitIdx = 0; partUnitIdx < 4; partUnitIdx++ )//深度遍历四个子CU　为所有子CU设置QP值
       {
         setQPSubCUs( qp, absPartIdx+partUnitIdx*currPartNumQ, depth+1, foundNonZeroCbf );
       }
     }
-    else
+    else//如果不存在子CU（递归遍历到最深）
     {
-      if(getCbf( absPartIdx, COMPONENT_Y ) || (numValidComp>COMPONENT_Cb && getCbf( absPartIdx, COMPONENT_Cb )) || (numValidComp>COMPONENT_Cr && getCbf( absPartIdx, COMPONENT_Cr) ) )
+      if(getCbf( absPartIdx, COMPONENT_Y ) || (numValidComp>COMPONENT_Cb && getCbf( absPartIdx, COMPONENT_Cb )) || (numValidComp>COMPONENT_Cr && getCbf( absPartIdx, COMPONENT_Cr) ) )//判断是否存在非零的变换系数
       {
-        foundNonZeroCbf = true;
+        foundNonZeroCbf = true;//设置foundNonZeroCbf标志值
       }
-      else
+      else//如果当前CU不存在非零变换系数 设置QP
       {
         setQPSubParts(qp, absPartIdx, depth);
       }
@@ -1691,46 +1691,47 @@ Void TComDataCU::setQPSubCUs( Int qp, UInt absPartIdx, UInt depth, Bool &foundNo
   }
 }
 
-Void TComDataCU::setQPSubParts( Int qp, UInt uiAbsPartIdx, UInt uiDepth )
+Void TComDataCU::setQPSubParts( Int qp, UInt uiAbsPartIdx, UInt uiDepth )//为深度为uiDepth 位置为uiAbsPartIdx的子块设置QP值
+{
 {
   const UInt numPart = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
   memset(m_phQP+uiAbsPartIdx, qp, numPart);
 }
 
-Void TComDataCU::setIntraDirSubParts( const ChannelType channelType, const UInt dir, const UInt absPartIdx, const UInt depth )
+Void TComDataCU::setIntraDirSubParts( const ChannelType channelType, const UInt dir, const UInt absPartIdx, const UInt depth )//为深度为uiDepth 位置为uiAbsPartIdx 通道类型为channelType的Cb设置帧内预测模式
 {
   UInt numPart = m_pcPic->getNumPartitionsInCtu() >> (depth << 1);
   memset( m_puhIntraDir[channelType] + absPartIdx, dir,sizeof(UChar)*numPart );
 }
 
-template<typename T>
-Void TComDataCU::setSubPart( T uiParameter, T* puhBaseCtu, UInt uiCUAddr, UInt uiCUDepth, UInt uiPUIdx )
-{
+template<typename T>//模板函数
+Void TComDataCU::setSubPart( T uiParameter, T* puhBaseCtu, UInt uiCUAddr, UInt uiCUDepth, UInt uiPUIdx )//为给定地址　深度　PU索引的PU块设置参数
+{//对照CU帧间预测的PU划分模式图很好看懂（位置描述为CTU中4*4小块的z order）
   assert( sizeof(T) == 1 ); // Using memset() works only for types of size 1
 
-  UInt uiCurrPartNumQ = (m_pcPic->getNumPartitionsInCtu() >> (2 * uiCUDepth)) >> 2;
-  switch ( m_pePartSize[ uiCUAddr ] )
-  {
+  UInt uiCurrPartNumQ = (m_pcPic->getNumPartitionsInCtu() >> (2 * uiCUDepth)) >> 2;//当前深度CU的1/4块的小块数目　
+  switch ( m_pePartSize[ uiCUAddr ] )//判断Pu分割模式
+  {//对称分割模式下不需要指明PU块索引
     case SIZE_2Nx2N:
-      memset( puhBaseCtu + uiCUAddr, uiParameter, 4 * uiCurrPartNumQ );
+      memset( puhBaseCtu + uiCUAddr, uiParameter, 4 * uiCurrPartNumQ );//整块设置参数
       break;
     case SIZE_2NxN:
-      memset( puhBaseCtu + uiCUAddr, uiParameter, 2 * uiCurrPartNumQ );
+      memset( puhBaseCtu + uiCUAddr, uiParameter, 2 * uiCurrPartNumQ );//上半块设置参数
       break;
-    case SIZE_Nx2N:
+    case SIZE_Nx2N://左侧半块设置参数
       memset( puhBaseCtu + uiCUAddr, uiParameter, uiCurrPartNumQ );
       memset( puhBaseCtu + uiCUAddr + 2 * uiCurrPartNumQ, uiParameter, uiCurrPartNumQ );
       break;
-    case SIZE_NxN:
+    case SIZE_NxN://左上1/4块设置参数
       memset( puhBaseCtu + uiCUAddr, uiParameter, uiCurrPartNumQ );
       break;
     case SIZE_2NxnU:
-      if ( uiPUIdx == 0 )
+      if ( uiPUIdx == 0 )//上半1/4块设置参数
       {
         memset( puhBaseCtu + uiCUAddr, uiParameter, (uiCurrPartNumQ >> 1) );
         memset( puhBaseCtu + uiCUAddr + uiCurrPartNumQ, uiParameter, (uiCurrPartNumQ >> 1) );
       }
-      else if ( uiPUIdx == 1 )
+      else if ( uiPUIdx == 1 )//下半３/4块设置参数
       {
         memset( puhBaseCtu + uiCUAddr, uiParameter, (uiCurrPartNumQ >> 1) );
         memset( puhBaseCtu + uiCUAddr + uiCurrPartNumQ, uiParameter, ((uiCurrPartNumQ >> 1) + (uiCurrPartNumQ << 1)) );
@@ -1741,12 +1742,12 @@ Void TComDataCU::setSubPart( T uiParameter, T* puhBaseCtu, UInt uiCUAddr, UInt u
       }
       break;
     case SIZE_2NxnD:
-      if ( uiPUIdx == 0 )
+      if ( uiPUIdx == 0 )//上半3/4块设置参数
       {
         memset( puhBaseCtu + uiCUAddr, uiParameter, ((uiCurrPartNumQ << 1) + (uiCurrPartNumQ >> 1)) );
         memset( puhBaseCtu + uiCUAddr + (uiCurrPartNumQ << 1) + uiCurrPartNumQ, uiParameter, (uiCurrPartNumQ >> 1) );
       }
-      else if ( uiPUIdx == 1 )
+      else if ( uiPUIdx == 1 )//下半1/4块设置参数
       {
         memset( puhBaseCtu + uiCUAddr, uiParameter, (uiCurrPartNumQ >> 1) );
         memset( puhBaseCtu + uiCUAddr + uiCurrPartNumQ, uiParameter, (uiCurrPartNumQ >> 1) );
@@ -1757,14 +1758,14 @@ Void TComDataCU::setSubPart( T uiParameter, T* puhBaseCtu, UInt uiCUAddr, UInt u
       }
       break;
     case SIZE_nLx2N:
-      if ( uiPUIdx == 0 )
+      if ( uiPUIdx == 0 )//左侧1/4块设置参数
       {
         memset( puhBaseCtu + uiCUAddr, uiParameter, (uiCurrPartNumQ >> 2) );
         memset( puhBaseCtu + uiCUAddr + (uiCurrPartNumQ >> 1), uiParameter, (uiCurrPartNumQ >> 2) );
         memset( puhBaseCtu + uiCUAddr + (uiCurrPartNumQ << 1), uiParameter, (uiCurrPartNumQ >> 2) );
         memset( puhBaseCtu + uiCUAddr + (uiCurrPartNumQ << 1) + (uiCurrPartNumQ >> 1), uiParameter, (uiCurrPartNumQ >> 2) );
       }
-      else if ( uiPUIdx == 1 )
+      else if ( uiPUIdx == 1 )//右侧３/4块设置参数
       {
         memset( puhBaseCtu + uiCUAddr, uiParameter, (uiCurrPartNumQ >> 2) );
         memset( puhBaseCtu + uiCUAddr + (uiCurrPartNumQ >> 1), uiParameter, (uiCurrPartNumQ + (uiCurrPartNumQ >> 2)) );
@@ -1776,7 +1777,7 @@ Void TComDataCU::setSubPart( T uiParameter, T* puhBaseCtu, UInt uiCUAddr, UInt u
         assert(0);
       }
       break;
-    case SIZE_nRx2N:
+    case SIZE_nRx2N://右侧1/4块设置参数
       if ( uiPUIdx == 0 )
       {
         memset( puhBaseCtu + uiCUAddr, uiParameter, (uiCurrPartNumQ + (uiCurrPartNumQ >> 2)) );
@@ -1784,7 +1785,7 @@ Void TComDataCU::setSubPart( T uiParameter, T* puhBaseCtu, UInt uiCUAddr, UInt u
         memset( puhBaseCtu + uiCUAddr + (uiCurrPartNumQ << 1), uiParameter, (uiCurrPartNumQ + (uiCurrPartNumQ >> 2)) );
         memset( puhBaseCtu + uiCUAddr + (uiCurrPartNumQ << 1) + uiCurrPartNumQ + (uiCurrPartNumQ >> 1), uiParameter, (uiCurrPartNumQ >> 2) );
       }
-      else if ( uiPUIdx == 1 )
+      else if ( uiPUIdx == 1 )//左侧３/4块设置参数
       {
         memset( puhBaseCtu + uiCUAddr, uiParameter, (uiCurrPartNumQ >> 2) );
         memset( puhBaseCtu + uiCUAddr + (uiCurrPartNumQ >> 1), uiParameter, (uiCurrPartNumQ >> 2) );
@@ -1801,41 +1802,41 @@ Void TComDataCU::setSubPart( T uiParameter, T* puhBaseCtu, UInt uiCUAddr, UInt u
       break;
   }
 }
-
-Void TComDataCU::setMergeFlagSubParts ( Bool bMergeFlag, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )
+//用模板函数为不同类型的参数对子块赋值
+Void TComDataCU::setMergeFlagSubParts ( Bool bMergeFlag, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )// 为merge标志赋值
 {
   setSubPart( bMergeFlag, m_pbMergeFlag, uiAbsPartIdx, uiDepth, uiPartIdx );
 }
 
-Void TComDataCU::setMergeIndexSubParts ( UInt uiMergeIndex, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )
+Void TComDataCU::setMergeIndexSubParts ( UInt uiMergeIndex, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )//为merge索引赋值（候选列表中最优运动矢量在列表中的位置）
 {
   setSubPart<UChar>( uiMergeIndex, m_puhMergeIndex, uiAbsPartIdx, uiDepth, uiPartIdx );
 }
 
-Void TComDataCU::setInterDirSubParts( UInt uiDir, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )
+Void TComDataCU::setInterDirSubParts( UInt uiDir, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )//为帧间预测方向
 {
   setSubPart<UChar>( uiDir, m_puhInterDir, uiAbsPartIdx, uiDepth, uiPartIdx );
 }
 
-Void TComDataCU::setMVPIdxSubParts( Int iMVPIdx, RefPicList eRefPicList, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )
+Void TComDataCU::setMVPIdxSubParts( Int iMVPIdx, RefPicList eRefPicList, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )//为参考图像列表中运动矢量预测的索引（在候选列表中的位置）赋值
 {
   setSubPart<Char>( iMVPIdx, m_apiMVPIdx[eRefPicList], uiAbsPartIdx, uiDepth, uiPartIdx );
 }
 
-Void TComDataCU::setMVPNumSubParts( Int iMVPNum, RefPicList eRefPicList, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )
+Void TComDataCU::setMVPNumSubParts( Int iMVPNum, RefPicList eRefPicList, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )//参考图像列表中运动矢量预测可能的个数赋值
 {
   setSubPart<Char>( iMVPNum, m_apiMVPNum[eRefPicList], uiAbsPartIdx, uiDepth, uiPartIdx );
 }
 
 
-Void TComDataCU::setTrIdxSubParts( UInt uiTrIdx, UInt uiAbsPartIdx, UInt uiDepth )
+Void TComDataCU::setTrIdxSubParts( UInt uiTrIdx, UInt uiAbsPartIdx, UInt uiDepth )//为给定位置和深度的子块的变换索引赋值
 {
   UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
 
   memset( m_puhTrIdx + uiAbsPartIdx, uiTrIdx, sizeof(UChar)*uiCurrPartNumb );
 }
 
-Void TComDataCU::setTransformSkipSubParts( const UInt useTransformSkip[MAX_NUM_COMPONENT], UInt uiAbsPartIdx, UInt uiDepth )
+Void TComDataCU::setTransformSkipSubParts( const UInt useTransformSkip[MAX_NUM_COMPONENT], UInt uiAbsPartIdx, UInt uiDepth )//为给定位置和深度的子块的TransformSkip标志赋值(是否跳过变换这一步)
 {
   UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
 
@@ -1845,29 +1846,29 @@ Void TComDataCU::setTransformSkipSubParts( const UInt useTransformSkip[MAX_NUM_C
   }
 }
 
-Void TComDataCU::setTransformSkipSubParts( UInt useTransformSkip, ComponentID compID, UInt uiAbsPartIdx, UInt uiDepth)
+Void TComDataCU::setTransformSkipSubParts( UInt useTransformSkip, ComponentID compID, UInt uiAbsPartIdx, UInt uiDepth)//为给定位置和深度的子块的useTransformSkip标志赋值（是否使用TransformSkip）
 {
   UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
 
   memset( m_puhTransformSkip[compID] + uiAbsPartIdx, useTransformSkip, sizeof( UChar ) * uiCurrPartNumb );
 }
 
-Void TComDataCU::setTransformSkipPartRange ( UInt useTransformSkip, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes )
+Void TComDataCU::setTransformSkipPartRange ( UInt useTransformSkip, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes )//为给定位置和范围的4*4小块的useTransformSkip标志赋值
 {
   memset((m_puhTransformSkip[compID] + uiAbsPartIdx), useTransformSkip, (sizeof(UChar) * uiCoveredPartIdxes));
 }
 
-Void TComDataCU::setCrossComponentPredictionAlphaPartRange( Char alphaValue, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes )
+Void TComDataCU::setCrossComponentPredictionAlphaPartRange( Char alphaValue, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes )//为给定位置和范围的4*4小块的CCP的alpha值赋值
 {
   memset((m_crossComponentPredictionAlpha[compID] + uiAbsPartIdx), alphaValue, (sizeof(Char) * uiCoveredPartIdxes));
 }
 
-Void TComDataCU::setExplicitRdpcmModePartRange ( UInt rdpcmMode, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes )
+Void TComDataCU::setExplicitRdpcmModePartRange ( UInt rdpcmMode, ComponentID compID, UInt uiAbsPartIdx, UInt uiCoveredPartIdxes )//为给定位置和范围的4*4小块的rdpcm模式赋值
 {
   memset((m_explicitRdpcmMode[compID] + uiAbsPartIdx), rdpcmMode, (sizeof(UChar) * uiCoveredPartIdxes));
 }
 
-Void TComDataCU::setSizeSubParts( UInt uiWidth, UInt uiHeight, UInt uiAbsPartIdx, UInt uiDepth )
+Void TComDataCU::setSizeSubParts( UInt uiWidth, UInt uiHeight, UInt uiAbsPartIdx, UInt uiDepth )//为给定位置和深度的子块的宽高赋值
 {
   UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
 
@@ -1875,7 +1876,7 @@ Void TComDataCU::setSizeSubParts( UInt uiWidth, UInt uiHeight, UInt uiAbsPartIdx
   memset( m_puhHeight + uiAbsPartIdx, uiHeight, sizeof(UChar)*uiCurrPartNumb );
 }
 
-UChar TComDataCU::getNumPartitions(const UInt uiAbsPartIdx)
+UChar TComDataCU::getNumPartitions(const UInt uiAbsPartIdx)//得到给定位置的CU块分割的PU块的个数
 {
   UChar iNumPart = 0;
 
@@ -1899,7 +1900,7 @@ UChar TComDataCU::getNumPartitions(const UInt uiAbsPartIdx)
 Void TComDataCU::getPartIndexAndSize( UInt uiPartIdx, UInt& ruiPartAddr, Int& riWidth, Int& riHeight )
 {//uiPartIdx为当前CU不同PU块的划分对应PU块的索引　ruiPartAddr为索引对应PU块起始４＊４小块在CU块中的偏移量（Z形递归扫描　４＊４小块为基本扫描单位）
   switch ( m_pePartSize[0] )//CU分割成PU共有８种分法
-  {//m_uiNumPartition为当前CU可分为４＊４最小块的个数
+  {//m_uiNumPartition为当前CU可分为４＊４最小块的个数　//对照CU的PU分割模式图易懂　不在详述
     case SIZE_2NxN:
       riWidth = getWidth(0);      riHeight = getHeight(0) >> 1; ruiPartAddr = ( uiPartIdx == 0 )? 0 : m_uiNumPartition >> 1;
       break;
@@ -1937,26 +1938,26 @@ Void TComDataCU::getPartIndexAndSize( UInt uiPartIdx, UInt& ruiPartAddr, Int& ri
 }
 
 
-Void TComDataCU::getMvField ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList, TComMvField& rcMvField )
+Void TComDataCU::getMvField ( TComDataCU* pcCU, UInt uiAbsPartIdx, RefPicList eRefPicList, TComMvField& rcMvField )//得到给定位置(PU)的运动矢量信息
 {
-  if ( pcCU == NULL )  // OUT OF BOUNDARY
+  if ( pcCU == NULL )  // OUT OF BOUNDARY//为空（超出能获取的返回）　运动矢量信息置为无效
   {
     TComMv  cZeroMv;
     rcMvField.setMvField( cZeroMv, NOT_VALID );
     return;
   }
 
-  TComCUMvField*  pcCUMvField = pcCU->getCUMvField( eRefPicList );
-  rcMvField.setMvField( pcCUMvField->getMv( uiAbsPartIdx ), pcCUMvField->getRefIdx( uiAbsPartIdx ) );
+  TComCUMvField*  pcCUMvField = pcCU->getCUMvField( eRefPicList );//该CU在参考图像列表eRefPicList中的运动矢量信息
+  rcMvField.setMvField( pcCUMvField->getMv( uiAbsPartIdx ), pcCUMvField->getRefIdx( uiAbsPartIdx ) );//为uiAbsPartIdx位置设置运动矢量信息
 }
 
-Void TComDataCU::deriveLeftRightTopIdxGeneral ( UInt uiAbsPartIdx, UInt uiPartIdx, UInt& ruiPartIdxLT, UInt& ruiPartIdxRT )
-{
-  ruiPartIdxLT = m_absZIdxInCtu + uiAbsPartIdx;
+Void TComDataCU::deriveLeftRightTopIdxGeneral ( UInt uiAbsPartIdx, UInt uiPartIdx, UInt& ruiPartIdxLT, UInt& ruiPartIdxRT )//得到给定位置pU块内左上角和右上角的位置
+{//uiAbsPartIdx为CU中Pu块的起始位置
+  ruiPartIdxLT = m_absZIdxInCtu + uiAbsPartIdx;//PU块左上角位置
   UInt uiPUWidth = 0;
 
-  switch ( m_pePartSize[uiAbsPartIdx] )
-  {
+  switch ( m_pePartSize[uiAbsPartIdx] )//判断PU分割模式
+  {//得到不同模式下对应uiPartIdx索引的PU块的宽
     case SIZE_2Nx2N: uiPUWidth = m_puhWidth[uiAbsPartIdx];  break;
     case SIZE_2NxN:  uiPUWidth = m_puhWidth[uiAbsPartIdx];   break;
     case SIZE_Nx2N:  uiPUWidth = m_puhWidth[uiAbsPartIdx]  >> 1;  break;
@@ -1996,14 +1997,14 @@ Void TComDataCU::deriveLeftRightTopIdxGeneral ( UInt uiAbsPartIdx, UInt uiPartId
       break;
   }
 
-  ruiPartIdxRT = g_auiRasterToZscan [g_auiZscanToRaster[ ruiPartIdxLT ] + uiPUWidth / m_pcPic->getMinCUWidth() - 1 ];
+  ruiPartIdxRT = g_auiRasterToZscan [g_auiZscanToRaster[ ruiPartIdxLT ] + uiPUWidth / m_pcPic->getMinCUWidth() - 1 ];//PU块右上角位置
 }
 
-Void TComDataCU::deriveLeftBottomIdxGeneral( UInt uiAbsPartIdx, UInt uiPartIdx, UInt& ruiPartIdxLB )
+Void TComDataCU::deriveLeftBottomIdxGeneral( UInt uiAbsPartIdx, UInt uiPartIdx, UInt& ruiPartIdxLB )//得到给定位置pU块内左下角位置
 {
   UInt uiPUHeight = 0;
-  switch ( m_pePartSize[uiAbsPartIdx] )
-  {
+  switch ( m_pePartSize[uiAbsPartIdx] )//判断PU分割模式
+  {//得到不同模式下对应uiPartIdx索引的PU块的高
     case SIZE_2Nx2N: uiPUHeight = m_puhHeight[uiAbsPartIdx];    break;
     case SIZE_2NxN:  uiPUHeight = m_puhHeight[uiAbsPartIdx] >> 1;    break;
     case SIZE_Nx2N:  uiPUHeight = m_puhHeight[uiAbsPartIdx];  break;
@@ -2043,39 +2044,39 @@ Void TComDataCU::deriveLeftBottomIdxGeneral( UInt uiAbsPartIdx, UInt uiPartIdx, 
       break;
   }
 
-  ruiPartIdxLB      = g_auiRasterToZscan [g_auiZscanToRaster[ m_absZIdxInCtu + uiAbsPartIdx ] + ((uiPUHeight / m_pcPic->getMinCUHeight()) - 1)*m_pcPic->getNumPartInCtuWidth()];
+  ruiPartIdxLB = g_auiRasterToZscan [g_auiZscanToRaster[ m_absZIdxInCtu + uiAbsPartIdx ] + ((uiPUHeight / m_pcPic->getMinCUHeight()) - 1)*m_pcPic->getNumPartInCtuWidth()];//PU块左下角位置
 }
 
-Void TComDataCU::deriveLeftRightTopIdx ( UInt uiPartIdx, UInt& ruiPartIdxLT, UInt& ruiPartIdxRT )
+Void TComDataCU::deriveLeftRightTopIdx ( UInt uiPartIdx, UInt& ruiPartIdxLT, UInt& ruiPartIdxRT )//得到给定位置pU块内左上和右上角位置（只用指出PU块的索引　而不用指出具体起始位置）
 {
-  ruiPartIdxLT = m_absZIdxInCtu;
-  ruiPartIdxRT = g_auiRasterToZscan [g_auiZscanToRaster[ ruiPartIdxLT ] + m_puhWidth[0] / m_pcPic->getMinCUWidth() - 1 ];
+  ruiPartIdxLT = m_absZIdxInCtu;//CU块内左上角位置
+  ruiPartIdxRT = g_auiRasterToZscan [g_auiZscanToRaster[ ruiPartIdxLT ] + m_puhWidth[0] / m_pcPic->getMinCUWidth() - 1 ];//CU块内由上角位置
 
-  switch ( m_pePartSize[0] )
-  {
-    case SIZE_2Nx2N:                                                                                                                                break;
-    case SIZE_2NxN:
+  switch ( m_pePartSize[0] )//判断PU分割模式
+  {//索引为uiPartIdx的PU块左上和右上角位置相对于CU左上和右上角位置移动（对照PU分割模式图　很好理解）
+    case SIZE_2Nx2N:      break;//2Nx2N下　CU块同PU块　故左上和右上角位置相同
+    case SIZE_2NxN://2NxN下　如果为CU中上半块PU则左上和右上角位置不变　若为CU中上半块PU则左上和右上角位置需下移CU高的一半
       ruiPartIdxLT += ( uiPartIdx == 0 )? 0 : m_uiNumPartition >> 1; ruiPartIdxRT += ( uiPartIdx == 0 )? 0 : m_uiNumPartition >> 1;
       break;
-    case SIZE_Nx2N:
+    case SIZE_Nx2N://Nx２N下　如果为CU中左侧半块PU则左上位置不变右上角位置左移CU宽的一半　若为CU中右侧半块PU则左上右移CU宽的一半右上角位置不变
       ruiPartIdxLT += ( uiPartIdx == 0 )? 0 : m_uiNumPartition >> 2; ruiPartIdxRT -= ( uiPartIdx == 1 )? 0 : m_uiNumPartition >> 2;
       break;
-    case SIZE_NxN:
+    case SIZE_NxN://NxN下　索引为uiPartIdx的PU块左上角相对CU块的左上角的偏移量为( m_uiNumPartition >> 2 ) * uiPartIdx　右上角偏移量为( m_uiNumPartition >> 2 ) * ( uiPartIdx - 1 )
       ruiPartIdxLT += ( m_uiNumPartition >> 2 ) * uiPartIdx;         ruiPartIdxRT +=  ( m_uiNumPartition >> 2 ) * ( uiPartIdx - 1 );
       break;
-    case SIZE_2NxnU:
+    case SIZE_2NxnU://2NxnU下 如果为CU中上半块PU则左上和右上角位置不变　若为CU中上半块PU则左上和右上角位置需下移CU高的1/4
       ruiPartIdxLT += ( uiPartIdx == 0 )? 0 : m_uiNumPartition >> 3;
       ruiPartIdxRT += ( uiPartIdx == 0 )? 0 : m_uiNumPartition >> 3;
       break;
-    case SIZE_2NxnD:
+    case SIZE_2NxnD://2NxnD下　如果为CU中上半块PU则左上和右上角位置不变　若为CU中上半块PU则左上和右上角位置需下移CU高的3/4
       ruiPartIdxLT += ( uiPartIdx == 0 )? 0 : ( m_uiNumPartition >> 1 ) + ( m_uiNumPartition >> 3 );
       ruiPartIdxRT += ( uiPartIdx == 0 )? 0 : ( m_uiNumPartition >> 1 ) + ( m_uiNumPartition >> 3 );
       break;
-    case SIZE_nLx2N:
+    case SIZE_nLx2N://nLx2N下　如果为CU中左侧半块PU则左上位置不变右上角位置左移CU宽的3/4　若为CU中右侧半块PU则左上右移CU宽的1/4右上角位置不变
       ruiPartIdxLT += ( uiPartIdx == 0 )? 0 : m_uiNumPartition >> 4;
       ruiPartIdxRT -= ( uiPartIdx == 1 )? 0 : ( m_uiNumPartition >> 2 ) + ( m_uiNumPartition >> 4 );
       break;
-    case SIZE_nRx2N:
+    case SIZE_nRx2N://nRx2N下　如果为CU中左侧半块PU则左上位置不变右上角位置左移CU宽的1/4　若为CU中右侧半块PU则左上右移CU宽的3/4右上角位置不变
       ruiPartIdxLT += ( uiPartIdx == 0 )? 0 : ( m_uiNumPartition >> 2 ) + ( m_uiNumPartition >> 4 );
       ruiPartIdxRT -= ( uiPartIdx == 1 )? 0 : m_uiNumPartition >> 4;
       break;
@@ -2087,7 +2088,7 @@ Void TComDataCU::deriveLeftRightTopIdx ( UInt uiPartIdx, UInt& ruiPartIdxLT, UIn
 }
 
 Void TComDataCU::deriveLeftBottomIdx( UInt  uiPartIdx,      UInt&      ruiPartIdxLB )
-{
+{//同上分析　不再叙述　（对照PU分割模式图　很好理解）
   ruiPartIdxLB      = g_auiRasterToZscan [g_auiZscanToRaster[ m_absZIdxInCtu ] + ( ((m_puhHeight[0] / m_pcPic->getMinCUHeight())>>1) - 1)*m_pcPic->getNumPartInCtuWidth()];
 
   switch ( m_pePartSize[0] )
@@ -2127,7 +2128,7 @@ Void TComDataCU::deriveLeftBottomIdx( UInt  uiPartIdx,      UInt&      ruiPartId
  * \param [out] ruiPartIdxRB  partition index of neighbouring bottom right block
  */
 Void TComDataCU::deriveRightBottomIdx( UInt uiPartIdx, UInt &ruiPartIdxRB )
-{
+{//同上分析　不再叙述　（对照PU分割模式图　很好理解）
   ruiPartIdxRB      = g_auiRasterToZscan [g_auiZscanToRaster[ m_absZIdxInCtu ] + ( ((m_puhHeight[0] / m_pcPic->getMinCUHeight())>>1) - 1)*m_pcPic->getNumPartInCtuWidth() +  m_puhWidth[0] / m_pcPic->getMinCUWidth() - 1];
 
   switch ( m_pePartSize[0] )
@@ -2162,14 +2163,14 @@ Void TComDataCU::deriveRightBottomIdx( UInt uiPartIdx, UInt &ruiPartIdxRB )
   }
 }
 
-Bool TComDataCU::hasEqualMotion( UInt uiAbsPartIdx, TComDataCU* pcCandCU, UInt uiCandAbsPartIdx )
+Bool TComDataCU::hasEqualMotion( UInt uiAbsPartIdx, TComDataCU* pcCandCU, UInt uiCandAbsPartIdx )//判断两处的运动矢量是否相同
 {
-  if ( getInterDir( uiAbsPartIdx ) != pcCandCU->getInterDir( uiCandAbsPartIdx ) )
+  if ( getInterDir( uiAbsPartIdx ) != pcCandCU->getInterDir( uiCandAbsPartIdx ) )//帧间预测方向不同则运动矢量不可能相同
   {
     return false;
   }
 
-  for ( UInt uiRefListIdx = 0; uiRefListIdx < 2; uiRefListIdx++ )
+  for ( UInt uiRefListIdx = 0; uiRefListIdx < 2; uiRefListIdx++ )//只有不同参考图像列表中参考图像索引和运动矢量值都相同　才认为这两处运动矢量相同
   {
     if ( getInterDir( uiAbsPartIdx ) & ( 1 << uiRefListIdx ) )
     {
@@ -2185,72 +2186,73 @@ Bool TComDataCU::hasEqualMotion( UInt uiAbsPartIdx, TComDataCU* pcCandCU, UInt u
 }
 
 //! Construct a list of merging candidates
-Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComMvField* pcMvFieldNeighbours, UChar* puhInterDirNeighbours, Int& numValidMergeCand, Int mrgCandIdx )
-{
+//利用空域或时域上相邻块的MV对当前块MV进行预测，仅对预测残差编码　则能大幅节省MV的编码比特数
+Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComMvField* pcMvFieldNeighbours, UChar* puhInterDirNeighbours, Int& numValidMergeCand, Int mrgCandIdx )//mrgCandIdx限制候选MV能达到的索引
+{//空域最多提供4个候选MV　时域最多提供１个候选MV 
   UInt uiAbsPartAddr = m_absZIdxInCtu + uiAbsPartIdx;
   Bool abCandIsInter[ MRG_MAX_NUM_CANDS ];
-  for( UInt ui = 0; ui < getSlice()->getMaxNumMergeCand(); ++ui )
+  for( UInt ui = 0; ui < getSlice()->getMaxNumMergeCand(); ++ui )//为需要用到的参数初始化（附上未处理的值）
   {
     abCandIsInter[ui] = false;
-    pcMvFieldNeighbours[ ( ui << 1 )     ].setRefIdx(NOT_VALID);
+    pcMvFieldNeighbours[ ( ui << 1 )     ].setRefIdx(NOT_VALID);//最大候选MV个数的两倍　表示双向预测时对应参考图像列表0和参考图像列表1的运动矢量
     pcMvFieldNeighbours[ ( ui << 1 ) + 1 ].setRefIdx(NOT_VALID);
   }
-  numValidMergeCand = getSlice()->getMaxNumMergeCand();
+  numValidMergeCand = getSlice()->getMaxNumMergeCand();//有效候选MV个数为规定的最大候选MV个数
   // compute the location of the current PU
   Int xP, yP, nPSW, nPSH;
-  this->getPartPosition(uiPUIdx, xP, yP, nPSW, nPSH);
+  this->getPartPosition(uiPUIdx, xP, yP, nPSW, nPSH);//当前PU的位置（x y坐标　宽　高）
 
   Int iCount = 0;
 
   UInt uiPartIdxLT, uiPartIdxRT, uiPartIdxLB;
-  PartSize cCurPS = getPartitionSize( uiAbsPartIdx );
-  deriveLeftRightTopIdxGeneral( uiAbsPartIdx, uiPUIdx, uiPartIdxLT, uiPartIdxRT );
-  deriveLeftBottomIdxGeneral( uiAbsPartIdx, uiPUIdx, uiPartIdxLB );
+  PartSize cCurPS = getPartitionSize( uiAbsPartIdx );//当前CU的PU分割模式
+  deriveLeftRightTopIdxGeneral( uiAbsPartIdx, uiPUIdx, uiPartIdxLT, uiPartIdxRT );//得到当前PU左上角和右上角位置
+  deriveLeftBottomIdxGeneral( uiAbsPartIdx, uiPUIdx, uiPartIdxLB );//得到当前PU左下位置
 
   //left
   UInt uiLeftPartIdx = 0;
   TComDataCU* pcCULeft = 0;
-  pcCULeft = getPULeft( uiLeftPartIdx, uiPartIdxLB );
+  pcCULeft = getPULeft( uiLeftPartIdx, uiPartIdxLB );//当前左侧PU最下方的PU(记为A1　下文中用A1表示)
 
-  Bool isAvailableA1 = pcCULeft &&
-                       pcCULeft->isDiffMER(xP -1, yP+nPSH-1, xP, yP) &&
-                       !( uiPUIdx == 1 && (cCurPS == SIZE_Nx2N || cCurPS == SIZE_nLx2N || cCurPS == SIZE_nRx2N) ) &&
-                       pcCULeft->isInter( uiLeftPartIdx ) ;
+  Bool isAvailableA1 = pcCULeft &&//当前左侧最PU下方的PU可作为候选的条件为：当前左侧最PU下方的PU可获得即不为空
+                       pcCULeft->isDiffMER(xP -1, yP+nPSH-1, xP, yP) &&//是否来自不同MER　由于并行处理　只有与当前PU来自不同的MER的PU才能得到其信息　
+                       !( uiPUIdx == 1 && (cCurPS == SIZE_Nx2N || cCurPS == SIZE_nLx2N || cCurPS == SIZE_nRx2N) ) &&//当分割模式为Nx2N或nLx2N或SIZE_nRx2N且PU为右侧PU时候选列表中不能存在当前左侧PU最下方的PU的运动信息　
+                       pcCULeft->isInter( uiLeftPartIdx ) ;//为帧间预测（MV就是针对帧间预测而言）                         //因为一旦使用会使左右两侧的PU运动信息一致　这与２Nx2N的分割模式无异
 
-  if ( isAvailableA1 )
+  if ( isAvailableA1 )//若可通过当前左侧PU最下方的PU得到候选列表中的候选MV
   {
-    abCandIsInter[iCount] = true;
+    abCandIsInter[iCount] = true;//对应候选列表处置为真
     // get Inter Dir
-    puhInterDirNeighbours[iCount] = pcCULeft->getInterDir( uiLeftPartIdx );
+    puhInterDirNeighbours[iCount] = pcCULeft->getInterDir( uiLeftPartIdx );//得到A1的帧间预测方向
     // get Mv from Left
-    pcCULeft->getMvField( pcCULeft, uiLeftPartIdx, REF_PIC_LIST_0, pcMvFieldNeighbours[iCount<<1] );
-    if ( getSlice()->isInterB() )
+    pcCULeft->getMvField( pcCULeft, uiLeftPartIdx, REF_PIC_LIST_0, pcMvFieldNeighbours[iCount<<1] );//将A1的在参考图像列表0中运动信息设置到pcMvFieldNeighbours数组中的iCount<<1位置
+    if ( getSlice()->isInterB() )//若为双向预测 以slice为单位（需要两个参考图像列表中的运动矢量信息）
     {
-      pcCULeft->getMvField( pcCULeft, uiLeftPartIdx, REF_PIC_LIST_1, pcMvFieldNeighbours[(iCount<<1)+1] );
+      pcCULeft->getMvField( pcCULeft, uiLeftPartIdx, REF_PIC_LIST_1, pcMvFieldNeighbours[(iCount<<1)+1] );//则还需将A1的在参考图像列表１中运动信息设置到pcMvFieldNeighbours数组中的(iCount<<1＋1)位置
     }
-    if ( mrgCandIdx == iCount )
+    if ( mrgCandIdx == iCount )//候选MV的个数达到指定的候选MV的索引　则结束方法
     {
       return;
     }
-    iCount ++;
+    iCount ++;//下一个候选MV的索引
   }
 
   // early termination
-  if (iCount == getSlice()->getMaxNumMergeCand())
+  if (iCount == getSlice()->getMaxNumMergeCand())//候选列表数已达到最大　则结束方法(icount是从０开始的)
   {
     return;
   }
   // above
   UInt uiAbovePartIdx = 0;
   TComDataCU* pcCUAbove = 0;
-  pcCUAbove = getPUAbove( uiAbovePartIdx, uiPartIdxRT );
-
+  pcCUAbove = getPUAbove( uiAbovePartIdx, uiPartIdxRT );//当前PU上方最右侧当PU(记为B1)
+  //获取候选MV的过程同上　不在叙述
   Bool isAvailableB1 = pcCUAbove &&
                        pcCUAbove->isDiffMER(xP+nPSW-1, yP-1, xP, yP) &&
                        !( uiPUIdx == 1 && (cCurPS == SIZE_2NxN || cCurPS == SIZE_2NxnU || cCurPS == SIZE_2NxnD) ) &&
                        pcCUAbove->isInter( uiAbovePartIdx );
 
-  if ( isAvailableB1 && (!isAvailableA1 || !pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCUAbove, uiAbovePartIdx ) ) )
+  if ( isAvailableB1 && (!isAvailableA1 || !pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCUAbove, uiAbovePartIdx ) ) )//确保候选列表中不存在相同的运动矢量
   {
     abCandIsInter[iCount] = true;
     // get Inter Dir
@@ -2276,13 +2278,13 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
   // above right
   UInt uiAboveRightPartIdx = 0;
   TComDataCU* pcCUAboveRight = 0;
-  pcCUAboveRight = getPUAboveRight( uiAboveRightPartIdx, uiPartIdxRT );
-
+  pcCUAboveRight = getPUAboveRight( uiAboveRightPartIdx, uiPartIdxRT );//当前PU右上方距离最近的PU(记为B0)
+  //获取候选MV的过程同上  不在叙述
   Bool isAvailableB0 = pcCUAboveRight &&
-                       pcCUAboveRight->isDiffMER(xP+nPSW, yP-1, xP, yP) &&
-                       pcCUAboveRight->isInter( uiAboveRightPartIdx );
+                       pcCUAboveRight->isDiffMER(xP+nPSW, yP-1, xP, yP) &&//是否来自不同MER　由于并行处理　只有与当前PU来自不同的MER的PU才能得到其信息　
+                       pcCUAboveRight->isInter( uiAboveRightPartIdx );//不再需要对特定的分割模式做判断　因为不再会出现两PU块因运动信息相同而融合成一种PU块的情况
 
-  if ( isAvailableB0 && ( !isAvailableB1 || !pcCUAbove->hasEqualMotion( uiAbovePartIdx, pcCUAboveRight, uiAboveRightPartIdx ) ) )
+  if ( isAvailableB0 && ( !isAvailableB1 || !pcCUAbove->hasEqualMotion( uiAbovePartIdx, pcCUAboveRight, uiAboveRightPartIdx ) ) )//确保候选列表中不存在相同的运动矢量
   {
     abCandIsInter[iCount] = true;
     // get Inter Dir
@@ -2308,13 +2310,13 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
   //left bottom
   UInt uiLeftBottomPartIdx = 0;
   TComDataCU* pcCULeftBottom = 0;
-  pcCULeftBottom = this->getPUBelowLeft( uiLeftBottomPartIdx, uiPartIdxLB );
-
+  pcCULeftBottom = this->getPUBelowLeft( uiLeftBottomPartIdx, uiPartIdxLB );//当前PU左下方距离最近的PU(记为A0)
+  //获取候选MV的过程同上  不在叙述
   Bool isAvailableA0 = pcCULeftBottom &&
                        pcCULeftBottom->isDiffMER(xP-1, yP+nPSH, xP, yP) &&
                        pcCULeftBottom->isInter( uiLeftBottomPartIdx ) ;
 
-  if ( isAvailableA0 && ( !isAvailableA1 || !pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCULeftBottom, uiLeftBottomPartIdx ) ) )
+  if ( isAvailableA0 && ( !isAvailableA1 || !pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCULeftBottom, uiLeftBottomPartIdx ) ) )//确保候选列表中不存在相同的运动矢量
   {
     abCandIsInter[iCount] = true;
     // get Inter Dir
@@ -2338,17 +2340,17 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
   }
 
   // above left
-  if( iCount < 4 )
+  if( iCount < 4 )//如果候选MV少于４个　则需要当前pU左上方距离最近的pU的运动信息
   {
     UInt uiAboveLeftPartIdx = 0;
     TComDataCU* pcCUAboveLeft = 0;
-    pcCUAboveLeft = getPUAboveLeft( uiAboveLeftPartIdx, uiAbsPartAddr );
-
+    pcCUAboveLeft = getPUAboveLeft( uiAboveLeftPartIdx, uiAbsPartAddr );//当前pU左上方距离最近的pU（记为B2）
+    //获取候选MV的过程同上  不在叙述
     Bool isAvailableB2 = pcCUAboveLeft &&
                          pcCUAboveLeft->isDiffMER(xP-1, yP-1, xP, yP) &&
                          pcCUAboveLeft->isInter( uiAboveLeftPartIdx );
 
-    if ( isAvailableB2 && ( !isAvailableA1 || !pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) )
+    if ( isAvailableB2 && ( !isAvailableA1 || !pcCULeft->hasEqualMotion( uiLeftPartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) )//确保候选列表中不存在相同的运动矢量
         && ( !isAvailableB1 || !pcCUAbove->hasEqualMotion( uiAbovePartIdx, pcCUAboveLeft, uiAboveLeftPartIdx ) ) )
     {
       abCandIsInter[iCount] = true;
@@ -2373,64 +2375,65 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
     return;
   }
 
-  if ( getSlice()->getEnableTMVPFlag() )
+  if ( getSlice()->getEnableTMVPFlag() )//如果使用时域MV预测技术
   {
     //>> MTK colocated-RightBottom
-    UInt uiPartIdxRB;
+    UInt uiPartIdxRB;//当前PU内右下角位置
 
-    deriveRightBottomIdx( uiPUIdx, uiPartIdxRB );
+    deriveRightBottomIdx( uiPUIdx, uiPartIdxRB );//得到当前PU内右下角位置
 
     UInt uiAbsPartIdxTmp = g_auiZscanToRaster[uiPartIdxRB];
-    const UInt numPartInCtuWidth  = m_pcPic->getNumPartInCtuWidth();
-    const UInt numPartInCtuHeight = m_pcPic->getNumPartInCtuHeight();
+    const UInt numPartInCtuWidth  = m_pcPic->getNumPartInCtuWidth();//图像的宽(以CTU为单位)
+    const UInt numPartInCtuHeight = m_pcPic->getNumPartInCtuHeight();//图像的高(以CTU为单位)
 
     TComMv cColMv;
     Int iRefIdx;
-    Int ctuRsAddr = -1;
-
+    Int ctuRsAddr = -1;//初始化同位pu所在CTu的位置　-1表示同位Pu不可获得
+    //时域上的首先同位PU为邻近已编码图像对应位置PU右下角PU（同位Pu的起始位置即左上角位置记为C0）
     if (   ( ( m_pcPic->getCtu(m_ctuRsAddr)->getCUPelX() + g_auiRasterToPelX[uiAbsPartIdxTmp] + m_pcPic->getMinCUWidth () ) < m_pcSlice->getSPS()->getPicWidthInLumaSamples () )  // image boundary check
-        && ( ( m_pcPic->getCtu(m_ctuRsAddr)->getCUPelY() + g_auiRasterToPelY[uiAbsPartIdxTmp] + m_pcPic->getMinCUHeight() ) < m_pcSlice->getSPS()->getPicHeightInLumaSamples() ) )
+        && ( ( m_pcPic->getCtu(m_ctuRsAddr)->getCUPelY() + g_auiRasterToPelY[uiAbsPartIdxTmp] + m_pcPic->getMinCUHeight() ) < m_pcSlice->getSPS()->getPicHeightInLumaSamples() ) )//在图像内且不与图像边界相邻
     {
       if ( ( uiAbsPartIdxTmp % numPartInCtuWidth < numPartInCtuWidth - 1 ) &&           // is not at the last column of CTU
-        ( uiAbsPartIdxTmp / numPartInCtuWidth < numPartInCtuHeight - 1 ) )              // is not at the last row    of CTU
+        ( uiAbsPartIdxTmp / numPartInCtuWidth < numPartInCtuHeight - 1 ) ) //不是CTU的最后一列也不是最后一行  // is not at the last row    of CTU
       {
-        uiAbsPartAddr = g_auiRasterToZscan[ uiAbsPartIdxTmp + numPartInCtuWidth + 1 ];
-        ctuRsAddr = getCtuRsAddr();
+        uiAbsPartAddr = g_auiRasterToZscan[ uiAbsPartIdxTmp + numPartInCtuWidth + 1 ];//同位PU在当前CTU中的位置　时域上的同位PU为邻近已编码图像对应位置PU右下角PU
+        ctuRsAddr = getCtuRsAddr();//不为CTU的最后一行和最后一列保证右下角PU还在当前CTU中
       }
-      else if ( uiAbsPartIdxTmp % numPartInCtuWidth < numPartInCtuWidth - 1 )           // is not at the last column of CTU But is last row of CTU
+      else if ( uiAbsPartIdxTmp % numPartInCtuWidth < numPartInCtuWidth - 1 ) //CTU的最后一行但不是最后一列  // is not at the last column of CTU But is last row of CTU
       {
-        uiAbsPartAddr = g_auiRasterToZscan[ (uiAbsPartIdxTmp + numPartInCtuWidth + 1) % m_pcPic->getNumPartitionsInCtu() ];
+        uiAbsPartAddr = g_auiRasterToZscan[ (uiAbsPartIdxTmp + numPartInCtuWidth + 1) % m_pcPic->getNumPartitionsInCtu() ];//同位Pu在当前CTU下方CTu中的位置
       }
-      else if ( uiAbsPartIdxTmp / numPartInCtuWidth < numPartInCtuHeight - 1 )          // is not at the last row of CTU But is last column of CTU
+      else if ( uiAbsPartIdxTmp / numPartInCtuWidth < numPartInCtuHeight - 1 )//CTU的最后一列但不是最后一行        // is not at the last row of CTU But is last column of CTU
       {
-        uiAbsPartAddr = g_auiRasterToZscan[ uiAbsPartIdxTmp + 1 ];
-        ctuRsAddr = getCtuRsAddr() + 1;
+        uiAbsPartAddr = g_auiRasterToZscan[ uiAbsPartIdxTmp + 1 ];//同位Pu在当前CTU右侧CTu中的位置
+        ctuRsAddr = getCtuRsAddr() + 1;//CTU的最后一列但不是最后一行 所以右下角PU当在前CTU右侧CTu中
       }
-      else //is the right bottom corner of CTU
+      else //is the right bottom corner of CTU//为当前CTu的右下角
       {
-        uiAbsPartAddr = 0;
+        uiAbsPartAddr = 0;//同位PU即当前位置右下角PU的位置为右下相邻CTU的起始位置　所以uiAbsPartAddr为０
       }
     }
-
+    //当同位PU所属的CTU大于当前pu所属CTU的行（级在当前CTu的下方）时认为同位pU不可获得
+    //这是因为保存相邻下方的CTu所需的记忆带宽远大于保存相邻右侧的CTU
     iRefIdx = 0;
 
     Bool bExistMV = false;
     UInt uiPartIdxCenter;
     Int dir = 0;
     UInt uiArrayAddr = iCount;
-    xDeriveCenterIdx( uiPUIdx, uiPartIdxCenter );
-    bExistMV = ctuRsAddr >= 0 && xGetColMVP( REF_PIC_LIST_0, ctuRsAddr, uiAbsPartAddr, cColMv, iRefIdx );
-    if( bExistMV == false )
+    xDeriveCenterIdx( uiPUIdx, uiPartIdxCenter );//当前pU的中间位置为　将当前PU十字4等分后　第４块的起始位置　为次选同位Pu(记为C1)
+    bExistMV = ctuRsAddr >= 0 && xGetColMVP( REF_PIC_LIST_0, ctuRsAddr, uiAbsPartAddr, cColMv, iRefIdx );//尝试获取C0位置的运动矢量信息
+    if( bExistMV == false )//若CO处位置无效或运动信息无法获得
     {
-      bExistMV = xGetColMVP( REF_PIC_LIST_0, getCtuRsAddr(), uiPartIdxCenter,  cColMv, iRefIdx );
+      bExistMV = xGetColMVP( REF_PIC_LIST_0, getCtuRsAddr(), uiPartIdxCenter,  cColMv, iRefIdx );//则从C1位置得到运动矢量信息
     }
-    if( bExistMV )
+    if( bExistMV )//若可得到同位Pu的运动矢量信息
     {
       dir |= 1;
-      pcMvFieldNeighbours[ 2 * uiArrayAddr ].setMvField( cColMv, iRefIdx );
+      pcMvFieldNeighbours[ 2 * uiArrayAddr ].setMvField( cColMv, iRefIdx );//将此运动矢量设为对应位置的候选运动矢量
     }
 
-    if ( getSlice()->isInterB() )
+    if ( getSlice()->isInterB() )//若为帧间双向预测　则还需获取同位块在参考图像列表1中的运动矢量信息
     {
       bExistMV = ctuRsAddr >= 0 && xGetColMVP( REF_PIC_LIST_1, ctuRsAddr, uiAbsPartAddr, cColMv, iRefIdx);
       if( bExistMV == false )
@@ -2439,12 +2442,12 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
       }
       if( bExistMV )
       {
-        dir |= 2;
+        dir |= 2;//当为双向预测且参考图像列表0和１中运动矢量都可获得时　dir=3 只有参考图像列表1可获得时　dir=２　只有参考图像列表０可获得时　dir=１　都不可获得时dir=０
         pcMvFieldNeighbours[ 2 * uiArrayAddr + 1 ].setMvField( cColMv, iRefIdx );
       }
     }
 
-    if (dir != 0)
+    if (dir != 0)//存在可获得的运动矢量作为候选运动矢量
     {
       puhInterDirNeighbours[uiArrayAddr] = dir;
       abCandIsInter[uiArrayAddr] = true;
@@ -2464,34 +2467,34 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
 
   UInt uiArrayAddr = iCount;
   UInt uiCutoff = uiArrayAddr;
-
-  if ( getSlice()->isInterB() )
+  //若此时候选运动矢量还未达到规定的最后候选运动矢量数
+  if ( getSlice()->isInterB() )//对于B slice　则可以通过组合list0的一个候选运动矢量和list1中另一个运动矢量（不同参考列表不同块）来补充候选运动矢量直到最大值
   {
     static const UInt NUM_PRIORITY_LIST=12;
-    static const UInt uiPriorityList0[NUM_PRIORITY_LIST] = {0 , 1, 0, 2, 1, 2, 0, 3, 1, 3, 2, 3};
+    static const UInt uiPriorityList0[NUM_PRIORITY_LIST] = {0 , 1, 0, 2, 1, 2, 0, 3, 1, 3, 2, 3};//list0 list1运动矢量组合表
     static const UInt uiPriorityList1[NUM_PRIORITY_LIST] = {1 , 0, 2, 0, 2, 1, 3, 0, 3, 1, 3, 2};
 
-    for (Int idx=0; idx<uiCutoff*(uiCutoff-1) && uiArrayAddr!= getSlice()->getMaxNumMergeCand(); idx++)
+    for (Int idx=0; idx<uiCutoff*(uiCutoff-1) && uiArrayAddr!= getSlice()->getMaxNumMergeCand(); idx++)//遍历所有组合情况　直到达到最大候选运动矢量值
     {
       assert(idx<NUM_PRIORITY_LIST);
       Int i = uiPriorityList0[idx];
       Int j = uiPriorityList1[idx];
-      if (abCandIsInter[i] && abCandIsInter[j]&& (puhInterDirNeighbours[i]&0x1)&&(puhInterDirNeighbours[j]&0x2))
+      if (abCandIsInter[i] && abCandIsInter[j]&& (puhInterDirNeighbours[i]&0x1)&&(puhInterDirNeighbours[j]&0x2))//确保所组合的运动矢量存在并来自对应的list0 list1
       {
         abCandIsInter[uiArrayAddr] = true;
         puhInterDirNeighbours[uiArrayAddr] = 3;
 
         // get Mv from cand[i] and cand[j]
         pcMvFieldNeighbours[uiArrayAddr << 1].setMvField(pcMvFieldNeighbours[i<<1].getMv(), pcMvFieldNeighbours[i<<1].getRefIdx());
-        pcMvFieldNeighbours[( uiArrayAddr << 1 ) + 1].setMvField(pcMvFieldNeighbours[(j<<1)+1].getMv(), pcMvFieldNeighbours[(j<<1)+1].getRefIdx());
+        pcMvFieldNeighbours[( uiArrayAddr << 1 ) + 1].setMvField(pcMvFieldNeighbours[(j<<1)+1].getMv(), pcMvFieldNeighbours[(j<<1)+1].getRefIdx());//将已存在的候选运动矢量组合成新的候选运动矢量
 
         Int iRefPOCL0 = m_pcSlice->getRefPOC( REF_PIC_LIST_0, pcMvFieldNeighbours[(uiArrayAddr<<1)].getRefIdx() );
         Int iRefPOCL1 = m_pcSlice->getRefPOC( REF_PIC_LIST_1, pcMvFieldNeighbours[(uiArrayAddr<<1)+1].getRefIdx() );
-        if (iRefPOCL0 == iRefPOCL1 && pcMvFieldNeighbours[(uiArrayAddr<<1)].getMv() == pcMvFieldNeighbours[(uiArrayAddr<<1)+1].getMv())
+        if (iRefPOCL0 == iRefPOCL1 && pcMvFieldNeighbours[(uiArrayAddr<<1)].getMv() == pcMvFieldNeighbours[(uiArrayAddr<<1)+1].getMv())//判断用于组合的两运动矢量是否完全相同
         {
-          abCandIsInter[uiArrayAddr] = false;
+          abCandIsInter[uiArrayAddr] = false;//若相同　则舍弃
         }
-        else
+        else//若不相同　则可以作为候选运动矢量
         {
           uiArrayAddr++;
         }
@@ -2499,22 +2502,22 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
     }
   }
   // early termination
-  if (uiArrayAddr == getSlice()->getMaxNumMergeCand())
+  if (uiArrayAddr == getSlice()->getMaxNumMergeCand())//达到最大候选运动矢量数　则方法直接结束
   {
     return;
   }
+  //若此时还未达到最大的候选运动矢量数
+  Int iNumRefIdx = (getSlice()->isInterB()) ? min(m_pcSlice->getNumRefIdx(REF_PIC_LIST_0), m_pcSlice->getNumRefIdx(REF_PIC_LIST_1)) : m_pcSlice->getNumRefIdx(REF_PIC_LIST_0);//参考图像列表中较小的参考图像数
 
-  Int iNumRefIdx = (getSlice()->isInterB()) ? min(m_pcSlice->getNumRefIdx(REF_PIC_LIST_0), m_pcSlice->getNumRefIdx(REF_PIC_LIST_1)) : m_pcSlice->getNumRefIdx(REF_PIC_LIST_0);
-
-  Int r = 0;
+  Int r = 0;//参考图像索引
   Int refcnt = 0;
-  while (uiArrayAddr < getSlice()->getMaxNumMergeCand())
+  while (uiArrayAddr < getSlice()->getMaxNumMergeCand())//对剩余位置补(0,0)　直达达到最大候选运动矢量
   {
     abCandIsInter[uiArrayAddr] = true;
     puhInterDirNeighbours[uiArrayAddr] = 1;
     pcMvFieldNeighbours[uiArrayAddr << 1].setMvField( TComMv(0, 0), r);
 
-    if ( getSlice()->isInterB() )
+    if ( getSlice()->isInterB() )//B slice 则还需对list1中候选运动矢量补(0,0)
     {
       puhInterDirNeighbours[uiArrayAddr] = 3;
       pcMvFieldNeighbours[(uiArrayAddr << 1) + 1].setMvField(TComMv(0, 0), r);
@@ -2538,15 +2541,15 @@ Void TComDataCU::getInterMergeCandidates( UInt uiAbsPartIdx, UInt uiPUIdx, TComM
  * \param xN, yN   location of the upper-left corner pixel of a neighboring PU
  * \param xP, yP   location of the upper-left corner pixel of the current PU
  */
-Bool TComDataCU::isDiffMER(Int xN, Int yN, Int xP, Int yP)
+Bool TComDataCU::isDiffMER(Int xN, Int yN, Int xP, Int yP)//判断给定的像素位置所在的PU是否来自不同的MER （不同的像素位置代表了不同的Pu）
 {
 
-  UInt plevel = this->getSlice()->getPPS()->getLog2ParallelMergeLevelMinus2() + 2;
-  if ((xN>>plevel)!= (xP>>plevel))
+  UInt plevel = this->getSlice()->getPPS()->getLog2ParallelMergeLevelMinus2() + 2;//可以并行处理一个块的大小　其值越大　并行程度越高
+  if ((xN>>plevel)!= (xP>>plevel))//不在同一列MER中（以MER块为单位）
   {
     return true;
   }
-  if ((yN>>plevel)!= (yP>>plevel))
+  if ((yN>>plevel)!= (yP>>plevel))//不在同一行MER中（以MER块为单位）
   {
     return true;
   }
@@ -2558,12 +2561,12 @@ Bool TComDataCU::isDiffMER(Int xN, Int yN, Int xP, Int yP)
  * \param xP, yP        location of the upper-left corner pixel of the current PU
  * \param nPSW, nPSH    size of the current PU
  */
-Void TComDataCU::getPartPosition( UInt partIdx, Int& xP, Int& yP, Int& nPSW, Int& nPSH)
+Void TComDataCU::getPartPosition( UInt partIdx, Int& xP, Int& yP, Int& nPSW, Int& nPSH)//根据给定的pu块索引得到pu块的位置信息
 {
   UInt col = m_uiCUPelX;
   UInt row = m_uiCUPelY;
 
-  switch ( m_pePartSize[0] )
+  switch ( m_pePartSize[0] )//对照CU的PU分割模式　易懂　不在叙述
   {
   case SIZE_2NxN:
     nPSW = getWidth(0);
@@ -2626,13 +2629,13 @@ Void TComDataCU::getPartPosition( UInt partIdx, Int& xP, Int& yP, Int& nPSW, Int
  * \param iRefIdx
  * \param pInfo
  */
-Void TComDataCU::fillMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, AMVPInfo* pInfo )
+Void TComDataCU::fillMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, AMVPInfo* pInfo )//构建运动矢量候选列表　AMVP
 {
   TComMv cMvPred;
   Bool bAddedSmvp = false;
 
-  pInfo->iN = 0;
-  if (iRefIdx < 0)
+  pInfo->iN = 0;//初始化候选运动矢量数为零
+  if (iRefIdx < 0)//给定的参考图像无效　直接结束方法
   {
     return;
   }
@@ -2643,72 +2646,73 @@ Void TComDataCU::fillMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefP
   const UInt numPartInCtuHeight = m_pcPic->getNumPartInCtuHeight();
   Bool bAdded = false;
 
-  deriveLeftRightTopIdx( uiPartIdx, uiPartIdxLT, uiPartIdxRT );
-  deriveLeftBottomIdx( uiPartIdx, uiPartIdxLB );
+  deriveLeftRightTopIdx( uiPartIdx, uiPartIdxLT, uiPartIdxRT );//得到当前PU块内左上角和右上角位置　用于下步得到相邻的PU
+  deriveLeftBottomIdx( uiPartIdx, uiPartIdxLB );//得到当前PU块内左下角位置　用于下步得到相邻的PU
 
   TComDataCU* tmpCU = NULL;
   UInt idx;
-  tmpCU = getPUBelowLeft(idx, uiPartIdxLB);
-  bAddedSmvp = (tmpCU != NULL) && (tmpCU->isInter(idx));
+  tmpCU = getPUBelowLeft(idx, uiPartIdxLB);//左下角pU
+  bAddedSmvp = (tmpCU != NULL) && (tmpCU->isInter(idx));//标志　判断A0 A1处运动矢量是否可获得（因为帧内预测不存在运动矢量信息　故无法获得）
 
   if (!bAddedSmvp)
   {
     tmpCU = getPULeft(idx, uiPartIdxLB);
     bAddedSmvp = (tmpCU != NULL) && (tmpCU->isInter(idx));
-  }
-
+  }//若A0 A1都不可获得则bAddedSmvp为假　否则为真
+  //左侧选择候选MV的顺序为：A0-->A1-->scaled A0-->scaled A1
   // Left predictor search
-  bAdded = xAddMVPCand( pInfo, eRefPicList, iRefIdx, uiPartIdxLB, MD_BELOW_LEFT);
+  bAdded = xAddMVPCand( pInfo, eRefPicList, iRefIdx, uiPartIdxLB, MD_BELOW_LEFT);//首选尝试获取A0处运动矢量（要求当前Pu参考图像和A0处处参考图像相同）
   if (!bAdded)
   {
-    bAdded = xAddMVPCand( pInfo, eRefPicList, iRefIdx, uiPartIdxLB, MD_LEFT );
+    bAdded = xAddMVPCand( pInfo, eRefPicList, iRefIdx, uiPartIdxLB, MD_LEFT );//若不可获取则尝试获取A1处运动矢量（要求当前Pu参考图像和A0处处参考图像相同）
   }
 
   if(!bAdded)
   {
-    bAdded = xAddMVPCandOrder( pInfo, eRefPicList, iRefIdx, uiPartIdxLB, MD_BELOW_LEFT);
+    bAdded = xAddMVPCandOrder( pInfo, eRefPicList, iRefIdx, uiPartIdxLB, MD_BELOW_LEFT);//若不可获取则尝试获取A0处比例伸缩后的运动矢量
     if (!bAdded)
     {
-      xAddMVPCandOrder( pInfo, eRefPicList, iRefIdx, uiPartIdxLB, MD_LEFT );
+      xAddMVPCandOrder( pInfo, eRefPicList, iRefIdx, uiPartIdxLB, MD_LEFT );//若不可获取则尝试获取A1处比例伸缩后的运动矢量
     }
   }
 
   // Above predictor search
-  bAdded = xAddMVPCand( pInfo, eRefPicList, iRefIdx, uiPartIdxRT, MD_ABOVE_RIGHT);
+  //上方选择候选MV的顺序为：B0-->B1-->B2-->scaled B0-->scaled B1-->scaled B2
+  bAdded = xAddMVPCand( pInfo, eRefPicList, iRefIdx, uiPartIdxRT, MD_ABOVE_RIGHT);//首选尝试获取B0处运动矢量（要求当前Pu参考图像和A0处处参考图像相同）
 
   if (!bAdded)
   {
-    bAdded = xAddMVPCand( pInfo, eRefPicList, iRefIdx, uiPartIdxRT, MD_ABOVE);
+    bAdded = xAddMVPCand( pInfo, eRefPicList, iRefIdx, uiPartIdxRT, MD_ABOVE);//若不可获取则尝试获取B1处运动矢量（要求当前Pu参考图像和A0处处参考图像相同）
   }
 
   if(!bAdded)
   {
-    xAddMVPCand( pInfo, eRefPicList, iRefIdx, uiPartIdxLT, MD_ABOVE_LEFT);
+    xAddMVPCand( pInfo, eRefPicList, iRefIdx, uiPartIdxLT, MD_ABOVE_LEFT);//若不可获取则尝试获取B2处运动矢量（要求当前Pu参考图像和A0处处参考图像相同）
   }
 
-  if(!bAddedSmvp)
+  if(!bAddedSmvp)//上方的三个PU 其比例伸缩只有在左侧PU不存在或都为帧间预测时才进行　该选择模式设计可以在基本降低编码效率的情况下　有效减少因比例伸缩减少的计算复杂　
   {
-    bAdded = xAddMVPCandOrder( pInfo, eRefPicList, iRefIdx, uiPartIdxRT, MD_ABOVE_RIGHT);
+    bAdded = xAddMVPCandOrder( pInfo, eRefPicList, iRefIdx, uiPartIdxRT, MD_ABOVE_RIGHT);//若不可获取则尝试获取B0处比例伸缩后的运动矢量
     if (!bAdded)
     {
-      bAdded = xAddMVPCandOrder( pInfo, eRefPicList, iRefIdx, uiPartIdxRT, MD_ABOVE);
+      bAdded = xAddMVPCandOrder( pInfo, eRefPicList, iRefIdx, uiPartIdxRT, MD_ABOVE);//若不可获取则尝试获取B1处比例伸缩后的运动矢量
     }
 
     if(!bAdded)
     {
-      xAddMVPCandOrder( pInfo, eRefPicList, iRefIdx, uiPartIdxLT, MD_ABOVE_LEFT);
+      xAddMVPCandOrder( pInfo, eRefPicList, iRefIdx, uiPartIdxLT, MD_ABOVE_LEFT);//若不可获取则尝试获取B2处比例伸缩后的运动矢量
     }
   }
 
-  if ( pInfo->iN == 2 )
+  if ( pInfo->iN == 2 )//若空域的候选运动矢量个数为２　则判断两个运动矢量是否相同
   {
-    if ( pInfo->m_acMvCand[ 0 ] == pInfo->m_acMvCand[ 1 ] )
+    if ( pInfo->m_acMvCand[ 0 ] == pInfo->m_acMvCand[ 1 ] )//若相同则去掉后一个运动矢量
     {
       pInfo->iN = 1;
     }
   }
 
-  if ( getSlice()->getEnableTMVPFlag() )
+  if ( getSlice()->getEnableTMVPFlag() )////允许时域MV预测技术　获取时域候选运动矢量的过程同merge　不在叙述
   {
     // Get Temporal Motion Predictor
     Int iRefIdx_Col = iRefIdx;
@@ -2762,12 +2766,12 @@ Void TComDataCU::fillMvpCand ( UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefP
     //----  co-located RightBottom Temporal Predictor  ---//
   }
 
-  if (pInfo->iN > AMVP_MAX_NUM_CANDS)
+  if (pInfo->iN > AMVP_MAX_NUM_CANDS)//若候选运动矢量数大于２（AMVP规定的运动矢量数）
   {
-    pInfo->iN = AMVP_MAX_NUM_CANDS;
+    pInfo->iN = AMVP_MAX_NUM_CANDS;//则保留候选列表中的前两个运动矢量
   }
 
-  while (pInfo->iN < AMVP_MAX_NUM_CANDS)
+  while (pInfo->iN < AMVP_MAX_NUM_CANDS)//若候选运动矢量数不足２　则补(0.0)　直到规定的最大候选运动矢量数
   {
     pInfo->m_acMvCand[pInfo->iN].set(0,0);
     pInfo->iN++;
@@ -2783,7 +2787,7 @@ Bool TComDataCU::isBipredRestriction(UInt puIdx)
   UInt partAddr;
 
   getPartIndexAndSize( puIdx, partAddr, width, height );
-  if ( getWidth(0) == 8 && (width < 8 || height < 8) )
+  if ( getWidth(0) == 8 && (width < 8 || height < 8) )//CU块大小为8*8并且分割成更小的PU
   {
     return true;
   }
@@ -2791,23 +2795,23 @@ Bool TComDataCU::isBipredRestriction(UInt puIdx)
 }
 
 
-Void TComDataCU::clipMv    (TComMv&  rcMv)
-{
+Void TComDataCU::clipMv    (TComMv&  rcMv)//根据CU的位置限制运动矢量可能达到的值
+{//m_uiCUPelX m_uiCUPelY为当前CU的左上角像素位置
   const TComSPS &sps=*(m_pcSlice->getSPS());
-  Int  iMvShift = 2;
+  Int  iMvShift = 2;//1/4像素精度
   Int iOffset = 8;
-  Int iHorMax = ( sps.getPicWidthInLumaSamples() + iOffset - (Int)m_uiCUPelX - 1 ) << iMvShift;
-  Int iHorMin = (      -(Int)sps.getMaxCUWidth() - iOffset - (Int)m_uiCUPelX + 1 ) << iMvShift;
+  Int iHorMax = ( sps.getPicWidthInLumaSamples() + iOffset - (Int)m_uiCUPelX - 1 ) << iMvShift;//不能超出图像的右边界
+  Int iHorMin = (      -(Int)sps.getMaxCUWidth() - iOffset - (Int)m_uiCUPelX + 1 ) << iMvShift;//不能超出图像的左边界
 
-  Int iVerMax = ( sps.getPicHeightInLumaSamples() + iOffset - (Int)m_uiCUPelY - 1 ) << iMvShift;
-  Int iVerMin = (      -(Int)sps.getMaxCUHeight() - iOffset - (Int)m_uiCUPelY + 1 ) << iMvShift;
+  Int iVerMax = ( sps.getPicHeightInLumaSamples() + iOffset - (Int)m_uiCUPelY - 1 ) << iMvShift;//不能超出图像的下边界
+  Int iVerMin = (      -(Int)sps.getMaxCUHeight() - iOffset - (Int)m_uiCUPelY + 1 ) << iMvShift;//不能超出图像的上边界
 
   rcMv.setHor( min (iHorMax, max (iHorMin, rcMv.getHor())) );
   rcMv.setVer( min (iVerMax, max (iVerMin, rcMv.getVer())) );
 }
 
 
-UInt TComDataCU::getIntraSizeIdx(UInt uiAbsPartIdx)
+UInt TComDataCU::getIntraSizeIdx(UInt uiAbsPartIdx)//计算帧间预测　PU块的大小
 {
   UInt uiShift = ( m_pePartSize[uiAbsPartIdx]==SIZE_NxN ? 1 : 0 );
 
@@ -2822,7 +2826,7 @@ UInt TComDataCU::getIntraSizeIdx(UInt uiAbsPartIdx)
   return uiCnt > 6 ? 6 : uiCnt;
 }
 
-Void TComDataCU::clearCbf( UInt uiIdx, ComponentID compID, UInt uiNumParts )
+Void TComDataCU::clearCbf( UInt uiIdx, ComponentID compID, UInt uiNumParts )//清除当前CU的CBF
 {
   memset( &m_puhCbf[compID][uiIdx], 0, sizeof(UChar)*uiNumParts);
 }
@@ -2833,7 +2837,7 @@ Void TComDataCU::clearCbf( UInt uiIdx, ComponentID compID, UInt uiNumParts )
  * \param uiDepth CU depth
  * \returns Void
  */
-Void TComDataCU::setIPCMFlagSubParts  (Bool bIpcmFlag, UInt uiAbsPartIdx, UInt uiDepth)
+Void TComDataCU::setIPCMFlagSubParts  (Bool bIpcmFlag, UInt uiAbsPartIdx, UInt uiDepth)//为给定子块设置PCM标志
 {
   UInt uiCurrPartNumb = m_pcPic->getNumPartitionsInCtu() >> (uiDepth << 1);
 
@@ -2853,11 +2857,11 @@ Bool TComDataCU::isSkipped( UInt uiPartIdx )
 // Protected member functions
 // ====================================================================================================================
 
-Bool TComDataCU::xAddMVPCand( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir )
+Bool TComDataCU::xAddMVPCand( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir )//得到给定位置的候选运动矢量并返回是否得到运动矢量　只能处理所参考图像是相同的块　不可进行比例缩放
 {
   TComDataCU* pcTmpCU = NULL;
   UInt uiIdx;
-  switch( eDir )
+  switch( eDir )//得到不同候选块的位置　
   {
     case MD_LEFT:
     {
@@ -2890,21 +2894,21 @@ Bool TComDataCU::xAddMVPCand( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefI
     }
   }
 
-  if ( pcTmpCU == NULL )
+  if ( pcTmpCU == NULL )//若候选块为空　则直接返回false方法结束
   {
     return false;
   }
 
   if ( pcTmpCU->getCUMvField(eRefPicList)->getRefIdx(uiIdx) >= 0 && m_pcSlice->getRefPic( eRefPicList, iRefIdx)->getPOC() == pcTmpCU->getSlice()->getRefPOC( eRefPicList, pcTmpCU->getCUMvField(eRefPicList)->getRefIdx(uiIdx) ))
-  {
+  {//候选块（候选块包含候选运动矢量）的参考图像与当前块相同
     TComMv cMvPred = pcTmpCU->getCUMvField(eRefPicList)->getMv(uiIdx);
 
-    pInfo->m_acMvCand[ pInfo->iN++] = cMvPred;
+    pInfo->m_acMvCand[ pInfo->iN++] = cMvPred;//则　将候选块的运动矢量添加候选运动矢量列表中
     return true;
   }
 
-  RefPicList eRefPicList2nd = REF_PIC_LIST_0;
-  if(       eRefPicList == REF_PIC_LIST_0 )
+  RefPicList eRefPicList2nd = REF_PIC_LIST_0;//定义另一个与当前参考图像列表不同的参考图像列表
+  if( eRefPicList == REF_PIC_LIST_0 )
   {
     eRefPicList2nd = REF_PIC_LIST_1;
   }
@@ -2914,17 +2918,17 @@ Bool TComDataCU::xAddMVPCand( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefI
   }
 
 
-  Int iCurrRefPOC = m_pcSlice->getRefPic( eRefPicList, iRefIdx)->getPOC();
+  Int iCurrRefPOC = m_pcSlice->getRefPic( eRefPicList, iRefIdx)->getPOC();//当前块参考图像的POC值　(picture order count　图像输出顺序　POC值可唯一指定一帧图像)
   Int iNeibRefPOC;
 
 
   if( pcTmpCU->getCUMvField(eRefPicList2nd)->getRefIdx(uiIdx) >= 0 )
   {
     iNeibRefPOC = pcTmpCU->getSlice()->getRefPOC( eRefPicList2nd, pcTmpCU->getCUMvField(eRefPicList2nd)->getRefIdx(uiIdx) );
-    if( iNeibRefPOC == iCurrRefPOC ) // Same Reference Frame But Diff List//
+    if( iNeibRefPOC == iCurrRefPOC ) // Same Reference Frame But Diff List//当前块和候选块参考图像列表不同　但参考图像相同
     {
       TComMv cMvPred = pcTmpCU->getCUMvField(eRefPicList2nd)->getMv(uiIdx);
-      pInfo->m_acMvCand[ pInfo->iN++] = cMvPred;
+      pInfo->m_acMvCand[ pInfo->iN++] = cMvPred;　//将候选块的运动矢量添加候选运动矢量列表中并返回真
       return true;
     }
   }
@@ -2939,11 +2943,11 @@ Bool TComDataCU::xAddMVPCand( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefI
  * \param eDir
  * \returns Bool
  */
-Bool TComDataCU::xAddMVPCandOrder( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir )
+Bool TComDataCU::xAddMVPCandOrder( AMVPInfo* pInfo, RefPicList eRefPicList, Int iRefIdx, UInt uiPartUnitIdx, MVP_DIR eDir )//得到给定位置的候选运动矢量并返回是否得到运动矢量　能处理所参考图像不相同的块　
 {
   TComDataCU* pcTmpCU = NULL;
   UInt uiIdx;
-  switch( eDir )
+  switch( eDir )//得到不同候选块的位置
   {
   case MD_LEFT:
     {
@@ -2981,7 +2985,7 @@ Bool TComDataCU::xAddMVPCandOrder( AMVPInfo* pInfo, RefPicList eRefPicList, Int 
     return false;
   }
 
-  RefPicList eRefPicList2nd = REF_PIC_LIST_0;
+  RefPicList eRefPicList2nd = REF_PIC_LIST_0;//定义另一个与当前参考图像列表不同的参考图像列表
   if(       eRefPicList == REF_PIC_LIST_0 )
   {
     eRefPicList2nd = REF_PIC_LIST_1;
@@ -2999,8 +3003,8 @@ Bool TComDataCU::xAddMVPCandOrder( AMVPInfo* pInfo, RefPicList eRefPicList, Int 
   Bool bIsNeibRefLongTerm = false;
 
   //---------------  V1 (END) ------------------//
-  if( pcTmpCU->getCUMvField(eRefPicList)->getRefIdx(uiIdx) >= 0)
-  {
+  if( pcTmpCU->getCUMvField(eRefPicList)->getRefIdx(uiIdx) >= 0)//该PU块帧间预测在给定的参考图像列表中存在有效参考图像
+  {//curMV=td/tb*colMV
     iNeibRefPOC = pcTmpCU->getSlice()->getRefPOC( eRefPicList, pcTmpCU->getCUMvField(eRefPicList)->getRefIdx(uiIdx) );
     TComMv cMvPred = pcTmpCU->getCUMvField(eRefPicList)->getMv(uiIdx);
     TComMv rcMv;
@@ -3008,20 +3012,20 @@ Bool TComDataCU::xAddMVPCandOrder( AMVPInfo* pInfo, RefPicList eRefPicList, Int 
     bIsNeibRefLongTerm = pcTmpCU->getSlice()->getRefPic( eRefPicList, pcTmpCU->getCUMvField(eRefPicList)->getRefIdx(uiIdx) )->getIsLongTerm();
     if ( bIsCurrRefLongTerm == bIsNeibRefLongTerm )
     {
-      if ( bIsCurrRefLongTerm || bIsNeibRefLongTerm )
+      if ( bIsCurrRefLongTerm || bIsNeibRefLongTerm )//都为long term reference pictures时直接获取该运动矢量
       {
         rcMv = cMvPred;
       }
-      else
+      else//只有当前块参考图像和候选块参考图像都为short term reference pictures时才进行运动矢量的比例伸缩
       {
-        Int iScale = xGetDistScaleFactor( iCurrPOC, iCurrRefPOC, iNeibPOC, iNeibRefPOC );
+        Int iScale = xGetDistScaleFactor( iCurrPOC, iCurrRefPOC, iNeibPOC, iNeibRefPOC );//根据当前块参考图像的POC值和候选块参考图像的POC值计算伸缩比例
         if ( iScale == 4096 )
         {
           rcMv = cMvPred;
         }
         else
         {
-          rcMv = cMvPred.scaleMv( iScale );
+          rcMv = cMvPred.scaleMv( iScale );//计算scaled mv
         }
       }
 
@@ -3030,8 +3034,8 @@ Bool TComDataCU::xAddMVPCandOrder( AMVPInfo* pInfo, RefPicList eRefPicList, Int 
     }
   }
   //---------------------- V2(END) --------------------//
-  if( pcTmpCU->getCUMvField(eRefPicList2nd)->getRefIdx(uiIdx) >= 0)
-  {
+  if( pcTmpCU->getCUMvField(eRefPicList2nd)->getRefIdx(uiIdx) >= 0)////该PU块帧间预测在给定的参考图像列表中不存在有效参考图像　而在另一个参考列表中存在有效参考图像
+  {//计算scaled mv过程同上
     iNeibRefPOC = pcTmpCU->getSlice()->getRefPOC( eRefPicList2nd, pcTmpCU->getCUMvField(eRefPicList2nd)->getRefIdx(uiIdx) );
     TComMv cMvPred = pcTmpCU->getCUMvField(eRefPicList2nd)->getMv(uiIdx);
     TComMv rcMv;
@@ -3064,7 +3068,7 @@ Bool TComDataCU::xAddMVPCandOrder( AMVPInfo* pInfo, RefPicList eRefPicList, Int 
   return false;
 }
 
-Bool TComDataCU::xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUnitIdx, TComMv& rcMv, Int& riRefIdx )
+Bool TComDataCU::xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUnitIdx, TComMv& rcMv, Int& riRefIdx )//得到同位块的运动矢量预测
 {
   UInt uiAbsPartAddr = uiPartUnitIdx;
 
@@ -3073,23 +3077,23 @@ Bool TComDataCU::xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUn
   TComMv cColMv;
 
   // use coldir.
-  TComPic *pColPic = getSlice()->getRefPic( RefPicList(getSlice()->isInterB() ? 1-getSlice()->getColFromL0Flag() : 0), getSlice()->getColRefIdx());
-  TComDataCU *pColCtu = pColPic->getCtu( ctuRsAddr );
-  if(pColCtu->getPic()==0||pColCtu->getPartitionSize(uiPartUnitIdx)==NUMBER_OF_PART_SIZES)
+  TComPic *pColPic = getSlice()->getRefPic( RefPicList(getSlice()->isInterB() ? 1-getSlice()->getColFromL0Flag() : 0), getSlice()->getColRefIdx());//得到同位图像（即同位块所在的图像）
+  TComDataCU *pColCtu = pColPic->getCtu( ctuRsAddr );//同位块所在的CTu
+  if(pColCtu->getPic()==0||pColCtu->getPartitionSize(uiPartUnitIdx)==NUMBER_OF_PART_SIZES)//同位块所在图像为第一帧图像　或同位块还未解码　则无法参考同位块的运动信息
   {
     return false;
   }
   iCurrPOC = m_pcSlice->getPOC();
   iColPOC = pColCtu->getSlice()->getPOC();
 
-  if (!pColCtu->isInter(uiAbsPartAddr))
+  if (!pColCtu->isInter(uiAbsPartAddr))//同位块所在CTU为帧内编码　帧内编码不存在运动矢量　　
   {
     return false;
   }
 
   eColRefPicList = getSlice()->getCheckLDC() ? eRefPicList : RefPicList(getSlice()->getColFromL0Flag());
 
-  Int iColRefIdx = pColCtu->getCUMvField(RefPicList(eColRefPicList))->getRefIdx(uiAbsPartAddr);
+  Int iColRefIdx = pColCtu->getCUMvField(RefPicList(eColRefPicList))->getRefIdx(uiAbsPartAddr);//同位块的参考图像的索引
 
   if (iColRefIdx < 0 )
   {
@@ -3098,7 +3102,7 @@ Bool TComDataCU::xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUn
 
     if (iColRefIdx < 0 )
     {
-      return false;
+      return false;//参考图像列表list0 list1中均不存在有效参考图像
     }
   }
 
@@ -3111,33 +3115,33 @@ Bool TComDataCU::xGetColMVP( RefPicList eRefPicList, Int ctuRsAddr, Int uiPartUn
   Bool bIsCurrRefLongTerm = m_pcSlice->getRefPic(eRefPicList, riRefIdx)->getIsLongTerm();
   Bool bIsColRefLongTerm = pColCtu->getSlice()->getIsUsedAsLongTerm(eColRefPicList, iColRefIdx);
 
-  if ( bIsCurrRefLongTerm != bIsColRefLongTerm )
+  if ( bIsCurrRefLongTerm != bIsColRefLongTerm )//参考图像类型不同　则当前块无法参考同位块的运动矢量信息
   {
     return false;
   }
 
-  if ( bIsCurrRefLongTerm || bIsColRefLongTerm )
+  if ( bIsCurrRefLongTerm || bIsColRefLongTerm )//都为long term reference pictures时直接获取该运动矢量
   {
     rcMv = cColMv;
   }
   else
   {
-    iScale = xGetDistScaleFactor(iCurrPOC, iCurrRefPOC, iColPOC, iColRefPOC);
+    iScale = xGetDistScaleFactor(iCurrPOC, iCurrRefPOC, iColPOC, iColRefPOC);//根据当前块参考图像的POC值和候选块参考图像的POC值计算伸缩比例
     if ( iScale == 4096 )
     {
       rcMv = cColMv;
     }
     else
     {
-      rcMv = cColMv.scaleMv( iScale );
+      rcMv = cColMv.scaleMv( iScale );//计算scaled mv
     }
   }
 
   return true;
 }
 
-Int TComDataCU::xGetDistScaleFactor(Int iCurrPOC, Int iCurrRefPOC, Int iColPOC, Int iColRefPOC)
-{
+Int TComDataCU::xGetDistScaleFactor(Int iCurrPOC, Int iCurrRefPOC, Int iColPOC, Int iColRefPOC)//根据当前块参考图像的POC值和候选块参考图像的POC值计算伸缩比例
+{//iscale=tb/td  计算过程中的移位是为了：用整数运算来完成小数计算时保证小数计算的精度
   Int iDiffPocD = iColPOC - iColRefPOC;
   Int iDiffPocB = iCurrPOC - iCurrRefPOC;
 
@@ -3149,14 +3153,14 @@ Int TComDataCU::xGetDistScaleFactor(Int iCurrPOC, Int iCurrRefPOC, Int iColPOC, 
   {
     Int iTDB      = Clip3( -128, 127, iDiffPocB );
     Int iTDD      = Clip3( -128, 127, iDiffPocD );
-    Int iX        = (0x4000 + abs(iTDD/2)) / iTDD;
+    Int iX        = (0x4000 + abs(iTDD/2)) / iTDD;//abs(iTDD/2)为0.5的舍入偏移量　确保小数取整时的四舍五入(而不是向下取整)
     Int iScale    = Clip3( -4096, 4095, (iTDB * iX + 32) >> 6 );
     return iScale;
   }
 }
 
-Void TComDataCU::xDeriveCenterIdx( UInt uiPartIdx, UInt& ruiPartIdxCenter )
-{
+Void TComDataCU::xDeriveCenterIdx( UInt uiPartIdx, UInt& ruiPartIdxCenter )//得到次选同位块C1位置
+{//C1位置为将当前PU十字划分后第四块的起始位置
   UInt uiPartAddr;
   Int  iPartWidth;
   Int  iPartHeight;
@@ -3165,28 +3169,28 @@ Void TComDataCU::xDeriveCenterIdx( UInt uiPartIdx, UInt& ruiPartIdxCenter )
   ruiPartIdxCenter = m_absZIdxInCtu+uiPartAddr; // partition origin.
   ruiPartIdxCenter = g_auiRasterToZscan[ g_auiZscanToRaster[ ruiPartIdxCenter ]
                                         + ( iPartHeight/m_pcPic->getMinCUHeight()  )/2*m_pcPic->getNumPartInCtuWidth()
-                                        + ( iPartWidth/m_pcPic->getMinCUWidth()  )/2];
+                                        + ( iPartWidth/m_pcPic->getMinCUWidth()  )/2];//PU块中心位置
 }
 
 Void TComDataCU::compressMV()
 {
-  Int scaleFactor = 4 * AMVP_DECIMATION_FACTOR / m_unitSize;
+  Int scaleFactor = 4 * AMVP_DECIMATION_FACTOR / m_unitSize;//下采样比
   if (scaleFactor > 0)
   {
     for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
     {
-      m_acCUMvField[i].compress(m_pePredMode, scaleFactor);
+      m_acCUMvField[i].compress(m_pePredMode, scaleFactor);////对存储好的运动信息下采样
     }
   }
 }
 
 UInt TComDataCU::getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, const UInt uiHeight, const ComponentID compID) const
-{
+{//根据块的信息得到块的变换系数的扫描方式
   //------------------------------------------------
 
   //this mechanism is available for intra only
 
-  if (!isIntra(uiAbsPartIdx))
+  if (!isIntra(uiAbsPartIdx))//不为帧内预测　扫描方式为对角扫描
   {
     return SCAN_DIAG;
   }
@@ -3200,7 +3204,7 @@ UInt TComDataCU::getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, con
   const UInt maximumWidth  = MDCS_MAXIMUM_WIDTH  >> getComponentScaleX(compID, format);
   const UInt maximumHeight = MDCS_MAXIMUM_HEIGHT >> getComponentScaleY(compID, format);
 
-  if ((uiWidth > maximumWidth) || (uiHeight > maximumHeight))
+  if ((uiWidth > maximumWidth) || (uiHeight > maximumHeight))//大于规定块的大小(8*8)　用对角扫描
   {
     return SCAN_DIAG;
   }
@@ -3209,9 +3213,9 @@ UInt TComDataCU::getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, con
 
   //otherwise, select the appropriate mode
 
-  UInt uiDirMode  = getIntraDir(toChannelType(compID), uiAbsPartIdx);
+  UInt uiDirMode  = getIntraDir(toChannelType(compID), uiAbsPartIdx);//亮度分量的预测模式
 
-  if (uiDirMode==DM_CHROMA_IDX)
+  if (uiDirMode==DM_CHROMA_IDX)//色度分量的预测模式
   {
     const TComSPS *sps=getSlice()->getSPS();
     const UInt partsPerMinCU = 1<<(2*(sps->getMaxTotalCUDepth() - sps->getLog2DiffMaxMinCodingBlockSize()));
@@ -3225,17 +3229,17 @@ UInt TComDataCU::getCoefScanIdx(const UInt uiAbsPartIdx, const UInt uiWidth, con
 
   //------------------
 
-  if      (abs((Int)uiDirMode - VER_IDX) <= MDCS_ANGLE_LIMIT)
+  if　(abs((Int)uiDirMode - VER_IDX) <= MDCS_ANGLE_LIMIT)//若预测模式与垂直模式相在给定的范围内　
   {
-    return SCAN_HOR;
+    return SCAN_HOR;//则水平扫描
   }
-  else if (abs((Int)uiDirMode - HOR_IDX) <= MDCS_ANGLE_LIMIT)
+  else if (abs((Int)uiDirMode - HOR_IDX) <= MDCS_ANGLE_LIMIT)//若预测模式与水平模式相在给定的范围内
   {
-    return SCAN_VER;
+    return SCAN_VER;//则垂直扫描
   }
   else
   {
-    return SCAN_DIAG;
+    return SCAN_DIAG;//否则水平扫描
   }
 }
 
