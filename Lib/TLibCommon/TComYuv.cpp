@@ -48,7 +48,7 @@
 //! \ingroup TLibCommon
 //! \{
 
-TComYuv::TComYuv()
+TComYuv::TComYuv()//构造函数 为保存一帧图像中各个分量的数组初始化
 {
   for(Int comp=0; comp<MAX_NUM_COMPONENT; comp++)
   {
@@ -56,7 +56,7 @@ TComYuv::TComYuv()
   }
 }
 
-TComYuv::~TComYuv()
+TComYuv::~TComYuv()//析构函数
 {
 }
 
@@ -67,14 +67,14 @@ Void TComYuv::create( UInt iWidth, UInt iHeight, ChromaFormat chromaFormatIDC )
   m_iHeight  = iHeight;
   m_chromaFormatIDC = chromaFormatIDC;
 
-  for(Int comp=0; comp<MAX_NUM_COMPONENT; comp++)
+  for(Int comp=0; comp<MAX_NUM_COMPONENT; comp++)//为保存图像分量的数组分配内存
   {
     // memory allocation
     m_apiBuf[comp]  = (Pel*)xMalloc( Pel, getWidth(ComponentID(comp))*getHeight(ComponentID(comp)) );
   }
 }
 
-Void TComYuv::destroy()
+Void TComYuv::destroy()//释放内存
 {
   // memory free
   for(Int comp=0; comp<MAX_NUM_COMPONENT; comp++)
@@ -87,7 +87,7 @@ Void TComYuv::destroy()
   }
 }
 
-Void TComYuv::clear()
+Void TComYuv::clear()//将图像各分量数据清零
 {
   for(Int comp=0; comp<MAX_NUM_COMPONENT; comp++)
   {
@@ -100,40 +100,40 @@ Void TComYuv::clear()
 
 
 
-
+//  Copy YUV buffer to picture buffer
 Void TComYuv::copyToPicYuv   ( TComPicYuv* pcPicYuvDst, const UInt ctuRsAddr, const UInt uiAbsZorderIdx, const UInt uiPartDepth, const UInt uiPartIdx ) const
-{
-  for(Int comp=0; comp<getNumberValidComponents(); comp++)
+{//将给定范围的图像复制到目标图像指定位置
+  for(Int comp=0; comp<getNumberValidComponents(); comp++)//复制各个分量
   {
     copyToPicComponent  ( ComponentID(comp), pcPicYuvDst, ctuRsAddr, uiAbsZorderIdx, uiPartDepth, uiPartIdx );
   }
 }
 
 Void TComYuv::copyToPicComponent  ( const ComponentID compID, TComPicYuv* pcPicYuvDst, const UInt ctuRsAddr, const UInt uiAbsZorderIdx, const UInt uiPartDepth, const UInt uiPartIdx ) const
-{
-  const Int iWidth  = getWidth(compID) >>uiPartDepth;
-  const Int iHeight = getHeight(compID)>>uiPartDepth;
+{//将给定范围的分量值复制到目标图像指定位置
+  const Int iWidth  = getWidth(compID) >>uiPartDepth;//复制范围的宽
+  const Int iHeight = getHeight(compID)>>uiPartDepth;//复制范围的高
 
-  const Pel* pSrc     = getAddr(compID, uiPartIdx, iWidth);
-        Pel* pDst     = pcPicYuvDst->getAddr ( compID, ctuRsAddr, uiAbsZorderIdx );
+  const Pel* pSrc     = getAddr(compID, uiPartIdx, iWidth);//源图像复制起始位置
+        Pel* pDst     = pcPicYuvDst->getAddr ( compID, ctuRsAddr, uiAbsZorderIdx );//目标图像复制起始位置(ctuRsAddr为CTU在图像中的范围 uiAbsZorderIdx为在CTU中的位置)
 
   const UInt  iSrcStride  = getStride(compID);
   const UInt  iDstStride  = pcPicYuvDst->getStride(compID);
 
-  for ( Int y = iHeight; y != 0; y-- )
+  for ( Int y = iHeight; y != 0; y-- )//按行依次复制分量值
   {
     ::memcpy( pDst, pSrc, sizeof(Pel)*iWidth);
-    pDst += iDstStride;
+    pDst += iDstStride;//下一行
     pSrc += iSrcStride;
   }
 }
 
 
 
-
+//  Copy YUV buffer from picture buffer
 Void TComYuv::copyFromPicYuv   ( const TComPicYuv* pcPicYuvSrc, const UInt ctuRsAddr, const UInt uiAbsZorderIdx )
-{
-  for(Int comp=0; comp<getNumberValidComponents(); comp++)
+{//将给定范围的图像复制到当前图像起始位置
+  for(Int comp=0; comp<getNumberValidComponents(); comp++)//复制各个分量
   {
     copyFromPicComponent  ( ComponentID(comp), pcPicYuvSrc, ctuRsAddr, uiAbsZorderIdx );
   }
@@ -141,54 +141,54 @@ Void TComYuv::copyFromPicYuv   ( const TComPicYuv* pcPicYuvSrc, const UInt ctuRs
 
 Void TComYuv::copyFromPicComponent  ( const ComponentID compID, const TComPicYuv* pcPicYuvSrc, const UInt ctuRsAddr, const UInt uiAbsZorderIdx )
 {
-        Pel* pDst     = getAddr(compID);
-  const Pel* pSrc     = pcPicYuvSrc->getAddr ( compID, ctuRsAddr, uiAbsZorderIdx );
+        Pel* pDst     = getAddr(compID);//当前图像的起始位置
+  const Pel* pSrc     = pcPicYuvSrc->getAddr ( compID, ctuRsAddr, uiAbsZorderIdx );//源图像复制起始位置
 
   const UInt iDstStride  = getStride(compID);
   const UInt iSrcStride  = pcPicYuvSrc->getStride(compID);
-  const Int  iWidth=getWidth(compID);
-  const Int  iHeight=getHeight(compID);
+  const Int  iWidth=getWidth(compID);//复制范围的宽
+  const Int  iHeight=getHeight(compID);//复制范围的高
 
-  for (Int y = iHeight; y != 0; y-- )
+  for (Int y = iHeight; y != 0; y-- )//按行依次复制分量值
   {
     ::memcpy( pDst, pSrc, sizeof(Pel)*iWidth);
-    pDst += iDstStride;
+    pDst += iDstStride;//下一行
     pSrc += iSrcStride;
   }
 }
 
 
 
-
+//  Copy Small YUV buffer to the part of other Big YUV buffer
 Void TComYuv::copyToPartYuv( TComYuv* pcYuvDst, const UInt uiDstPartIdx ) const
-{
-  for(Int comp=0; comp<getNumberValidComponents(); comp++)
+{//将当前图像给定范围的图像复制到给定图像指定位置
+  for(Int comp=0; comp<getNumberValidComponents(); comp++)//复制各个分量
   {
     copyToPartComponent  ( ComponentID(comp), pcYuvDst, uiDstPartIdx );
   }
 }
 
 Void TComYuv::copyToPartComponent( const ComponentID compID, TComYuv* pcYuvDst, const UInt uiDstPartIdx ) const
-{
-  const Pel* pSrc     = getAddr(compID);
-        Pel* pDst     = pcYuvDst->getAddr( compID, uiDstPartIdx );
+{//将当前图像起始位置给定范围的分量值复制到给定图像指定位置
+  const Pel* pSrc     = getAddr(compID);//当前图像的起始位置
+        Pel* pDst     = pcYuvDst->getAddr( compID, uiDstPartIdx );//目标图像复制起始点
 
   const UInt iSrcStride  = getStride(compID);
   const UInt iDstStride  = pcYuvDst->getStride(compID);
   const Int  iWidth=getWidth(compID);
   const Int  iHeight=getHeight(compID);
 
-  for (Int y = iHeight; y != 0; y-- )
+  for (Int y = iHeight; y != 0; y-- )//按行依次复制分量值
   {
     ::memcpy( pDst, pSrc, sizeof(Pel)*iWidth);
-    pDst += iDstStride;
+    pDst += iDstStride;//下一行
     pSrc += iSrcStride;
   }
 }
 
 
 
-
+//  Copy the part of Big YUV buffer to other Small YUV buffer
 Void TComYuv::copyPartToYuv( TComYuv* pcYuvDst, const UInt uiSrcPartIdx ) const
 {
   for(Int comp=0; comp<getNumberValidComponents(); comp++)
@@ -198,7 +198,7 @@ Void TComYuv::copyPartToYuv( TComYuv* pcYuvDst, const UInt uiSrcPartIdx ) const
 }
 
 Void TComYuv::copyPartToComponent( const ComponentID compID, TComYuv* pcYuvDst, const UInt uiSrcPartIdx ) const
-{
+{//将当前图像给定位置给定范围的分量值复制到目标图像起始位置
   const Pel* pSrc     = getAddr(compID, uiSrcPartIdx);
         Pel* pDst     = pcYuvDst->getAddr(compID, 0 );
 
@@ -218,9 +218,9 @@ Void TComYuv::copyPartToComponent( const ComponentID compID, TComYuv* pcYuvDst, 
 
 
 
-
+//  Copy YUV partition buffer to other YUV partition buffer
 Void TComYuv::copyPartToPartYuv   ( TComYuv* pcYuvDst, const UInt uiPartIdx, const UInt iWidth, const UInt iHeight ) const
-{//将
+{//当前图像部分图像复制到目标图像对应位置
   for(Int comp=0; comp<getNumberValidComponents(); comp++)
   {
     copyPartToPartComponent   (ComponentID(comp), pcYuvDst, uiPartIdx, iWidth>>getComponentScaleX(ComponentID(comp)), iHeight>>getComponentScaleY(ComponentID(comp)) );
@@ -228,7 +228,7 @@ Void TComYuv::copyPartToPartYuv   ( TComYuv* pcYuvDst, const UInt uiPartIdx, con
 }
 
 Void TComYuv::copyPartToPartComponent  ( const ComponentID compID, TComYuv* pcYuvDst, const UInt uiPartIdx, const UInt iWidthComponent, const UInt iHeightComponent ) const
-{
+{//当前图像部分图像分量复制到目标图像对应位置
   const Pel* pSrc =           getAddr(compID, uiPartIdx);
         Pel* pDst = pcYuvDst->getAddr(compID, uiPartIdx);
   if( pSrc == pDst )
@@ -252,7 +252,7 @@ Void TComYuv::copyPartToPartComponent  ( const ComponentID compID, TComYuv* pcYu
 
 
 Void TComYuv::copyPartToPartComponentMxN  ( const ComponentID compID, TComYuv* pcYuvDst, const TComRectangle &rect) const
-{
+{//当前图像部分图像分量复制到目标图像对应位置（对应位置由x y 坐标得到）
   const Pel* pSrc =           getAddrPix( compID, rect.x0, rect.y0 );
         Pel* pDst = pcYuvDst->getAddrPix( compID, rect.x0, rect.y0 );
   if( pSrc == pDst )
@@ -276,17 +276,17 @@ Void TComYuv::copyPartToPartComponentMxN  ( const ComponentID compID, TComYuv* p
 
 
 
-
+//  Clip(pcYuvSrc0 + pcYuvSrc1) -> m_apiBuf
 Void TComYuv::addClip( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiPartSize, const BitDepths &clipBitDepths )
-{
-  for(Int comp=0; comp<getNumberValidComponents(); comp++)
+{//将两帧源图像给定位置和范围的像素值相加 并限制和的大小
+  for(Int comp=0; comp<getNumberValidComponents(); comp++)//计算各个分量
   {
     const ComponentID compID=ComponentID(comp);
-    const Int uiPartWidth =uiPartSize>>getComponentScaleX(compID);
-    const Int uiPartHeight=uiPartSize>>getComponentScaleY(compID);
+    const Int uiPartWidth =uiPartSize>>getComponentScaleX(compID);//给定范围的宽
+    const Int uiPartHeight=uiPartSize>>getComponentScaleY(compID);//给定范围的高
 
-    const Pel* pSrc0 = pcYuvSrc0->getAddr(compID, uiTrUnitIdx, uiPartWidth );
-    const Pel* pSrc1 = pcYuvSrc1->getAddr(compID, uiTrUnitIdx, uiPartWidth );
+    const Pel* pSrc0 = pcYuvSrc0->getAddr(compID, uiTrUnitIdx, uiPartWidth );//源图像给定的起始位置
+    const Pel* pSrc1 = pcYuvSrc1->getAddr(compID, uiTrUnitIdx, uiPartWidth );//源图像给定的起始位置
           Pel* pDst  = getAddr(compID, uiTrUnitIdx, uiPartWidth );
 
     const UInt iSrc0Stride = pcYuvSrc0->getStride(compID);
@@ -297,17 +297,17 @@ Void TComYuv::addClip( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const
     const Int bitDepthDelta = clipBitDepths.stream[toChannelType(compID)] - clipbd;
 #endif
 
-    for ( Int y = uiPartHeight-1; y >= 0; y-- )
+    for ( Int y = uiPartHeight-1; y >= 0; y-- )//遍历行
     {
       for ( Int x = uiPartWidth-1; x >= 0; x-- )
       {
 #if O0043_BEST_EFFORT_DECODING
         pDst[x] = Pel(ClipBD<Int>( Int(pSrc0[x]) + rightShiftEvenRounding<Pel>(pSrc1[x], bitDepthDelta), clipbd));
 #else
-        pDst[x] = Pel(ClipBD<Int>( Int(pSrc0[x]) + Int(pSrc1[x]), clipbd));
+        pDst[x] = Pel(ClipBD<Int>( Int(pSrc0[x]) + Int(pSrc1[x]), clipbd));//对应位置分量值相加
 #endif
       }
-      pSrc0 += iSrc0Stride;
+      pSrc0 += iSrc0Stride;//下一行
       pSrc1 += iSrc1Stride;
       pDst  += iDstStride;
     }
@@ -318,7 +318,7 @@ Void TComYuv::addClip( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const
 
 
 Void TComYuv::subtract( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const UInt uiTrUnitIdx, const UInt uiPartSize )
-{
+{//将两帧源图像给定位置和范围的像素值相减
   for(Int comp=0; comp<getNumberValidComponents(); comp++)
   {
     const ComponentID compID=ComponentID(comp);
@@ -373,32 +373,32 @@ Void TComYuv::addAvg( const TComYuv* pcYuvSrc0, const TComYuv* pcYuvSrc1, const 
       assert(0);
       exit(-1);
     }
-    else if (iWidth&2)
+    else if (iWidth&2)//宽为2的倍数 且不为4的倍数
     {
       for ( Int y = 0; y < iHeight; y++ )
       {
-        for (Int x=0 ; x < iWidth; x+=2 )
+        for (Int x=0 ; x < iWidth; x+=2 )//一次处理一行相邻的两个像素
         {
           pDst[ x + 0 ] = ClipBD( rightShift(( pSrc0[ x + 0 ] + pSrc1[ x + 0 ] + offset ), shiftNum), clipbd );
           pDst[ x + 1 ] = ClipBD( rightShift(( pSrc0[ x + 1 ] + pSrc1[ x + 1 ] + offset ), shiftNum), clipbd );
         }
-        pSrc0 += iSrc0Stride;
+        pSrc0 += iSrc0Stride;//下一行
         pSrc1 += iSrc1Stride;
         pDst  += iDstStride;
       }
     }
-    else
+    else//宽为4的倍数 
     {
       for ( Int y = 0; y < iHeight; y++ )
       {
-        for (Int x=0 ; x < iWidth; x+=4 )
+        for (Int x=0 ; x < iWidth; x+=4 )//一次处理一行相邻的4个像素
         {
           pDst[ x + 0 ] = ClipBD( rightShift(( pSrc0[ x + 0 ] + pSrc1[ x + 0 ] + offset ), shiftNum), clipbd );
           pDst[ x + 1 ] = ClipBD( rightShift(( pSrc0[ x + 1 ] + pSrc1[ x + 1 ] + offset ), shiftNum), clipbd );
           pDst[ x + 2 ] = ClipBD( rightShift(( pSrc0[ x + 2 ] + pSrc1[ x + 2 ] + offset ), shiftNum), clipbd );
           pDst[ x + 3 ] = ClipBD( rightShift(( pSrc0[ x + 3 ] + pSrc1[ x + 3 ] + offset ), shiftNum), clipbd );
         }
-        pSrc0 += iSrc0Stride;
+        pSrc0 += iSrc0Stride;//下一行
         pSrc1 += iSrc1Stride;
         pDst  += iDstStride;
       }
@@ -413,8 +413,8 @@ Void TComYuv::removeHighFreq( const TComYuv* pcYuvSrc,
                               const Int bitDepths[MAX_NUM_CHANNEL_TYPE],
                               const Bool bClipToBitDepths
                               )
-{
-  for(Int comp=0; comp<getNumberValidComponents(); comp++)
+{//当前像素减去源像素的差值加上当前像素值
+  for(Int comp=0; comp<getNumberValidComponents(); comp++)//处理各个分量
   {
     const ComponentID compID=ComponentID(comp);
     const Pel* pSrc  = pcYuvSrc->getAddr(compID, uiPartIdx);
@@ -424,20 +424,20 @@ Void TComYuv::removeHighFreq( const TComYuv* pcYuvSrc,
     const Int iDstStride = getStride(compID);
     const Int iWidth  = uiWidth >>getComponentScaleX(compID);
     const Int iHeight = uiHeight>>getComponentScaleY(compID);
-    if (bClipToBitDepths)
+    if (bClipToBitDepths)//限制位深
     {
       const Int clipBd=bitDepths[toChannelType(compID)];
-      for ( Int y = iHeight-1; y >= 0; y-- )
+      for ( Int y = iHeight-1; y >= 0; y-- )//遍历每个分量值
       {
         for ( Int x = iWidth-1; x >= 0; x-- )
         {
-          pDst[x ] = ClipBD((2 * pDst[x]) - pSrc[x], clipBd);
+          pDst[x ] = ClipBD((2 * pDst[x]) - pSrc[x], clipBd);//对计算的结果限制位深
         }
         pSrc += iSrcStride;
         pDst += iDstStride;
       }
     }
-    else
+    else//不限制位深
     {
       for ( Int y = iHeight-1; y >= 0; y-- )
       {

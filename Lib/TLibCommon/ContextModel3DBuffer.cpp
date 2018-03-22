@@ -44,7 +44,7 @@
 // Constructor / destructor / initialization / destroy
 // ====================================================================================================================
 
-ContextModel3DBuffer::ContextModel3DBuffer( UInt uiSizeZ, UInt uiSizeY, UInt uiSizeX, ContextModel *basePtr, Int &count )
+ContextModel3DBuffer::ContextModel3DBuffer( UInt uiSizeZ, UInt uiSizeY, UInt uiSizeX, ContextModel *basePtr, Int &count )//构造函数 
 : m_sizeX  ( uiSizeX )
 , m_sizeXY ( uiSizeX * uiSizeY )
 , m_sizeXYZ( uiSizeX * uiSizeY * uiSizeZ )
@@ -65,9 +65,9 @@ ContextModel3DBuffer::ContextModel3DBuffer( UInt uiSizeZ, UInt uiSizeY, UInt uiS
  * \param  qp             input QP value
  * \param  ctxModel       given probability table
  */
-Void ContextModel3DBuffer::initBuffer( SliceType sliceType, Int qp, UChar* ctxModel )
+Void ContextModel3DBuffer::initBuffer( SliceType sliceType, Int qp, UChar* ctxModel )//将3Dbuffer中的每个上下文模型用给定的qp和ctxModel初始化
 {
-  ctxModel += sliceType * m_sizeXYZ;
+  ctxModel += sliceType * m_sizeXYZ;// sliceType对应的3D buffer上下文模型初始值
 
   for ( Int n = 0; n < m_sizeXYZ; n++ )
   {
@@ -83,35 +83,35 @@ Void ContextModel3DBuffer::initBuffer( SliceType sliceType, Int qp, UChar* ctxMo
  * \param  qp             input QP value
  * \param  ctxModel      given probability table
  */
-UInt ContextModel3DBuffer::calcCost( SliceType sliceType, Int qp, UChar* ctxModel )
+UInt ContextModel3DBuffer::calcCost( SliceType sliceType, Int qp, UChar* ctxModel )//计算3D buffer总的编码损耗
 {
   UInt cost = 0;
   ctxModel += sliceType * m_sizeXYZ;
 
-  for ( Int n = 0; n < m_sizeXYZ; n++ )
+  for ( Int n = 0; n < m_sizeXYZ; n++ )//遍历3D buffer中的每个上下文模型
   {
     ContextModel tmpContextModel;
-    tmpContextModel.init( qp, ctxModel[ n ] );
+    tmpContextModel.init( qp, ctxModel[ n ] );//初始化上下文模型
 
     // Map the 64 CABAC states to their corresponding probability values
     static const Double aStateToProbLPS[] = {0.50000000, 0.47460857, 0.45050660, 0.42762859, 0.40591239, 0.38529900, 0.36573242, 0.34715948, 0.32952974, 0.31279528, 0.29691064, 0.28183267, 0.26752040, 0.25393496, 0.24103941, 0.22879875, 0.21717969, 0.20615069, 0.19568177, 0.18574449, 0.17631186, 0.16735824, 0.15885931, 0.15079198, 0.14313433, 0.13586556, 0.12896592, 0.12241667, 0.11620000, 0.11029903, 0.10469773, 0.09938088, 0.09433404, 0.08954349, 0.08499621, 0.08067986, 0.07658271, 0.07269362, 0.06900203, 0.06549791, 0.06217174, 0.05901448, 0.05601756, 0.05317283, 0.05047256, 0.04790942, 0.04547644, 0.04316702, 0.04097487, 0.03889405, 0.03691890, 0.03504406, 0.03326442, 0.03157516, 0.02997168, 0.02844963, 0.02700488, 0.02563349, 0.02433175, 0.02309612, 0.02192323, 0.02080991, 0.01975312, 0.01875000};
 
-    Double probLPS          = aStateToProbLPS[ m_contextModel[ n ].getState() ];
+    Double probLPS          = aStateToProbLPS[ m_contextModel[ n ].getState() ];//得到概率状态对应的出现LPS的概率值
     Double prob0, prob1;
-    if (m_contextModel[ n ].getMps()==1)
+    if (m_contextModel[ n ].getMps()==1)//MPS为1
     {
-      prob0 = probLPS;
-      prob1 = 1.0-prob0;
+      prob0 = probLPS;//下个字符为0的概率
+      prob1 = 1.0-prob0;//下个字符为1的概率
     }
-    else
+    else//MPS为0
     {
-      prob1 = probLPS;
-      prob0 = 1.0-prob1;
+      prob1 = probLPS;//下个字符为1的概率
+      prob0 = 1.0-prob1;//下个字符为0的概率
     }
 
     if (m_contextModel[ n ].getBinsCoded()>0)
     {
-      cost += (UInt) (prob0 * tmpContextModel.getEntropyBits( 0 ) + prob1 * tmpContextModel.getEntropyBits( 1 ));
+      cost += (UInt) (prob0 * tmpContextModel.getEntropyBits( 0 ) + prob1 * tmpContextModel.getEntropyBits( 1 ));//加上该上下文模型下一字符的平均编码比特
     }
   }
 

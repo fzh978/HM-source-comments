@@ -1258,7 +1258,7 @@ TComDataCU* TComDataCU::getQpMinCuLeft( UInt& uiLPartUnitIdx, UInt uiCurrAbsIdxI
   // check for left CTU boundary
   if ( RasterAddress::isZeroCol(absRorderQpMinCUIdx, numPartInCtuWidth) )//该QG是否在CTU的边界
   {
-    return NULL;//只能用当前CTU内的QG做参考
+    return NULL;//只能用当前CTU内的QG做参考！！若在CTU的边界则用之前的QG做参考
   }
 
   // get index of left-CU relative to top-left corner of current quantization group
@@ -1308,23 +1308,23 @@ Char TComDataCU::getRefQP( UInt uiCurrAbsIdxInCtu )//计算当前QG的预测QP�
   TComDataCU* cULeft  = getQpMinCuLeft ( lPartIdx, m_absZIdxInCtu + uiCurrAbsIdxInCtu );
   TComDataCU* cUAbove = getQpMinCuAbove( aPartIdx, m_absZIdxInCtu + uiCurrAbsIdxInCtu );
   return (((cULeft? cULeft->getQP( lPartIdx ): getLastCodedQP( uiCurrAbsIdxInCtu )) + (cUAbove? cUAbove->getQP( aPartIdx ): getLastCodedQP( uiCurrAbsIdxInCtu )) + 1) >> 1);
-}
+}//一个CU只对应一个Qp!!
 
 Int TComDataCU::getLastValidPartIdx( Int iAbsPartIdx )//得到最后一个可以得到QP的有效的位置索引
 {
-  Int iLastValidPartIdx = iAbsPartIdx-1;
+  Int iLastValidPartIdx = iAbsPartIdx-1;//iAbsPartIdx所在QG的上一个QG
   while ( iLastValidPartIdx >= 0
        && getPredictionMode( iLastValidPartIdx ) == NUMBER_OF_PREDICTION_MODES )
   {
     UInt uiDepth = getDepth( iLastValidPartIdx );
-    iLastValidPartIdx -= m_uiNumPartition>>(uiDepth<<1);//从后向前寻找有效QP
+    iLastValidPartIdx -= m_uiNumPartition>>(uiDepth<<1);// qp的解析是以CU为单位的 从后向前寻找有效QP
   }
   return iLastValidPartIdx;//根据判断条件　iLastValidPartIdx为负说明当前CU无法得到有效的QP
 }
 
 Char TComDataCU::getLastCodedQP( UInt uiAbsPartIdx )
 {
-  UInt uiQUPartIdxMask = ~((1<<((getSlice()->getSPS()->getMaxTotalCUDepth() - getSlice()->getPPS()->getMaxCuDQPDepth())<<1))-1);//uiAbsPartIdx&uiQUPartIdxMask在一个QG中的位置
+  UInt uiQUPartIdxMask = ~((1<<((getSlice()->getSPS()->getMaxTotalCUDepth() - getSlice()->getPPS()->getMaxCuDQPDepth())<<1))-1);//uiAbsPartIdx&uiQUPartIdxMask为uiAbsPartIdx所在QG的起始位置
   Int iLastValidPartIdx = getLastValidPartIdx( uiAbsPartIdx&uiQUPartIdxMask ); // A idx will be invalid if it is off the right or bottom edge of the picture.
   // If this CU is in the first CTU of the slice and there is no valid part before this one, use slice QP
   if ( getPic()->getPicSym()->getCtuTsToRsAddrMap(getSlice()->getSliceCurStartCtuTsAddr()) == getCtuRsAddr() && Int(getZorderIdxInCtu())+iLastValidPartIdx<0)//当前CTU为Slice第一个CTU并且最后一个能得到有效QP的位置在当前CTU之前的CTu

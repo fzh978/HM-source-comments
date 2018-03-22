@@ -53,18 +53,21 @@ using namespace std;
  \param  qp         input QP value
  \param  initValue  8 bit initialization value
  */
-Void ContextModel::init( Int qp, Int initValue )
+Void ContextModel::init( Int qp, Int initValue )//在编码第一个二进制符号前 需初始化其上下文概率模型
 {
-  qp = Clip3(0, 51, qp);
+  qp = Clip3(0, 51, qp);//qp的大小在(0,51)
 
   Int  slope      = (initValue>>4)*5 - 45;
   Int  offset     = ((initValue&15)<<3)-16;
-  Int  initState  =  min( max( 1, ( ( ( slope * qp ) >> 4 ) + offset ) ), 126 );
-  UInt mpState    = (initState >= 64 );
-  m_ucState       = ( (mpState? (initState - 64):(63 - initState)) <<1) + mpState;
+  Int  initState  =  min( max( 1, ( ( ( slope * qp ) >> 4 ) + offset ) ), 126 );//计算初始状态
+  UInt mpState    = (initState >= 64 );//MPS的值
+  m_ucState       = ( (mpState? (initState - 64):(63 - initState)) <<1) + mpState;//当前状态
 }
-
-const UChar ContextModel::m_aucNextStateMPS[ ContextModel::m_totalStates ] =
+/**
+ * 原本正常的概率状态数为64 但程序的实现中将当前状态的MPS信息也包含到了概率状态中
+ * 所以总共有128中概率状态 实际的当前状态为 m_ucState >> 1 当前MPS为 m_ucState & 1！！！
+ */
+const UChar ContextModel::m_aucNextStateMPS[ ContextModel::m_totalStates ] =//下一字符为MPS时的概率转移表
 {
   2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
   18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
@@ -76,7 +79,7 @@ const UChar ContextModel::m_aucNextStateMPS[ ContextModel::m_totalStates ] =
   114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 124, 125, 126, 127
 };
 
-const UChar ContextModel::m_aucNextStateLPS[ ContextModel::m_totalStates ] =
+const UChar ContextModel::m_aucNextStateLPS[ ContextModel::m_totalStates ] =//下一字符为LPS时的概率转移表
 {
   1, 0, 0, 1, 2, 3, 4, 5, 4, 5, 8, 9, 8, 9, 10, 11,
   12, 13, 14, 15, 16, 17, 18, 19, 18, 19, 22, 23, 22, 23, 24, 25,
@@ -91,7 +94,7 @@ const UChar ContextModel::m_aucNextStateLPS[ ContextModel::m_totalStates ] =
 #if FAST_BIT_EST
 UChar ContextModel::m_nextState[ ContextModel::m_totalStates ][2 /*MPS = [0|1]*/];
 
-Void ContextModel::buildNextStateTable()
+Void ContextModel::buildNextStateTable()//建立概率转移表m_nextState[i][j] i为当前概率状态  当前MPS为j
 {
   for (Int i = 0; i < ContextModel::m_totalStates; i++)
   {

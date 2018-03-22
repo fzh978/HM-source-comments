@@ -38,11 +38,11 @@
 #include "CommonDef.h"
 #include "SEI.h"
 
-SEIMessages getSeisByType(SEIMessages &seiList, SEI::PayloadType seiType)
+SEIMessages getSeisByType(SEIMessages &seiList, SEI::PayloadType seiType)//从seiList中找到特定类型的SEI放入新列表中
 {
   SEIMessages result;
 
-  for (SEIMessages::iterator it=seiList.begin(); it!=seiList.end(); it++)
+  for (SEIMessages::iterator it=seiList.begin(); it!=seiList.end(); it++)//遍历seiList中所有SEI
   {
     if ((*it)->payloadType() == seiType)
     {
@@ -52,7 +52,7 @@ SEIMessages getSeisByType(SEIMessages &seiList, SEI::PayloadType seiType)
   return result;
 }
 
-SEIMessages extractSeisByType(SEIMessages &seiList, SEI::PayloadType seiType)
+SEIMessages extractSeisByType(SEIMessages &seiList, SEI::PayloadType seiType)//从seiList中找到特定类型的SEI放入新列表中 并将seiList中该类型SEI删除
 {
   SEIMessages result;
 
@@ -61,8 +61,8 @@ SEIMessages extractSeisByType(SEIMessages &seiList, SEI::PayloadType seiType)
   {
     if ((*it)->payloadType() == seiType)
     {
-      result.push_back(*it);
-      it = seiList.erase(it);
+      result.push_back(*it);//将该sei添加至新列表尾部
+      it = seiList.erase(it);//在seiList中删除该sei
     }
     else
     {
@@ -73,7 +73,7 @@ SEIMessages extractSeisByType(SEIMessages &seiList, SEI::PayloadType seiType)
 }
 
 
-Void deleteSEIs (SEIMessages &seiList)
+Void deleteSEIs (SEIMessages &seiList)//删除seiList中的SEIs
 {
   for (SEIMessages::iterator it=seiList.begin(); it!=seiList.end(); it++)
   {
@@ -82,7 +82,7 @@ Void deleteSEIs (SEIMessages &seiList)
   seiList.clear();
 }
 
-void SEIBufferingPeriod::copyTo (SEIBufferingPeriod& target)
+void SEIBufferingPeriod::copyTo (SEIBufferingPeriod& target)//将当前SEIBufferingPeriod中的信息复制到 target
 {
   target.m_bpSeqParameterSetId = m_bpSeqParameterSetId;
   target.m_rapCpbParamsPresentFlag = m_rapCpbParamsPresentFlag;
@@ -96,7 +96,7 @@ void SEIBufferingPeriod::copyTo (SEIBufferingPeriod& target)
   ::memcpy(target.m_initialAltCpbRemovalDelayOffset, m_initialAltCpbRemovalDelayOffset, sizeof(m_initialAltCpbRemovalDelayOffset));
 }
 
-void SEIPictureTiming::copyTo (SEIPictureTiming& target)
+void SEIPictureTiming::copyTo (SEIPictureTiming& target)//将当前SEIPictureTiming中的信息复制到 target
 {
   target.m_picStruct = m_picStruct;
   target.m_sourceScanType = m_sourceScanType;
@@ -114,7 +114,7 @@ void SEIPictureTiming::copyTo (SEIPictureTiming& target)
 }
 
 // Static member
-const Char *SEI::getSEIMessageString(SEI::PayloadType payloadType)
+const Char *SEI::getSEIMessageString(SEI::PayloadType payloadType)//返回SEI类型的字符说明
 {
   switch (payloadType)
   {

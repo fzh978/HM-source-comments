@@ -1747,19 +1747,19 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,//通道类型
 
 Void TComTrQuant::applyForwardRDPCM( TComTU& rTu, const ComponentID compID, Pel* pcResidual, const UInt uiStride, const QpParam& cQP, TCoeff* pcCoeff, TCoeff &uiAbsSum, const RDPCMMode mode )
 {
-  TComDataCU *pcCU=rTu.getCU();//TU������CU�����Ϣ
-  const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();//Tu��λ��
+  TComDataCU *pcCU=rTu.getCU();//TU块所在CU块的信息
+  const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();//Tu的位置
 
-  const Bool bLossless      = pcCU->getCUTransquantBypass( uiAbsPartIdx );//�Ƿ�losslessģʽ ��ģʽ�²���Ҫ�任������
-  const UInt uiWidth        = rTu.getRect(compID).width;//Tu��Ŀ�͸�
+  const Bool bLossless      = pcCU->getCUTransquantBypass( uiAbsPartIdx );//是否lossless模式 该模式下不需要变换和量化
+  const UInt uiWidth        = rTu.getRect(compID).width;//Tu块的宽和高
   const UInt uiHeight       = rTu.getRect(compID).height;
-  const Bool rotateResidual = rTu.isNonTransformedResidualRotated(compID);//�Ƿ���ת����ǰ�����ǴӺ���ǰ��
-  const UInt uiSizeMinus1   = (uiWidth * uiHeight) - 1;//ϵ��������1
+  const Bool rotateResidual = rTu.isNonTransformedResidualRotated(compID);//是否旋转（从前往后还是从后往前）
+  const UInt uiSizeMinus1   = (uiWidth * uiHeight) - 1;//系数个数减1
 
   UInt uiX = 0;
   UInt uiY = 0;
-  //����PCMģʽ ȷ�����������ķ���
-        UInt &majorAxis             = (mode == RDPCM_VER) ? uiX      : uiY;//���ñ��� C++���� ��ͬ��ֱ�Ӹ�ֵ majorAxis�ĸı�Ҳ��ı�uiX ��uiY
+  //根据PCM模式 确定后续遍历的方向
+        UInt &majorAxis             = (mode == RDPCM_VER) ? uiX      : uiY;//引用变量 C++特性 不同于直接赋值 majorAxis的改变也会改变uiX 或uiY
         UInt &minorAxis             = (mode == RDPCM_VER) ? uiY      : uiX;
   const UInt  majorAxisLimit        = (mode == RDPCM_VER) ? uiWidth  : uiHeight;
   const UInt  minorAxisLimit        = (mode == RDPCM_VER) ? uiHeight : uiWidth;
@@ -1768,31 +1768,31 @@ Void TComTrQuant::applyForwardRDPCM( TComTU& rTu, const ComponentID compID, Pel*
 
   uiAbsSum = 0;
 
-  for ( majorAxis = 0; majorAxis < majorAxisLimit; majorAxis++ )//�������������ÿ��λ���ϵ�ϵ��
+  for ( majorAxis = 0; majorAxis < majorAxisLimit; majorAxis++ )//根据主方向遍历每个位置上的系数
   {
     TCoeff accumulatorValue = 0; // 32-bit accumulator
     for ( minorAxis = 0; minorAxis < minorAxisLimit; minorAxis++ )
     {
       const UInt sampleIndex      = (uiY * uiWidth) + uiX;
-      const UInt coefficientIndex = (rotateResidual ? (uiSizeMinus1-sampleIndex) : sampleIndex);//ȷ��ϵ����λ��
-      const Pel  currentSample    = pcResidual[(uiY * uiStride) + uiX];//��λ���ϵ�ϵ��ֵ ʵ����Ϊÿ�У��У�����λ���ϵ��ۼ�ֵ
-      const TCoeff encoderSideDelta = TCoeff(currentSample) - accumulatorValue;//�ۼ�ǰ��ʵ�ʲв�ֵ
+      const UInt coefficientIndex = (rotateResidual ? (uiSizeMinus1-sampleIndex) : sampleIndex);//确定系数的位置
+      const Pel  currentSample    = pcResidual[(uiY * uiStride) + uiX];//该位置上的系数值 实际上为每行（列）到该位置上的累加值
+      const TCoeff encoderSideDelta = TCoeff(currentSample) - accumulatorValue;//累加前的实际残差值
 
       Pel reconstructedDelta;
-      if ( bLossless )//��Ϊlosslessģʽ
+      if ( bLossless )//若为lossless模式
       {
-        pcCoeff[coefficientIndex] = encoderSideDelta;//�ô�ֱֵ��Ϊ����ϵ��(����Ҫ�����任������)
+        pcCoeff[coefficientIndex] = encoderSideDelta;//该处值直接为最终系数(不需要经过变换和量化)
         reconstructedDelta        = (Pel) encoderSideDelta;//没有变换和量化过程　所以重建值和原始值相同
       }
       else
       {
-        transformSkipQuantOneSample(rTu, compID, encoderSideDelta, pcCoeff, coefficientIndex, cQP, bUseHalfRoundingPoint);//��ϵ�������б任
+        transformSkipQuantOneSample(rTu, compID, encoderSideDelta, pcCoeff, coefficientIndex, cQP, bUseHalfRoundingPoint);//该系数不进行变换
         invTrSkipDeQuantOneSample  (rTu, compID, pcCoeff[coefficientIndex], reconstructedDelta, cQP, coefficientIndex);//由pcCoeff[coefficientIndex]进行反量化和TrSkip得到重建值
       }
 
-      uiAbsSum += abs(pcCoeff[coefficientIndex]);//����ϵ������ֵ֮��
+      uiAbsSum += abs(pcCoeff[coefficientIndex]);//计算系数绝对值之和
 
-      if (mode != RDPCM_OFF)//��ΪRDPCM_OFF ������ۼ�ֵ �������PCMģʽ��ʵ�ʲв�ֵ
+      if (mode != RDPCM_OFF)//不为RDPCM_OFF 需计算累加值 用于求得PCM模式中实际残差值
       {
         accumulatorValue += reconstructedDelta;
       }
@@ -1801,58 +1801,58 @@ Void TComTrQuant::applyForwardRDPCM( TComTU& rTu, const ComponentID compID, Pel*
 }
 
 Void TComTrQuant::rdpcmNxN   ( TComTU& rTu, const ComponentID compID, Pel* pcResidual, const UInt uiStride, const QpParam& cQP, TCoeff* pcCoeff, TCoeff &uiAbsSum, RDPCMMode& rdpcmMode )
-{//��Tu�����pcm����
-  TComDataCU *pcCU=rTu.getCU();//��Tu���CU��Ϣ
-  const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();//TU���λ��
+{//对Tu块进行pcm处理
+  TComDataCU *pcCU=rTu.getCU();//该Tu块的CU信息
+  const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();//TU块的位置
 
-  if (!pcCU->isRDPCMEnabled(uiAbsPartIdx) || ((pcCU->getTransformSkip(uiAbsPartIdx, compID) == 0) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))//���PCMģʽδʹ�ܻ��߸�Tu�鲻ʹ��TransformSkip��TransquantBypass ��pcmģʽ�ر�
+  if (!pcCU->isRDPCMEnabled(uiAbsPartIdx) || ((pcCU->getTransformSkip(uiAbsPartIdx, compID) == 0) && !pcCU->getCUTransquantBypass(uiAbsPartIdx)))//如果PCM模式未使能或者该Tu块不使用TransformSkip和TransquantBypass 则pcm模式关闭
   {
     rdpcmMode = RDPCM_OFF;
   }
-  else if ( pcCU->isIntra( uiAbsPartIdx ) )//Ϊ֡��Ԥ��
+  else if ( pcCU->isIntra( uiAbsPartIdx ) )//为帧内预测
   {
-    const ChromaFormat chFmt = pcCU->getPic()->getPicYuvOrg()->getChromaFormat();//ɫ�ȸ�ʽ
-    const ChannelType chType = toChannelType(compID);//ͨ������
-    const UInt uiChPredMode  = pcCU->getIntraDir( chType, uiAbsPartIdx );//�õ���ͨ�����͵�֡��Ԥ��ģʽ
-    const TComSPS *sps=pcCU->getSlice()->getSPS();//SPS��������Ϣ
+    const ChromaFormat chFmt = pcCU->getPic()->getPicYuvOrg()->getChromaFormat();//色度格式
+    const ChannelType chType = toChannelType(compID);//通道类型
+    const UInt uiChPredMode  = pcCU->getIntraDir( chType, uiAbsPartIdx );//得到该通道类型的帧内预测模式
+    const TComSPS *sps=pcCU->getSlice()->getSPS();//SPS参数集信息
     const UInt partsPerMinCU = 1<<(2*(sps->getMaxTotalCUDepth() - sps->getLog2DiffMaxMinCodingBlockSize()));
     const UInt uiChCodedMode = (uiChPredMode==DM_CHROMA_IDX && isChroma(compID)) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
-    const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;//����֡��Ԥ��ģʽ���������ɫ��ģʽ�õ�
+    const UInt uiChFinalMode = ((chFmt == CHROMA_422)       && isChroma(compID)) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;//最终帧内预测模式类型需根据色度模式得到
 
-    if (uiChFinalMode == VER_IDX || uiChFinalMode == HOR_IDX)//���֡��Ԥ��ģʽΪ��׼��ֱģʽ��ˮƽģʽ  
+    if (uiChFinalMode == VER_IDX || uiChFinalMode == HOR_IDX)//如果帧内预测模式为标准垂直模式或水平模式  
     {
       rdpcmMode = (uiChFinalMode == VER_IDX) ? RDPCM_VER : RDPCM_HOR;
-      applyForwardRDPCM( rTu, compID, pcResidual, uiStride, cQP, pcCoeff, uiAbsSum, rdpcmMode );//Ӧ�ö�Ӧ��PCMģʽ
+      applyForwardRDPCM( rTu, compID, pcResidual, uiStride, cQP, pcCoeff, uiAbsSum, rdpcmMode );//应用对应的PCM模式
     }
-    else//���� PCM�ر�
+    else//否则 PCM关闭
     {
       rdpcmMode = RDPCM_OFF;
     }
   }
-  else // not intra, need to select the best mode //����֡��Ԥ��ģʽ ����Ҫ�ж���õ�PCMģʽ
+  else // not intra, need to select the best mode //不是帧内预测模式 则需要判断最好的PCM模式
   {
-    const UInt uiWidth  = rTu.getRect(compID).width;//Tu��Ŀ�͸�
+    const UInt uiWidth  = rTu.getRect(compID).width;//Tu块的宽和高
     const UInt uiHeight = rTu.getRect(compID).height;
 
-    RDPCMMode bestMode   = NUMBER_OF_RDPCM_MODES;//��ʼ����Ҫ�õ��Ĳ���
+    RDPCMMode bestMode   = NUMBER_OF_RDPCM_MODES;//初始化需要用到的参数
     TCoeff    bestAbsSum = std::numeric_limits<TCoeff>::max();
     TCoeff    bestCoefficients[MAX_TU_SIZE * MAX_TU_SIZE];
 
-    for (UInt modeIndex = 0; modeIndex < NUMBER_OF_RDPCM_MODES; modeIndex++)//��������PCMģʽ
+    for (UInt modeIndex = 0; modeIndex < NUMBER_OF_RDPCM_MODES; modeIndex++)//遍历所有PCM模式
     {
       const RDPCMMode mode = RDPCMMode(modeIndex);
 
       TCoeff currAbsSum = 0;
 
-      applyForwardRDPCM( rTu, compID, pcResidual, uiStride, cQP, pcCoeff, currAbsSum, mode );//��PCM����
+      applyForwardRDPCM( rTu, compID, pcResidual, uiStride, cQP, pcCoeff, currAbsSum, mode );//做PCM处理
 
-      if (currAbsSum < bestAbsSum)//�任��ϵ������ֵ֮��һ���̶��Ϸ�ӳ�����Ĵ�С ������Ϊģʽѡ�������
+      if (currAbsSum < bestAbsSum)//变换后系数绝对值之和一定程度上反映了误差的大小 可以作为模式选择的依据
       {
         bestMode   = mode;
         bestAbsSum = currAbsSum;
-        if (mode != RDPCM_OFF)//��ʹ��PCM
+        if (mode != RDPCM_OFF)//若使用PCM
         {
-          memcpy(bestCoefficients, pcCoeff, (uiWidth * uiHeight * sizeof(TCoeff)));//�򱣴��PCMģʽϵ����Ϊ���ϵ��
+          memcpy(bestCoefficients, pcCoeff, (uiWidth * uiHeight * sizeof(TCoeff)));//则保存该PCM模式系数作为最佳系数
         }
       }
     }
@@ -1862,7 +1862,7 @@ Void TComTrQuant::rdpcmNxN   ( TComTU& rTu, const ComponentID compID, Pel* pcRes
 
     if (rdpcmMode != RDPCM_OFF) //the TU is re-transformed and quantised if DPCM_OFF is returned, so there is no need to preserve it here
     {
-      memcpy(pcCoeff, bestCoefficients, (uiWidth * uiHeight * sizeof(TCoeff)));//��ʹ��PCMģʽ ����Ҫ����ϵ�� ������PCMģʽ �����������transform ����Ҫ����ϵ��
+      memcpy(pcCoeff, bestCoefficients, (uiWidth * uiHeight * sizeof(TCoeff)));//若使用PCM模式 则需要保存系数 若不适用PCM模式 后续还会进行transform 则不需要保存系数
     }
   }
 
@@ -1873,7 +1873,7 @@ Void TComTrQuant::invRdpcmNxN( TComTU& rTu, const ComponentID compID, Pel* pcRes
 {
   TComDataCU *pcCU=rTu.getCU();
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
-  //ȷ��PCMģʽ
+  //确定PCM模式
   if (pcCU->isRDPCMEnabled( uiAbsPartIdx ) && ((pcCU->getTransformSkip(uiAbsPartIdx, compID ) != 0) || pcCU->getCUTransquantBypass(uiAbsPartIdx)))
   {
     const UInt uiWidth  = rTu.getRect(compID).width;
@@ -1903,31 +1903,31 @@ Void TComTrQuant::invRdpcmNxN( TComTU& rTu, const ComponentID compID, Pel* pcRes
 	
     const TCoeff pelMin=(TCoeff) std::numeric_limits<Pel>::min();
     const TCoeff pelMax=(TCoeff) std::numeric_limits<Pel>::max();
-    if (rdpcmMode == RDPCM_VER)//��ֱPCMģʽ
+    if (rdpcmMode == RDPCM_VER)//垂直PCM模式
     {
-      for( UInt uiX = 0; uiX < uiWidth; uiX++ )//ȷ��������
+      for( UInt uiX = 0; uiX < uiWidth; uiX++ )//确定所在列
       {
-        Pel *pcCurResidual = pcResidual+uiX;//���е���ʼλ��
+        Pel *pcCurResidual = pcResidual+uiX;//该列的起始位置
         TCoeff accumulator = *pcCurResidual; // 32-bit accumulator
-        pcCurResidual+=uiStride;//�����ϵĵڶ���λ��
-        for( UInt uiY = 1; uiY < uiHeight; uiY++, pcCurResidual+=uiStride )//���������ϵ�����ֵ
+        pcCurResidual+=uiStride;//该列上的第二个位置
+        for( UInt uiY = 1; uiY < uiHeight; uiY++, pcCurResidual+=uiStride )//遍历该列上的所有值
         {
-          accumulator += *(pcCurResidual);//����ÿ���ϵ��ۼ�ֵ
-          *pcCurResidual = (Pel)Clip3<TCoeff>(pelMin, pelMax, accumulator);//���ս��ֵ������������Сֵ֮��
+          accumulator += *(pcCurResidual);//计算每列上的累加值
+          *pcCurResidual = (Pel)Clip3<TCoeff>(pelMin, pelMax, accumulator);//最终结果值必须在最大和最小值之间
         }
       }
     }
-    else if (rdpcmMode == RDPCM_HOR)//ˮƽPCMģʽ
+    else if (rdpcmMode == RDPCM_HOR)//水平PCM模式
     {
-      for( UInt uiY = 0; uiY < uiHeight; uiY++ )//ȷ��������
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )//确定所在行
       {
-        Pel *pcCurResidual = pcResidual+uiY*uiStride;//���е���ʼλ��
+        Pel *pcCurResidual = pcResidual+uiY*uiStride;//该行的起始位置
         TCoeff accumulator = *pcCurResidual;
-        pcCurResidual++;//���еĵڶ���λ��
-        for( UInt uiX = 1; uiX < uiWidth; uiX++, pcCurResidual++ )//���������ϵ�����ֵ
+        pcCurResidual++;//该行的第二个位置
+        for( UInt uiX = 1; uiX < uiWidth; uiX++, pcCurResidual++ )//遍历该行上的所有值
         {
-          accumulator += *(pcCurResidual);//����ÿ���ϵ��ۼ�ֵ
-          *pcCurResidual = (Pel)Clip3<TCoeff>(pelMin, pelMax, accumulator);//���ս��ֵ������������Сֵ֮��
+          accumulator += *(pcCurResidual);//计算每行上的累加值
+          *pcCurResidual = (Pel)Clip3<TCoeff>(pelMin, pelMax, accumulator);//最终结果值必须在最大和最小值之间
         }
         }
       }
@@ -1950,7 +1950,7 @@ Void TComTrQuant::invRdpcmNxN( TComTU& rTu, const ComponentID compID, Pel* pcRes
  *  \param maxLog2TrDynamicRange
  */
 Void TComTrQuant::xT( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange )
-{//HM�ӿ���xTrMxN֮��İ�װ���� ʹ��tranform����̵ĵ�����HM�и��ӷ��� ĳ�������϶�xTrMxN������
+{//HM接口与xTrMxN之间的包装函数 使得tranform这过程的调用在HM中更加方便 某种意义上对xTrMxN的重载
 #if MATRIX_MULT
   if( iWidth == iHeight)
   {
@@ -1986,7 +1986,7 @@ Void TComTrQuant::xT( const Int channelBitDepth, Bool useDST, Pel* piBlkResi, UI
  *  \param maxLog2TrDynamicRange
  */
 Void TComTrQuant::xIT( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, Pel* pResidual, UInt uiStride, Int iWidth, Int iHeight, const Int maxLog2TrDynamicRange )
-{//HM�ӿ���xITrMxN֮��İ�װ���� ʹ��inverser tranform����̵ĵ�����HM�и��ӷ��� 
+{//HM接口与xITrMxN之间的包装函数 使得inverser tranform这过程的调用在HM中更加方便
 #if MATRIX_MULT
   if( iWidth == iHeight )
   {
@@ -2019,25 +2019,25 @@ Void TComTrQuant::xIT( const Int channelBitDepth, Bool useDST, TCoeff* plCoef, P
  *  \param component colour component
  */
 Void TComTrQuant::xTransformSkip( Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff, TComTU &rTu, const ComponentID component )
-{//TransformSkip �����任��һ�� ����任��
-  const TComRectangle &rect = rTu.getRect(component);//Tu��λ����Ϣ
+{//TransformSkip 跳过变换这一步 （逆变换）
+  const TComRectangle &rect = rTu.getRect(component);//Tu的位置信息
   const Int width           = rect.width;
   const Int height          = rect.height;
   const Int maxLog2TrDynamicRange = rTu.getCU()->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(component));
-  const Int channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(toChannelType(component));//ͨ��λ��
+  const Int channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(toChannelType(component));//通道位深
 
-  Int iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(component), maxLog2TrDynamicRange);//�任��λ��
-  if (rTu.getCU()->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag())//����չ���� ��֤��λ��Ϊ��
+  Int iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(component), maxLog2TrDynamicRange);//变换移位量
+  if (rTu.getCU()->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag())//若扩展精度 保证移位量为正
   {
     iTransformShift = std::max<Int>(0, iTransformShift);
   }
 
-  const Bool rotateResidual = rTu.isNonTransformedResidualRotated(component);//�Ƿ���ת�в�
-  const UInt uiSizeMinus1   = (width * height) - 1;//Tu��ϵ��������1
+  const Bool rotateResidual = rTu.isNonTransformedResidualRotated(component);//是否旋转残差
+  const UInt uiSizeMinus1   = (width * height) - 1;//Tu块系数个数减1
 
   if (iTransformShift >= 0)
   {
-    for (UInt y = 0, coefficientIndex = 0; y < height; y++)//������������ϵ��
+    for (UInt y = 0, coefficientIndex = 0; y < height; y++)//遍历块中所有系数
     {
       for (UInt x = 0; x < width; x++, coefficientIndex++)
       {
@@ -2048,7 +2048,7 @@ Void TComTrQuant::xTransformSkip( Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff
   else //for very high bit depths
   {
     iTransformShift = -iTransformShift;
-    const TCoeff offset = 1 << (iTransformShift - 1);//��֤С�����������ƫ��
+    const TCoeff offset = 1 << (iTransformShift - 1);//保证小数四舍五入的偏置
 
     for (UInt y = 0, coefficientIndex = 0; y < height; y++)
     {
@@ -2068,31 +2068,31 @@ Void TComTrQuant::xTransformSkip( Pel* piBlkResi, UInt uiStride, TCoeff* psCoeff
  *  \param component colour component ID
  */
 Void TComTrQuant::xITransformSkip( TCoeff* plCoef, Pel* pResidual, UInt uiStride, TComTU &rTu, const ComponentID component )
-{//TransformSkip �����任��һ�� ����任�����̻���ͬ�� ֻ�������任����λ�����෴
-  const TComRectangle &rect = rTu.getRect(component);//Tu��λ����Ϣ
+{//TransformSkip 跳过变换这一步 （逆变换）过程基本同上 只是正反变换中移位方向相反
+  const TComRectangle &rect = rTu.getRect(component);//Tu的位置信息
   const Int width           = rect.width;
   const Int height          = rect.height;
   const Int maxLog2TrDynamicRange = rTu.getCU()->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(component));
 #if O0043_BEST_EFFORT_DECODING
   const Int channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getStreamBitDepth(toChannelType(component));
 #else
-  const Int channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(toChannelType(component));//ͨ��λ��
+  const Int channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(toChannelType(component));//通道位深
 #endif
 
-  Int iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(component), maxLog2TrDynamicRange);//�任��λ��
-  if (rTu.getCU()->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag())//����չ���� ��֤��λ��Ϊ��
+  Int iTransformShift = getTransformShift(channelBitDepth, rTu.GetEquivalentLog2TrSize(component), maxLog2TrDynamicRange);//变换移位量
+  if (rTu.getCU()->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag())//若扩展精度 保证移位量为正
   {
     iTransformShift = std::max<Int>(0, iTransformShift);
   }
 
-  const Bool rotateResidual = rTu.isNonTransformedResidualRotated(component);//�Ƿ���ת�в�
-  const UInt uiSizeMinus1   = (width * height) - 1;//Tu��ϵ��������1
+  const Bool rotateResidual = rTu.isNonTransformedResidualRotated(component);//是否旋转残差
+  const UInt uiSizeMinus1   = (width * height) - 1;//Tu块系数个数减1
 
   if (iTransformShift >= 0)
   {
-    const TCoeff offset = iTransformShift==0 ? 0 : (1 << (iTransformShift - 1));//��֤С�����������ƫ��
+    const TCoeff offset = iTransformShift==0 ? 0 : (1 << (iTransformShift - 1));//保证小数四舍五入的偏置
 
-    for (UInt y = 0, coefficientIndex = 0; y < height; y++)//������������ϵ��
+    for (UInt y = 0, coefficientIndex = 0; y < height; y++)//遍历块中所有系数
     {
       for (UInt x = 0; x < width; x++, coefficientIndex++)
       {
@@ -2101,7 +2101,7 @@ Void TComTrQuant::xITransformSkip( TCoeff* plCoef, Pel* pResidual, UInt uiStride
     }
   }
   else //for very high bit depths
-  {//����ͬ��
+  {//过程同上
     iTransformShift = -iTransformShift;
 
     for (UInt y = 0, coefficientIndex = 0; y < height; y++)
@@ -2128,25 +2128,25 @@ Void TComTrQuant::xITransformSkip( TCoeff* plCoef, Pel* pResidual, UInt uiStride
  */
 Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
                                                             TCoeff      * plSrcCoeff,
-                                                            TCoeff      * piDstCoeff,//����Ľ��ֵ
+                                                            TCoeff      * piDstCoeff,//所求的结果值
 #if ADAPTIVE_QP_SELECTION
                                                             TCoeff      * piArlDstCoeff,
 #endif
                                                             TCoeff       &uiAbsSum,
                                                       const ComponentID   compID,
                                                       const QpParam      &cQP  )
-{//��ʧ���Ż�����
-  const TComRectangle  & rect             = rTu.getRect(compID);//TU��λ����Ϣ
+{//率失真优化量化
+  const TComRectangle  & rect             = rTu.getRect(compID);//TU块位置信息
   const UInt             uiWidth          = rect.width;
   const UInt             uiHeight         = rect.height;
         TComDataCU    *  pcCU             = rTu.getCU();
   const UInt             uiAbsPartIdx     = rTu.GetAbsPartIdxTU();
-  const ChannelType      channelType      = toChannelType(compID);//ͨ������
-  const UInt             uiLog2TrSize     = rTu.GetEquivalentLog2TrSize(compID);//TU�� log2��С
+  const ChannelType      channelType      = toChannelType(compID);//通道类型
+  const UInt             uiLog2TrSize     = rTu.GetEquivalentLog2TrSize(compID);//TU块 log2大小
 
-  const Bool             extendedPrecision = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag();//�Ƿ���չ����
+  const Bool             extendedPrecision = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getExtendedPrecisionProcessingFlag();//是否扩展精度
   const Int              maxLog2TrDynamicRange = pcCU->getSlice()->getSPS()->getMaxLog2TrDynamicRange(toChannelType(compID));
-  const Int              channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(channelType);//ͨ��λ��
+  const Int              channelBitDepth = rTu.getCU()->getSlice()->getSPS()->getBitDepth(channelType);//通道位深
 
   /* for 422 chroma blocks, the effective scaling applied during transformation is not a power of 2, hence it cannot be
    * implemented as a bit-shift (the quantised result will be sqrt(2) * larger than required). Alternatively, adjust the
@@ -2155,28 +2155,28 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
    */
 
   // Represents scaling through forward transform
-  Int iTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange);//�任��λ���������任���������ӣ�
-  if ((pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0) && extendedPrecision)//��Ҫ��չ�仯���Ⱥͷ�TransformSkipģʽʱ ȷ��iTransformShiftΪ��
+  Int iTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange);//变换移位量（整数变换的缩放因子）
+  if ((pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0) && extendedPrecision)//需要扩展变化精度和非TransformSkip模式时 确保iTransformShift为正
   {
     iTransformShift = std::max<Int>(0, iTransformShift);
   }
 
   const Bool bUseGolombRiceParameterAdaptation = pcCU->getSlice()->getSPS()->getSpsRangeExtension().getPersistentRiceAdaptationEnabledFlag();
   const UInt initialGolombRiceParameter        = m_pcEstBitsSbac->golombRiceAdaptationStatistics[rTu.getGolombRiceStatisticsIndex(compID)] / RExt__GOLOMB_RICE_INCREMENT_DIVISOR;
-        UInt uiGoRiceParam                     = initialGolombRiceParameter;//���ײ���Ԫ������ Ӱ���Ԫ����׺����
+        UInt uiGoRiceParam                     = initialGolombRiceParameter;//哥伦布二元化参数 影响二元化后缀长度
   Double     d64BlockUncodedCost               = 0;
-  const UInt uiLog2BlockWidth                  = g_aucConvertToBit[ uiWidth  ] + 2;//Tu���log2���
-  const UInt uiLog2BlockHeight                 = g_aucConvertToBit[ uiHeight ] + 2;//Tu���log2�߶�
-  const UInt uiMaxNumCoeff                     = uiWidth * uiHeight;//ϵ������Ŀ
+  const UInt uiLog2BlockWidth                  = g_aucConvertToBit[ uiWidth  ] + 2;//Tu块的log2宽度
+  const UInt uiLog2BlockHeight                 = g_aucConvertToBit[ uiHeight ] + 2;//Tu块的log2高度
+  const UInt uiMaxNumCoeff                     = uiWidth * uiHeight;//系数总数目
   assert(compID<MAX_NUM_COMPONENT);
 
-  Int scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);//��Ԥ��ģʽ��ͨ�����͵õ������������
+  Int scalingListType = getScalingListType(pcCU->getPredictionMode(uiAbsPartIdx), compID);//由预测模式和通道类型得到量化矩阵类别
   assert(scalingListType < SCALING_LIST_NUM);
 
 #if ADAPTIVE_QP_SELECTION
   memset(piArlDstCoeff, 0, sizeof(TCoeff) *  uiMaxNumCoeff);
 #endif
-  //��������ʼ���������
+ //声明及初始化各类参数
   Double pdCostCoeff [ MAX_TU_SIZE * MAX_TU_SIZE ];
   Double pdCostSig   [ MAX_TU_SIZE * MAX_TU_SIZE ];
   Double pdCostCoeff0[ MAX_TU_SIZE * MAX_TU_SIZE ];
@@ -2193,10 +2193,10 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
 
   const Int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;                   // Right shift of non-RDOQ quantizer;  level = (coeff*uiQ + offset)>>q_bits
   const Double *const pdErrScale = getErrScaleCoeff(scalingListType, (uiLog2TrSize-2), cQP.rem);
-  const Int    *const piQCoef    = getQuantCoeff(scalingListType, cQP.rem, (uiLog2TrSize-2));//����ϵ����ַ
+  const Int    *const piQCoef    = getQuantCoeff(scalingListType, cQP.rem, (uiLog2TrSize-2));//量化系数地址
 
-  const Bool   enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));//�Ƿ�ʹ����������
-  const Int    defaultQuantisationCoefficient = g_quantScales[cQP.rem];//��ʹ����������ʱ������ϵ��
+  const Bool   enableScalingLists             = getUseScalingList(uiWidth, uiHeight, (pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0));//是否使用量化矩阵
+  const Int    defaultQuantisationCoefficient = g_quantScales[cQP.rem];//不使用量化矩阵时的量化系数
   const Double defaultErrorScale              = getErrScaleCoeffNoScalingList(scalingListType, (uiLog2TrSize-2), cQP.rem);
 
   const TCoeff entropyCodingMinimum = -(1 << maxLog2TrDynamicRange);
@@ -2207,12 +2207,12 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   Int iAddC =  1 << (iQBitsC-1);
 #endif
 
-  TUEntropyCodingParameters codingParameters;//�ر����йز���
+  TUEntropyCodingParameters codingParameters;//熵编码有关参数
   getTUEntropyCodingParameters(codingParameters, rTu, compID);
-  const UInt uiCGSize = (1 << MLS_CG_SIZE);//һ��CG��ϵ������
+  const UInt uiCGSize = (1 << MLS_CG_SIZE);//一个CG中系数个数
 
-  Double pdCostCoeffGroupSig[ MLS_GRP_NUM ];// һ��CG���з���ϵ���ı������ MLS_GRP_NUMΪһ��Tu�����CG��
-  UInt uiSigCoeffGroupFlag[ MLS_GRP_NUM ];//CG�����Ƿ���ڷ���ϵ��
+  Double pdCostCoeffGroupSig[ MLS_GRP_NUM ];// 一个CG块中非零系数的编码损耗 MLS_GRP_NUM为一个Tu中最大CG数
+  UInt uiSigCoeffGroupFlag[ MLS_GRP_NUM ];//CG块中是否存在非零系数
   Int iCGLastScanPos = -1;
 
   UInt    uiCtxSet            = 0;
@@ -2225,38 +2225,38 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   UInt    c2Idx     = 0;
   Int     baseLevel;
 
-  memset( pdCostCoeffGroupSig,   0, sizeof(Double) * MLS_GRP_NUM );//��ʼ��Ϊ0
+  memset( pdCostCoeffGroupSig,   0, sizeof(Double) * MLS_GRP_NUM );//初始化为0
   memset( uiSigCoeffGroupFlag,   0, sizeof(UInt) * MLS_GRP_NUM );
 
-  UInt uiCGNum = uiWidth * uiHeight >> MLS_CG_SIZE;//��Tu��CG��ĸ���
+  UInt uiCGNum = uiWidth * uiHeight >> MLS_CG_SIZE;//该Tu中CG块的个数
   Int iScanPos;
   coeffGroupRDStats rdStats;
 
-  const UInt significanceMapContextOffset = getSignificanceMapContextOffset(compID);//SignificanceMap���ô�ϵ���Ƿ�δ�㣩������ƫ�� ����ȷ�����յ���������
+  const UInt significanceMapContextOffset = getSignificanceMapContextOffset(compID);//SignificanceMap（该处系数是否未零）上下文偏置 用于确定最终的上文索引
 
-  for (Int iCGScanPos = uiCGNum-1; iCGScanPos >= 0; iCGScanPos--)//��������CG
+  for (Int iCGScanPos = uiCGNum-1; iCGScanPos >= 0; iCGScanPos--)//遍历所有CG
   {
     UInt uiCGBlkPos = codingParameters.scanCG[ iCGScanPos ];
-    UInt uiCGPosY   = uiCGBlkPos / codingParameters.widthInGroups;//��CG���е�Y����
-    UInt uiCGPosX   = uiCGBlkPos - (uiCGPosY * codingParameters.widthInGroups);//��CG���е�X����
+    UInt uiCGPosY   = uiCGBlkPos / codingParameters.widthInGroups;//在CG块中的Y坐标
+    UInt uiCGPosX   = uiCGBlkPos - (uiCGPosY * codingParameters.widthInGroups);//在CG块中的X坐标
 
     memset( &rdStats, 0, sizeof (coeffGroupRDStats));
 
-    const Int patternSigCtx = TComTrQuant::calcPatternSigCtx(uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups);//��CG���ģʽ ����ȷ��CG����ϵ�����յ�����������
+    const Int patternSigCtx = TComTrQuant::calcPatternSigCtx(uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups);//该CG块的模式 用于确定CG块中系数最终的上下文索引
 
-    for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)//�Ӻ���ǰ����CG���е�ÿ��ϵ��
+    for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)//从后向前遍历CG块中的每个系数
     {
-      iScanPos = iCGScanPos*uiCGSize + iScanPosinCG;//Tb���е�λ��
+      iScanPos = iCGScanPos*uiCGSize + iScanPosinCG;//Tb块中的位置
       //===== quantization =====
       UInt    uiBlkPos          = codingParameters.scan[iScanPos];
       // set coeff
 
-      const Int    quantisationCoefficient = (enableScalingLists) ? piQCoef   [uiBlkPos] : defaultQuantisationCoefficient;//�����Ƿ�ʹ����������ѡ���Ӧ������ϵ��
+      const Int    quantisationCoefficient = (enableScalingLists) ? piQCoef   [uiBlkPos] : defaultQuantisationCoefficient;//根据是否使用量化矩阵选择对应的量化系数
       const Double errorScale              = (enableScalingLists) ? pdErrScale[uiBlkPos] : defaultErrorScale;
 
-      const Int64  tmpLevel                = Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient;//��������м�ֵ
+      const Int64  tmpLevel                = Int64(abs(plSrcCoeff[ uiBlkPos ])) * quantisationCoefficient;//量化结果中间值
 
-      const Intermediate_Int lLevelDouble  = (Intermediate_Int)min<Int64>(tmpLevel, std::numeric_limits<Intermediate_Int>::max() - (Intermediate_Int(1) << (iQBits - 1)));//��tmpLevel�޷�
+      const Intermediate_Int lLevelDouble  = (Intermediate_Int)min<Int64>(tmpLevel, std::numeric_limits<Intermediate_Int>::max() - (Intermediate_Int(1) << (iQBits - 1)));//对tmpLevel限幅
 
 #if ADAPTIVE_QP_SELECTION
       if( m_bUseAdaptQpSelect )
@@ -2264,72 +2264,72 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
         piArlDstCoeff[uiBlkPos]   = (TCoeff)(( lLevelDouble + iAddC) >> iQBitsC );
       }
 #endif
-      const UInt uiMaxAbsLevel  = std::min<UInt>(UInt(entropyCodingMaximum), UInt((lLevelDouble + (Intermediate_Int(1) << (iQBits - 1))) >> iQBits));//�������ֵ
+      const UInt uiMaxAbsLevel  = std::min<UInt>(UInt(entropyCodingMaximum), UInt((lLevelDouble + (Intermediate_Int(1) << (iQBits - 1))) >> iQBits));//量化结果值
 
       const Double dErr         = Double( lLevelDouble );
-      pdCostCoeff0[ iScanPos ]  = dErr * dErr * errorScale;//ϵ������Ϊ0�����
-      d64BlockUncodedCost      += pdCostCoeff0[ iScanPos ];//TbΪ����Ϊ0ʱ����ģ���ʱû�б������ֻ��ʧ����ģ�
-      piDstCoeff[ uiBlkPos ]    = uiMaxAbsLevel;//������ֵ����piDstCoeff
+      pdCostCoeff0[ iScanPos ]  = dErr * dErr * errorScale;//系数编码为0的误差
+      d64BlockUncodedCost      += pdCostCoeff0[ iScanPos ];//Tb为编码为0时的损耗（此时没有编码损耗只有失真损耗）
+      piDstCoeff[ uiBlkPos ]    = uiMaxAbsLevel;//将量化值赋给piDstCoeff
 
-      if ( uiMaxAbsLevel > 0 && iLastScanPos < 0 )//����ֵ����0����δ������һ������ϵ����λ��
+      if ( uiMaxAbsLevel > 0 && iLastScanPos < 0 )//量化值大于0并且未标记最后一个非零系数的位置
       {
-        iLastScanPos            = iScanPos;//���һ������ϵ����Tb���е�λ��
-        uiCtxSet                = getContextSetIndex(compID, (iScanPos >> MLS_CG_SIZE), 0);//��������������set
-        iCGLastScanPos          = iCGScanPos;//���һ������ϵ������CG��
+        iLastScanPos            = iScanPos;//最后一个非零系数在Tb块中的位置
+        uiCtxSet                = getContextSetIndex(compID, (iScanPos >> MLS_CG_SIZE), 0);//上下文索引所属set
+        iCGLastScanPos          = iCGScanPos;//最后一个非零系数所在CG块
       }
 
-      if ( iLastScanPos >= 0 )//CG�д��ڷ�������ֵ �����һ������ϵ����ʼ������������ֵ
+      if ( iLastScanPos >= 0 )//CG中存在非零量化值 从最后一个非零系数开始计算最优量化值
       {
         //===== coefficient level estimation =====
         UInt  uiLevel;
-        UInt  uiOneCtx         = (NUM_ONE_FLAG_CTX_PER_SET * uiCtxSet) + c1;//coeff_abs_level_greater1������������
-        UInt  uiAbsCtx         = (NUM_ABS_FLAG_CTX_PER_SET * uiCtxSet) + c2;//coeff_abs_level_greater2������������
+        UInt  uiOneCtx         = (NUM_ONE_FLAG_CTX_PER_SET * uiCtxSet) + c1;//coeff_abs_level_greater1的上下文索引
+        UInt  uiAbsCtx         = (NUM_ABS_FLAG_CTX_PER_SET * uiCtxSet) + c2;//coeff_abs_level_greater1的上下文索引
 
-        if( iScanPos == iLastScanPos )//���һ������ϵ��
+        if( iScanPos == iLastScanPos )//最后一个非零系数
         {
           uiLevel              = xGetCodedLevel( pdCostCoeff[ iScanPos ], pdCostCoeff0[ iScanPos ], pdCostSig[ iScanPos ],
                                                   lLevelDouble, uiMaxAbsLevel, significanceMapContextOffset, uiOneCtx, uiAbsCtx, uiGoRiceParam,
                                                   c1Idx, c2Idx, iQBits, errorScale, 1, extendedPrecision, maxLog2TrDynamicRange
-                                                  );//RDO������������ֵ����Ӧ����ʧ�����
+                                                  );//RDO计算最优量化值及对应的率失真代价
         }
-        else//��Ϊ���һ������ϵ�� �����SigCtxInc�����sig������������
+        else//不为最后一个非零系数 需计算SigCtxInc来求得sig的上下文索引
         {
-          UShort uiCtxSig      = significanceMapContextOffset + getSigCtxInc( patternSigCtx, codingParameters, iScanPos, uiLog2BlockWidth, uiLog2BlockHeight, channelType );//sig������������
+          UShort uiCtxSig      = significanceMapContextOffset + getSigCtxInc( patternSigCtx, codingParameters, iScanPos, uiLog2BlockWidth, uiLog2BlockHeight, channelType );//sig的上下文索引
 
           uiLevel              = xGetCodedLevel( pdCostCoeff[ iScanPos ], pdCostCoeff0[ iScanPos ], pdCostSig[ iScanPos ],
                                                   lLevelDouble, uiMaxAbsLevel, uiCtxSig, uiOneCtx, uiAbsCtx, uiGoRiceParam,
                                                   c1Idx, c2Idx, iQBits, errorScale, 0, extendedPrecision, maxLog2TrDynamicRange
-                                                  );//RDO������������ֵ����Ӧ����ʧ�����
+                                                  );//RDO计算最优量化值及对应的率失真代价
 
           sigRateDelta[ uiBlkPos ] = m_pcEstBitsSbac->significantBits[ uiCtxSig ][ 1 ] - m_pcEstBitsSbac->significantBits[ uiCtxSig ][ 0 ];
         }
 
-        deltaU[ uiBlkPos ]        = TCoeff((lLevelDouble - (Intermediate_Int(uiLevel) << iQBits)) >> (iQBits-8));//ȷ����������ֵ����������
+        deltaU[ uiBlkPos ]        = TCoeff((lLevelDouble - (Intermediate_Int(uiLevel) << iQBits)) >> (iQBits-8));//确定最优量化值后的量化误差
 
         if( uiLevel > 0 )
         {
-          Int rateNow = xGetICRate( uiLevel, uiOneCtx, uiAbsCtx, uiGoRiceParam, c1Idx, c2Idx, extendedPrecision, maxLog2TrDynamicRange );//��ǰrate
-          rateIncUp   [ uiBlkPos ] = xGetICRate( uiLevel+1, uiOneCtx, uiAbsCtx, uiGoRiceParam, c1Idx, c2Idx, extendedPrecision, maxLog2TrDynamicRange ) - rateNow;//����ֵ��1����֮ǰrate�Ĳ�ֵ
-          rateIncDown [ uiBlkPos ] = xGetICRate( uiLevel-1, uiOneCtx, uiAbsCtx, uiGoRiceParam, c1Idx, c2Idx, extendedPrecision, maxLog2TrDynamicRange ) - rateNow;//����ֵ��1����֮ǰrate�Ĳ�ֵ
+          Int rateNow = xGetICRate( uiLevel, uiOneCtx, uiAbsCtx, uiGoRiceParam, c1Idx, c2Idx, extendedPrecision, maxLog2TrDynamicRange );//当前rate
+          rateIncUp   [ uiBlkPos ] = xGetICRate( uiLevel+1, uiOneCtx, uiAbsCtx, uiGoRiceParam, c1Idx, c2Idx, extendedPrecision, maxLog2TrDynamicRange ) - rateNow;//量化值加1后与之前rate的差值
+          rateIncDown [ uiBlkPos ] = xGetICRate( uiLevel-1, uiOneCtx, uiAbsCtx, uiGoRiceParam, c1Idx, c2Idx, extendedPrecision, maxLog2TrDynamicRange ) - rateNow;//量化值减1后与之前rate的差值
         }
-        else // uiLevel == 0 �޷���1
+        else  // uiLevel == 0 无法减1
         {
-          rateIncUp   [ uiBlkPos ] = m_pcEstBitsSbac->m_greaterOneBits[ uiOneCtx ][ 0 ];//����ֵ��1����֮ǰ��rate��(����coeff_abs_level_greater1_flag=0�ı������)
+          rateIncUp   [ uiBlkPos ] = m_pcEstBitsSbac->m_greaterOneBits[ uiOneCtx ][ 0 ];//量化值加1后与之前的rate差(增加coeff_abs_level_greater1_flag=0的编码损耗)
         }
         piDstCoeff[ uiBlkPos ] = uiLevel;
-        d64BaseCost           += pdCostCoeff [ iScanPos ];//TB�������
+        d64BaseCost           += pdCostCoeff [ iScanPos ];//TB块总损耗
 
-        baseLevel = (c1Idx < C1FLAG_NUMBER) ? (2 + (c2Idx < C2FLAG_NUMBER)) : 1;//����ֵ��baselevel
-        if( uiLevel >= baseLevel )//����coeff_abs_level_remaining
+        baseLevel = (c1Idx < C1FLAG_NUMBER) ? (2 + (c2Idx < C2FLAG_NUMBER)) : 1;//量化值的baselevel
+        if( uiLevel >= baseLevel )//存在coeff_abs_level_remaining
         {
-          if (uiLevel > 3*(1<<uiGoRiceParam))//����uiLevel�Ĵ�Сȷ��uiGoRiceParam������R��
+          if (uiLevel > 3*(1<<uiGoRiceParam))//根据uiLevel的大小确定uiGoRiceParam（参数R）
           {//R=Min(R+(cAbsLevel>(3*(1<<R)?1:0),4)
-            uiGoRiceParam = bUseGolombRiceParameterAdaptation ? (uiGoRiceParam + 1) : (std::min<UInt>((uiGoRiceParam + 1), 4));//TR��EGK��Ԫ�� ��ò���R K=R-1
+            uiGoRiceParam = bUseGolombRiceParameterAdaptation ? (uiGoRiceParam + 1) : (std::min<UInt>((uiGoRiceParam + 1), 4));//TR和EGK二元化 求得参数R K=R-1
           }
         }
-        if ( uiLevel >= 1)//����ϵ��
+        if ( uiLevel >= 1)//非零系数
         {
-          c1Idx ++;//coeff_abs_level_greater1_flag���� ֻ����ǰ8������ϵ����coeff_abs_level_greater1_flag
+          c1Idx ++;//coeff_abs_level_greater1_flag个数 只编码前8个非零系数的coeff_abs_level_greater1_flag
         }
 
         //===== update bin model =====
@@ -2337,7 +2337,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
         {
           c1 = 0;
           c2 += (c2 < 2);
-          c2Idx ++;//coeff_abs_level_greater2_flag����2
+          c2Idx ++;//coeff_abs_level_greater2_flag个数
         }
         else if( (c1 < 3) && (c1 > 0) && uiLevel)
         {
@@ -2345,7 +2345,7 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
         }
 
         //===== context set update =====
-        if( ( iScanPos % uiCGSize == 0 ) && ( iScanPos > 0 ) )//CG�����һ��ϵ�������� ��������������
+        if( ( iScanPos % uiCGSize == 0 ) && ( iScanPos > 0 ) )//CG中最后一个系数遍历完 更新上下文设置
         {
           uiCtxSet          = getContextSetIndex(compID, ((iScanPos - 1) >> MLS_CG_SIZE), (c1 == 0)); //(iScanPos - 1) because we do this **before** entering the final group
           c1                = 1;
@@ -2355,82 +2355,82 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
           uiGoRiceParam     = initialGolombRiceParameter;
         }
       }//end  if ( iLastScanPos >= 0 )
-      else//�ô�ϵ��һ��Ϊ��
+      else//该处系数一定为零
       {
-        d64BaseCost    += pdCostCoeff0[ iScanPos ];//����ļ���ϵ��Ϊ������
+        d64BaseCost    += pdCostCoeff0[ iScanPos ];//总损耗加上系数为零的损耗
       }
-      rdStats.d64SigCost += pdCostSig[ iScanPos ];//sig�����
+      rdStats.d64SigCost += pdCostSig[ iScanPos ];//sig总损耗
       if (iScanPosinCG == 0 )
       {
-        rdStats.d64SigCost_0 = pdCostSig[ iScanPos ];//tb��DC��sig���
+        rdStats.d64SigCost_0 = pdCostSig[ iScanPos ];//tb中DC的sig损耗
       }
-      if (piDstCoeff[ uiBlkPos ] )//�������ֵ��Ϊ0
+      if (piDstCoeff[ uiBlkPos ] )//如果量化值不为0
       {
-        uiSigCoeffGroupFlag[ uiCGBlkPos ] = 1;//��CG���д��ڷ���ϵ�� uiSigCoeffGroupFlag��1
-        rdStats.d64CodedLevelandDist += pdCostCoeff[ iScanPos ] - pdCostSig[ iScanPos ];//��CG��ȥsig����ʧ����ۣ�����ֻ�������+ʧ����ģ�
-        rdStats.d64UncodedDist += pdCostCoeff0[ iScanPos ];//CG�����Ϊ��ʱ��ʧ�����
+        uiSigCoeffGroupFlag[ uiCGBlkPos ] = 1;//该CG块中存在非零系数 uiSigCoeffGroupFlag置1
+        rdStats.d64CodedLevelandDist += pdCostCoeff[ iScanPos ] - pdCostSig[ iScanPos ];//该CG除去sig的率失真代价（量化只编码损耗+失真损耗）
+        rdStats.d64UncodedDist += pdCostCoeff0[ iScanPos ];//CG块编码为零时的失真损耗
         if ( iScanPosinCG != 0 )
         {
-          rdStats.iNNZbeforePos0++;//��iScanPosinCG 0λ��֮ǰ����ֵ��Ϊ��ĸ���
+          rdStats.iNNZbeforePos0++;//在iScanPosinCG 0位置之前量化值不为零的个数
         }
       }
     } //end for (iScanPosinCG)
 
-    if (iCGLastScanPos >= 0)//Tb���д����з���ϵ����CG
+    if (iCGLastScanPos >= 0)//Tb块中存在有非零系数的CG
     {
-      if( iCGScanPos )//��ΪTb�е�һ��CG
+      if( iCGScanPos )//不为Tb中第一块CG
       {
-        if (uiSigCoeffGroupFlag[ uiCGBlkPos ] == 0)//��CG�в����ڷ���ϵ��
+        if (uiSigCoeffGroupFlag[ uiCGBlkPos ] == 0)//该CG中不存在非零系数
         {
-          UInt  uiCtxSig = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups );//��ǰCG��coeff_abs_significant_flag��CtxInc
-          d64BaseCost += xGetRateSigCoeffGroup(0, uiCtxSig) - rdStats.d64SigCost;//����ʧ����ϸ�CG��uiSigCoeffGroupFlag=0����ģ���ΪCGϵ��ȫΪ�����Բ�����sig��
-          pdCostCoeffGroupSig[ iCGScanPos ] = xGetRateSigCoeffGroup(0, uiCtxSig);//��CG��CoeffGroupSig�ı������
+          UInt  uiCtxSig = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups );//当前CG的coeff_abs_significant_flag的CtxInc
+          d64BaseCost += xGetRateSigCoeffGroup(0, uiCtxSig) - rdStats.d64SigCost;//总率失真加上该CG的uiSigCoeffGroupFlag=0的损耗（因为CG系数全为零所以不存在sig）
+          pdCostCoeffGroupSig[ iCGScanPos ] = xGetRateSigCoeffGroup(0, uiCtxSig);//该CG的CoeffGroupSig的编码损耗
         }
-        else//��CG�д��ڷ���ϵ�� �жϵ�ǰCG�Ƿ�����Ϊȫ����
+        else//该CG中存在非零系数 判断当前CG是否量化为全零组
         {
-          if (iCGScanPos < iCGLastScanPos) //skip the last coefficient group, which will be handled together with last position below.��������һ��CG��������
+          if (iCGScanPos < iCGLastScanPos) //skip the last coefficient group, which will be handled together with last position below.//非零的最后一块CG单独处理
           {
-            if ( rdStats.iNNZbeforePos0 == 0 )//ֻ��CG���ϵ�һ��λ��ϵ����Ϊ��
+            if ( rdStats.iNNZbeforePos0 == 0 )//只有CG左上第一个位置系数不为零
             {
-              d64BaseCost -= rdStats.d64SigCost_0;//��ȥ��Ӧ���
+              d64BaseCost -= rdStats.d64SigCost_0;//减去相应损耗
               rdStats.d64SigCost -= rdStats.d64SigCost_0;
             }
             // rd-cost if SigCoeffGroupFlag = 0, initialization
-            Double d64CostZeroCG = d64BaseCost;//��ʼ��ȫ����CG����ʧ��Ϊd64BaseCost
+            Double d64CostZeroCG = d64BaseCost;//初始化全零组CG的率失真为d64BaseCost
 
             // add SigCoeffGroupFlag cost to total cost
-            UInt  uiCtxSig = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups );//uiSigCoeffGroupFlag��ctxInc
+            UInt  uiCtxSig = getSigCoeffGroupCtxInc( uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, codingParameters.widthInGroups, codingParameters.heightInGroups );//uiSigCoeffGroupFlag的ctxInc
 
             if (iCGScanPos < iCGLastScanPos)
             {
-              d64BaseCost  += xGetRateSigCoeffGroup(1, uiCtxSig);//d64BaseCost��CG�з�������ֵ uiSignificanceCoeffGroupΪ1
-              d64CostZeroCG += xGetRateSigCoeffGroup(0, uiCtxSig);//d64CostZeroCG��CG������ֵΪȫ��  uiSignificanceCoeffGroupΪ0
+              d64BaseCost  += xGetRateSigCoeffGroup(1, uiCtxSig);//d64BaseCost中CG有非零量化值 uiSignificanceCoeffGroup为1
+              d64CostZeroCG += xGetRateSigCoeffGroup(0, uiCtxSig);//d64CostZeroCG中CG中量化值为全零  uiSignificanceCoeffGroup为0
               pdCostCoeffGroupSig[ iCGScanPos ] = xGetRateSigCoeffGroup(1, uiCtxSig);
             }
 
-            // try to convert the current coeff group from non-zero to all-zero ����ȫ�������ʧ�棨��ԭʼ����CG��ʧ�����Ӽ�����
+            // try to convert the current coeff group from non-zero to all-zero //计算全零组的率失真（以原始非零CG率失真做加减法）
             d64CostZeroCG += rdStats.d64UncodedDist;  // distortion for resetting non-zero levels to zero levels
             d64CostZeroCG -= rdStats.d64CodedLevelandDist;   // distortion and level cost for keeping all non-zero levels
             d64CostZeroCG -= rdStats.d64SigCost;     // sig cost for all coeffs, including zero levels and non-zerl levels
 
             // if we can save cost, change this block to all-zero block
-            if ( d64CostZeroCG < d64BaseCost )//����ʧ���С �򽫸�CG��Ϊȫ����
+            if ( d64CostZeroCG < d64BaseCost )//若率失真减小 则将该CG变为全零组
             {
               uiSigCoeffGroupFlag[ uiCGBlkPos ] = 0;
-              d64BaseCost = d64CostZeroCG;//������ʧ��
+              d64BaseCost = d64CostZeroCG;//重置率失真
               if (iCGScanPos < iCGLastScanPos)
               {
                 pdCostCoeffGroupSig[ iCGScanPos ] = xGetRateSigCoeffGroup(0, uiCtxSig);
               }
               // reset coeffs to 0 in this block
-              for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)//������������ֵ
+              for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)//遍历所有量化值
               {
                 iScanPos      = iCGScanPos*uiCGSize + iScanPosinCG;
                 UInt uiBlkPos = codingParameters.scan[ iScanPos ];
 
-                if (piDstCoeff[ uiBlkPos ])//��ԭ������ֵ����
+                if (piDstCoeff[ uiBlkPos ])//若原先量化值非零
                 {
-                  piDstCoeff [ uiBlkPos ] = 0;//��������ֵΪ0
+                  piDstCoeff [ uiBlkPos ] = 0;//重置量化值为0
                   pdCostCoeff[ iScanPos ] = pdCostCoeff0[ iScanPos ];
                   pdCostSig  [ iScanPos ] = 0;
                 }
@@ -2446,10 +2446,10 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
     }
   } //end for (iCGScanPos)
 
-  //===== estimate last position ===== ȷ�����һ������ϵ��λ��
-  if ( iLastScanPos < 0 )//�����ڷ���ϵ��
+  //===== estimate last position =====  //确定最后一个非零系数位置
+  if ( iLastScanPos < 0 )//不存在非零系数
   {
-    return;//��������
+    return;//方法结束
   }
 
   Double  d64BestCost         = 0;
@@ -2471,24 +2471,24 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
 
 
   Bool bFoundLast = false;
-  for (Int iCGScanPos = iCGLastScanPos; iCGScanPos >= 0; iCGScanPos--)//��������CG
+  for (Int iCGScanPos = iCGLastScanPos; iCGScanPos >= 0; iCGScanPos--)//遍历所有CG
   {
     UInt uiCGBlkPos = codingParameters.scanCG[ iCGScanPos ];
 
     d64BaseCost -= pdCostCoeffGroupSig [ iCGScanPos ];
     if (uiSigCoeffGroupFlag[ uiCGBlkPos ])
     {
-      for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)//����CG����������ֵ
+      for (Int iScanPosinCG = uiCGSize-1; iScanPosinCG >= 0; iScanPosinCG--)//遍历CG中所有量化值
       {
         iScanPos = iCGScanPos*uiCGSize + iScanPosinCG;
 
-        if (iScanPos > iLastScanPos)//�����һ������ϵ������ǰȷ�����ŵķ���ϵ��λ��
+        if (iScanPos > iLastScanPos)//从最后一个非零系数处向前确定最优的非零系数位置
         {
           continue;
         }
         UInt   uiBlkPos     = codingParameters.scan[iScanPos];
 
-        if( piDstCoeff[ uiBlkPos ] )//����ֵ����0
+        if( piDstCoeff[ uiBlkPos ] )//量化值大于0
         {
           UInt   uiPosY       = uiBlkPos >> uiLog2BlockWidth;
           UInt   uiPosX       = uiBlkPos - ( uiPosY << uiLog2BlockWidth );
@@ -2496,25 +2496,25 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
           Double d64CostLast= codingParameters.scanType == SCAN_VER ? xGetRateLast( uiPosY, uiPosX, compID ) : xGetRateLast( uiPosX, uiPosY, compID );
           Double totalCost = d64BaseCost + d64CostLast - pdCostSig[ iScanPos ];
 
-          if( totalCost < d64BestCost )//�µ�������ϵ��λ�õ�cost��֮ǰС 
+          if( totalCost < d64BestCost )//新的最后非零系数位置的cost较之前小
           {
-            iBestLastIdxP1  = iScanPos + 1;//��������������ϵ��λ��
-            d64BestCost     = totalCost;//����bestcost
+            iBestLastIdxP1  = iScanPos + 1;//更新最优最后非零系数位置
+            d64BestCost     = totalCost;//更新bestcost
           }
-          if( piDstCoeff[ uiBlkPos ] > 1 )//���һ������ϵ��λ���� ���һ��Ԥ����ֵ����0 �� ���һ��Ԥ����ֵ����1 ֮�� 
-          {//����������ֵ����1 ���ټ���Ѱ�����ŷ���ϵ����λ��
+          if( piDstCoeff[ uiBlkPos ] > 1 )//最后一个非零系数位置在 最后一个预量化值大于0 与 最后一个预量化值大于1 之间
+          {//若遇到量化值大于1 则不再继续寻找最优非零系数的位置
             bFoundLast = true;
             break;
           }
-          d64BaseCost      -= pdCostCoeff[ iScanPos ];//����ô�����ֵΪ����Tb������ʧ��
-          d64BaseCost      += pdCostCoeff0[ iScanPos ];//�ô�����ֵ��Ϊ����Tb������ʧ��Ϊ��ԭ��ʧ���ȥ�ô�ԭ����ֵcost��������ֵΪ0��cost
+          d64BaseCost      -= pdCostCoeff[ iScanPos ];//计算该处量化值为零后的Tb的总率失真
+          d64BaseCost      += pdCostCoeff0[ iScanPos ];//该处量化值变为零后的Tb的总率失真为：原率失真减去该处原量化值cost加上量化值为0的cost
         }
-        else//����ֵ����0
+        else//量化值等于0
         {
-          d64BaseCost      -= pdCostSig[ iScanPos ];//�ô�������Ҫ����sig
+          d64BaseCost      -= pdCostSig[ iScanPos ];//该处不再需要编码sig
         }
       } //end for
-      if (bFoundLast)//�ҵ����ŷ���ϵ��λ�� ����ѭ��
+      if (bFoundLast//找到最优非零系数位置 跳出循环
       {
         break;
       }
@@ -2522,22 +2522,22 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
   } // end for
 
 
-  for ( Int scanPos = 0; scanPos < iBestLastIdxP1; scanPos++ )//������������ϵ��λ����ǰ������ֵ�ľ���ֵ���϶�Ӧ����
+  for ( Int scanPos = 0; scanPos < iBestLastIdxP1; scanPos++ )//从最优最后非零系数位置向前将量化值的绝对值附上对应符号
   {
     Int blkPos = codingParameters.scan[ scanPos ];
     TCoeff level = piDstCoeff[ blkPos ];
-    uiAbsSum += level;//����ֵ����ֵ֮��
+    uiAbsSum += level;//量化值绝对值之和
     piDstCoeff[ blkPos ] = ( plSrcCoeff[ blkPos ] < 0 ) ? -level : level;
   }
 
   //===== clean uncoded coefficients =====
-  for ( Int scanPos = iBestLastIdxP1; scanPos <= iLastScanPos; scanPos++ )//CG�н�����������ϵ��֮���λ�õ�����ֵ��0
+  for ( Int scanPos = iBestLastIdxP1; scanPos <= iLastScanPos; scanPos++ )//CG中将最优最后非零系数之后的位置的量化值赋0
   {
     piDstCoeff[ codingParameters.scan[ scanPos ] ] = 0;
   }
 
 
-  if( pcCU->getSlice()->getPPS()->getSignHideFlag() && uiAbsSum>=2)//SDH���� ���ٱ���������ݵı����� ֮ǰ�������� ����׸��
+  if( pcCU->getSlice()->getPPS()->getSignHideFlag() && uiAbsSum>=2)//SDH技术 减少编码符号数据的比特数 之前已详述过 不再赘述
   {
     const Double inverseQuantScale = Double(g_invQuantScales[cQP.rem]);
     Int64 rdFactor = (Int64)(inverseQuantScale * inverseQuantScale * (1 << (2 * cQP.per))
@@ -2680,28 +2680,28 @@ Void TComTrQuant::xRateDistOptQuant                 (       TComTU       &rTu,
  * \returns pattern for current coefficient group
  */
 Int  TComTrQuant::calcPatternSigCtx( const UInt* sigCoeffGroupFlag, UInt uiCGPosX, UInt uiCGPosY, UInt widthInGroups, UInt heightInGroups )
-{//�����ڽ���CG��CSBF�õ���ǰCG��ģʽ ���ڵõ�CG��ÿ��ϵ��������������
-  if ((widthInGroups <= 1) && (heightInGroups <= 1))//CG��͸߲�����1 ���������²���Ҳ�CG ֱ�ӷ���0
+{//根据邻近的CG的CSBF得到当前CG的模式 用于得到CG中每个系数的上下文索引
+  if ((widthInGroups <= 1) && (heightInGroups <= 1))//CG宽和高不超过1 即不存在下侧和右侧CG 直接返回0
   {
     return 0;
   }
 
-  const Bool rightAvailable = uiCGPosX < (widthInGroups  - 1);//�����Ҳ�CG
-  const Bool belowAvailable = uiCGPosY < (heightInGroups - 1);//�����²�CG
+  const Bool rightAvailable = uiCGPosX < (widthInGroups  - 1);//存在右侧CG
+  const Bool belowAvailable = uiCGPosY < (heightInGroups - 1);//存在下侧CG
 
   UInt sigRight = 0;
   UInt sigLower = 0;
 
   if (rightAvailable)
   {
-    sigRight = ((sigCoeffGroupFlag[ (uiCGPosY * widthInGroups) + uiCGPosX + 1 ] != 0) ? 1 : 0);//�Ҳ�CG��CSBF
+    sigRight = ((sigCoeffGroupFlag[ (uiCGPosY * widthInGroups) + uiCGPosX + 1 ] != 0) ? 1 : 0);//右侧CG的CSBF
   }
   if (belowAvailable)
   {
-    sigLower = ((sigCoeffGroupFlag[ (uiCGPosY + 1) * widthInGroups + uiCGPosX ] != 0) ? 1 : 0);//�²�CG��CSBF
+    sigLower = ((sigCoeffGroupFlag[ (uiCGPosY + 1) * widthInGroups + uiCGPosX ] != 0) ? 1 : 0);//下侧CG的CSBF
   }
 
-  return sigRight + (sigLower << 1);//����ģʽ
+  return sigRight + (sigLower << 1);//返回模式
 }
 
 
@@ -2720,18 +2720,18 @@ Int TComTrQuant::getSigCtxInc    (       Int                        patternSigCt
                                    const Int                        log2BlockWidth,
                                    const Int                        log2BlockHeight,
                                    const ChannelType                chanType)
-{//��CG��ģʽ�õ���CG�ж�Ӧλ��ϵ����CtxInc(���������������� ����ȷ��ÿ��ϵ��������������)
+{//由CG的模式得到该CG中对应位置系数的CtxInc(上下文索引增加量 用于确定每个系数的上下文索引)
   if (codingParameters.firstSignificanceMapContext == significanceMapContextSetStart[chanType][CONTEXT_TYPE_SINGLE])
-  {//��Ϊ��������ģʽ ��ֱ�ӷ���significanceMapContextSetStart��ʼ������Ϊ��������
+  {//若为单上下文模式 则直接返回significanceMapContextSetStart开始索引作为最终索引
     //single context mode
     return significanceMapContextSetStart[chanType][CONTEXT_TYPE_SINGLE];
   }
 
   const UInt rasterPosition = codingParameters.scan[scanPosition];
-  const UInt posY           = rasterPosition >> log2BlockWidth;//��ϵ����TB�е�Y����
-  const UInt posX           = rasterPosition - (posY << log2BlockWidth);//��ϵ����TB�е�X����
+  const UInt posY           = rasterPosition >> log2BlockWidth;//该系数在TB中的Y坐标
+  const UInt posX           = rasterPosition - (posY << log2BlockWidth);//该系数在TB中的X坐标
 
-  if ((posX + posY) == 0)//ֱ��������TB�����Ͻ�ϵ����ctxIdxֱ��Ϊ0
+  if ((posX + posY) == 0)//直流分量（TB块左上角系数）ctxIdx直接为0
   {
     return 0; //special case for the DC context variable
   }
@@ -2740,27 +2740,27 @@ Int TComTrQuant::getSigCtxInc    (       Int                        patternSigCt
 
   if ((log2BlockWidth == 2) && (log2BlockHeight == 2)) //4x4 TB��Ϊ4*4
   {
-    offset = ctxIndMap4x4[ (4 * posY) + posX ];//ֱ���ɱ�õ�offset
+    offset = ctxIndMap4x4[ (4 * posY) + posX ];//直接由表得到offset
   }
-  else//��TB��Ϊ4*4
+  else//若TB不为4*4
   {
     Int cnt = 0;
 
-    switch (patternSigCtx)//�ж�CGģʽ
+    switch (patternSigCtx)//判断CG模式
     {
       //------------------
 
       case 0: //neither neighbouring group is significant
         {
-          const Int posXinSubset     = posX & ((1 << MLS_CG_LOG2_WIDTH)  - 1);//�ڵ�ǰCG�е�X����
-          const Int posYinSubset     = posY & ((1 << MLS_CG_LOG2_HEIGHT) - 1);//�ڵ�ǰCG�е�Y����
+          const Int posXinSubset     = posX & ((1 << MLS_CG_LOG2_WIDTH)  - 1);//在当前CG中的X坐标
+          const Int posYinSubset     = posY & ((1 << MLS_CG_LOG2_HEIGHT) - 1);//在当前CG中的Y坐标
           const Int posTotalInSubset = posXinSubset + posYinSubset;
 
           //first N coefficients in scan order use 2; the next few use 1; the rest use 0.
           const UInt context1Threshold = NEIGHBOURHOOD_00_CONTEXT_1_THRESHOLD_4x4;
           const UInt context2Threshold = NEIGHBOURHOOD_00_CONTEXT_2_THRESHOLD_4x4;
 
-          cnt = (posTotalInSubset >= context1Threshold) ? 0 : ((posTotalInSubset >= context2Threshold) ? 1 : 2);//��CG���϶Խ�һ��Ϊ2 ������Ϊ1 ����Ϊ0
+          cnt = (posTotalInSubset >= context1Threshold) ? 0 : ((posTotalInSubset >= context2Threshold) ? 1 : 2);//该CG左上对角一行为2 二三行为1 其余为0
         }
         break;
 
@@ -2772,7 +2772,7 @@ Int TComTrQuant::getSigCtxInc    (       Int                        patternSigCt
           const Int groupHeight  = 1 << MLS_CG_LOG2_HEIGHT;
 
           cnt = (posYinSubset >= (groupHeight >> 1)) ? 0 : ((posYinSubset >= (groupHeight >> 2)) ? 1 : 2); //top quarter uses 2; second-from-top quarter uses 1; bottom half uses 0
-        }//ˮƽ��һ��Ϊ2 �ڶ���Ϊ1 ����Ϊ0
+        }//水平第一行为2 第二行为1 其余为0
         break;
 
       //------------------
@@ -2783,14 +2783,14 @@ Int TComTrQuant::getSigCtxInc    (       Int                        patternSigCt
           const Int groupWidth   = 1 << MLS_CG_LOG2_WIDTH;
 
           cnt = (posXinSubset >= (groupWidth >> 1)) ? 0 : ((posXinSubset >= (groupWidth >> 2)) ? 1 : 2); //left quarter uses 2; second-from-left quarter uses 1; right half uses 0
-        }//��ֱ��һ��Ϊ2 �ڶ���Ϊ1 ������Ϊ0
+        }//垂直第一列为2 第二列为1 其余列为0
         break;
 
       //------------------
 
       case 3: //both neighbouring groups are significant
         {
-          cnt = 2;//ȫ��Ϊ2
+          cnt = 2;//全部为2
         }
         break;
 
@@ -2804,12 +2804,12 @@ Int TComTrQuant::getSigCtxInc    (       Int                        patternSigCt
 
     //------------------------------------------------
 
-    const Bool notFirstGroup = ((posX >> MLS_CG_LOG2_WIDTH) + (posY >> MLS_CG_LOG2_HEIGHT)) > 0;//��ΪTB�е�һ��CG
+    const Bool notFirstGroup = ((posX >> MLS_CG_LOG2_WIDTH) + (posY >> MLS_CG_LOG2_HEIGHT)) > 0;//不为TB中第一个CG
 
-    offset = (notFirstGroup ? notFirstGroupNeighbourhoodContextOffset[chanType] : 0) + cnt;//��Ϊ��һ��CG����϶�Ӧƫ��
+    offset = (notFirstGroup ? notFirstGroupNeighbourhoodContextOffset[chanType] : 0) + cnt;//不为第一个CG需加上对应偏置
   }
 
-  return codingParameters.firstSignificanceMapContext + offset;//����CtxInc  ��ȥluma��chroma offest���CtxIdx
+  return codingParameters.firstSignificanceMapContext + offset;//最终CtxInc  除去luma和chroma offest后的CtxIdx
 }
 
 
@@ -2836,15 +2836,15 @@ __inline UInt TComTrQuant::xGetCodedLevel ( Double&          rd64CodedCost,     
                                             Bool             useLimitedPrefixLength, //< 
                                             const Int        maxLog2TrDynamicRange   //< 
                                             ) const
-{//����RDO׼��ȷ����ǰϵ������������ֵ
+{//利用RDO准则确定当前系数的最优量化值
   Double dCurrCostSig   = 0;
   UInt   uiBestAbsLevel = 0;
 
-  if( !bLast && uiMaxAbsLevel < 3 )//������ֵΪ0��1��2ʱ��������ֵ����Ϊ0 ��ʱ��0��ΪĬ������ֵ
+  if( !bLast && uiMaxAbsLevel < 3 )//当量化值为0、1、2时最优量化值可能为0 此时将0最为默认量化值
   {
-    rd64CodedCostSig    = xGetRateSigCoef( 0, ui16CtxNumSig );//��ǰ����ֵΪ0
-    rd64CodedCost       = rd64CodedCost0 + rd64CodedCostSig;//����ֵΪ0ʱ����ʧ�����
-    if( uiMaxAbsLevel == 0 )//������ֵΪ0ʱ ��������ֵ��Ϊ0
+    rd64CodedCostSig    = xGetRateSigCoef( 0, ui16CtxNumSig );//当前量化值为0
+    rd64CodedCost       = rd64CodedCost0 + rd64CodedCostSig;//量化值为0时的率失真代价
+    if( uiMaxAbsLevel == 0 )//若量化值为0时 最优量化值则为0
     {
       return uiBestAbsLevel;
     }
@@ -2856,17 +2856,17 @@ __inline UInt TComTrQuant::xGetCodedLevel ( Double&          rd64CodedCost,     
 
   if( !bLast )
   {
-    dCurrCostSig        = xGetRateSigCoef( 1, ui16CtxNumSig );//��ǰ����ֵ��0
+    dCurrCostSig        = xGetRateSigCoef( 1, ui16CtxNumSig );//当前量化值非0
   }
 
-  UInt uiMinAbsLevel    = ( uiMaxAbsLevel > 1 ? uiMaxAbsLevel - 1 : 1 );//������ֵ���ڵ���3ʱ ���ܵ���������ֵΪN��N-1
-  for( Int uiAbsLevel  = uiMaxAbsLevel; uiAbsLevel >= uiMinAbsLevel ; uiAbsLevel-- )//�������ܵ���������ֵ
+  UInt uiMinAbsLevel    = ( uiMaxAbsLevel > 1 ? uiMaxAbsLevel - 1 : 1 );//当量化值大于等于3时 可能的最优量化值为N、N-1
+  for( Int uiAbsLevel  = uiMaxAbsLevel; uiAbsLevel >= uiMinAbsLevel ; uiAbsLevel-- )//遍历可能的最优量化值
   {
-    Double dErr         = Double( lLevelDouble  - ( Intermediate_Int(uiAbsLevel) << iQBits ) );//�������
+    Double dErr         = Double( lLevelDouble  - ( Intermediate_Int(uiAbsLevel) << iQBits ) );//量化误差
     Double dCurrCost    = dErr * dErr * errorScale + xGetICost( xGetICRate( uiAbsLevel, ui16CtxNumOne, ui16CtxNumAbs, ui16AbsGoRice, c1Idx, c2Idx, useLimitedPrefixLength, maxLog2TrDynamicRange ) );
-    dCurrCost          += dCurrCostSig;//�ܵ���ʧ�����
+    dCurrCost          += dCurrCostSig;//总的率失真代价
 
-    if( dCurrCost < rd64CodedCost )//ѡ����ʧ����ʧ��С������ֵΪ��������ֵ
+    if( dCurrCost < rd64CodedCost )//选择率失真损失最小的量化值为最优量化值
     {
       uiBestAbsLevel    = uiAbsLevel;
       rd64CodedCost     = dCurrCost;
@@ -2897,22 +2897,22 @@ __inline Int TComTrQuant::xGetICRate         ( const UInt    uiAbsLevel,
                                                const Bool    useLimitedPrefixLength,
                                                const Int     maxLog2TrDynamicRange
                                                ) const
-{//�����������ֵ��Rֵ���������ֵ��
+{//计算给定量化值的R值（编码比特值）
   Int  iRate      = Int(xGetIEPRate()); // cost of sign bit
-  UInt baseLevel  = (c1Idx < C1FLAG_NUMBER) ? (2 + (c2Idx < C2FLAG_NUMBER)) : 1;//largerThan1 flag�����ĿΪ8  largerThan2 flag�����ĿΪ1
+  UInt baseLevel  = (c1Idx < C1FLAG_NUMBER) ? (2 + (c2Idx < C2FLAG_NUMBER)) : 1;//largerThan1 flag最大数目为8  largerThan2 flag最大数目为1
 
-  if ( uiAbsLevel >= baseLevel )//����ֵ���ڵ���base Level ������coeff_abs_level_remaining
+  if ( uiAbsLevel >= baseLevel )//量化值大于等于base Level 即存在coeff_abs_level_remaining
   {
     UInt symbol     = uiAbsLevel - baseLevel;
     UInt length;
-    if (symbol < (COEF_REMAIN_BIN_REDUCTION << ui16AbsGoRice))//ALRem С�ڣ�3<<k����׺���ȹ̶�Ϊk
+    if (symbol < (COEF_REMAIN_BIN_REDUCTION << ui16AbsGoRice))//ALRem 小于（3<<k）后缀长度固定为k
     {
-      length = symbol>>ui16AbsGoRice;//ǰ׺����
-      iRate += (length+1+ui16AbsGoRice)<< 15;//������ʧ
+      length = symbol>>ui16AbsGoRice;//前缀长度
+      iRate += (length+1+ui16AbsGoRice)<< 15;//编码损失
     }
-    else if (useLimitedPrefixLength)//����ǰ׺����
+    else if (useLimitedPrefixLength)//限制前缀长度
     {
-      const UInt maximumPrefixLength = (32 - (COEF_REMAIN_BIN_REDUCTION + maxLog2TrDynamicRange));//ALRem���bin����Ϊ32
+      const UInt maximumPrefixLength = (32 - (COEF_REMAIN_BIN_REDUCTION + maxLog2TrDynamicRange));//ALRem最大bin长度为32
 
       UInt prefixLength = 0;
       UInt suffix       = (symbol >> ui16AbsGoRice) - COEF_REMAIN_BIN_REDUCTION;
@@ -2926,8 +2926,8 @@ __inline Int TComTrQuant::xGetICRate         ( const UInt    uiAbsLevel,
 
       iRate += (COEF_REMAIN_BIN_REDUCTION + prefixLength + suffixLength + ui16AbsGoRice) << 15;
     }
-    else//������ǰ׺���� ALRem ��С�ڣ�3<<k��
-    {//����ALRem��Ԫ������ ��ֵΪ log2((N-(3<<k)>>k)+1)����ȡ��+k 
+    else//不限制前缀长度 ALRem 不小于（3<<k）
+    {//计算ALRem二元化长度 其值为 log2((N-(3<<k)>>k)+1)向下取整+k  
       length = ui16AbsGoRice;
       symbol  = symbol - ( COEF_REMAIN_BIN_REDUCTION << ui16AbsGoRice);
       while (symbol >= (1<<length))
@@ -2935,25 +2935,25 @@ __inline Int TComTrQuant::xGetICRate         ( const UInt    uiAbsLevel,
         symbol -=  (1<<(length++));
       }
       iRate += (COEF_REMAIN_BIN_REDUCTION+length+1-ui16AbsGoRice+length)<< 15;
-    }//���㲿��ʹ����λ��ѭ��������� ����Ϊ����ֵ
+    }//计算部分使用移位、循环减法完成 其结果为上述值
 
-    if (c1Idx < C1FLAG_NUMBER)//��c1��Ч
+    if (c1Idx < C1FLAG_NUMBER)//若c1有效
     {
-      iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 1 ];//����Rate�����largerThan1 flag�ı���Rate
+      iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 1 ];//编码Rate需加上largerThan1 flag的编码Rate
 
-      if (c2Idx < C2FLAG_NUMBER)//��c2��Ч 
+      if (c2Idx < C2FLAG_NUMBER)//若c2有效  
       {
-        iRate += m_pcEstBitsSbac->m_levelAbsBits[ ui16CtxNumAbs ][ 1 ];//����Rate�����largerThan2 flag�ı���Rate
+        iRate += m_pcEstBitsSbac->m_levelAbsBits[ ui16CtxNumAbs ][ 1 ];//编码Rate需加上largerThan2 flag的编码Rate
       }
     }
   }
-  else if( uiAbsLevel == 1 )//����ֵΪ1 ��������largerThan1 flag2��ALRem
+  else if( uiAbsLevel == 1 )//量化值为1 即不存在largerThan1 flag2和ALRem
   {
-    iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 0 ];//�����ձ���RateΪlargerThan1 flag=0�ı���Rate
+    iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 0 ];//则最终编码Rate为largerThan1 flag=0的编码Rate
   }
-  else if( uiAbsLevel == 2 )//����ֵΪ2 ��������ALRem
+  else if( uiAbsLevel == 2 )//量化值为2 即不存在ALRem
   {
-    iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 1 ];//�����ձ���RateΪlargerThan1 flag=1��largerThan1 flag=0�ı���Rate
+    iRate += m_pcEstBitsSbac->m_greaterOneBits[ ui16CtxNumOne ][ 1 ];//则最终编码Rate为largerThan1 flag=1和largerThan1 flag=0的编码Rate
     iRate += m_pcEstBitsSbac->m_levelAbsBits[ ui16CtxNumAbs ][ 0 ];
   }
   else
@@ -2967,7 +2967,7 @@ __inline Int TComTrQuant::xGetICRate         ( const UInt    uiAbsLevel,
 __inline Double TComTrQuant::xGetRateSigCoeffGroup  ( UShort                    uiSignificanceCoeffGroup,
                                                 UShort                          ui16CtxNumSig ) const
 {
-  return xGetICost( m_pcEstBitsSbac->significantCoeffGroupBits[ ui16CtxNumSig ][ uiSignificanceCoeffGroup ] );//significantCoeffGroupBits������� ����CG�Ƿ���ڷ���ϵ��2
+  return xGetICost( m_pcEstBitsSbac->significantCoeffGroupBits[ ui16CtxNumSig ][ uiSignificanceCoeffGroup ] );//significantCoeffGroupBits编码损耗 表明CG是否存在非零系数
 }
 
 /** Calculates the cost of signaling the last significant coefficient in the block
@@ -2979,20 +2979,20 @@ __inline Double TComTrQuant::xGetRateSigCoeffGroup  ( UShort                    
 /*
  * \param uiWidth width of the transform unit (TU)
 */
-__inline Double TComTrQuant::xGetRateLast   ( const UInt                      uiPosX,
-                                              const UInt                      uiPosY,
+__inline Double TComTrQuant::xGetRateLast   ( const UInt                      uiPosX,//Tu块中最后一个非零系数X坐标
+                                              const UInt                      uiPosY,//Tu块中最后一个非零系数Y坐标
                                               const ComponentID               component  ) const
-{//����������ϵ��λ�õı������
-  UInt uiCtxX   = g_uiGroupIdx[uiPosX];//X���ڵ���������
-  UInt uiCtxY   = g_uiGroupIdx[uiPosY];//Y���ڵ���������
+{//计算最后非零系数位置的编码损耗
+  UInt uiCtxX   = g_uiGroupIdx[uiPosX];//X所在的区间索引
+  UInt uiCtxY   = g_uiGroupIdx[uiPosY];//Y所在的区间索引
 
-  Double uiCost = m_pcEstBitsSbac->lastXBits[toChannelType(component)][ uiCtxX ] + m_pcEstBitsSbac->lastYBits[toChannelType(component)][ uiCtxY ];//ǰ׺�ı������
+  Double uiCost = m_pcEstBitsSbac->lastXBits[toChannelType(component)][ uiCtxX ] + m_pcEstBitsSbac->lastYBits[toChannelType(component)][ uiCtxY ];//前缀的编码损耗
 
-  if( uiCtxX > 3 )//��������������3ʱ ���ں�׺ ��׺������·����
+  if( uiCtxX > 3 )//当区间索引大于3时 存在后缀 后缀进行旁路编码
   {
-    uiCost += xGetIEPRate() * ((uiCtxX-2)>>1);//��׺�ı������ (uiCtxX-2)>>1��Ϊ��׺bin��λ��
+    uiCost += xGetIEPRate() * ((uiCtxX-2)>>1);//后缀的编码损耗 (uiCtxX-2)>>1）为后缀bin的位数
   }
-  if( uiCtxY > 3 )//Y���� ͬ X
+  if( uiCtxY > 3 )//Y过程 同 X
   {
     uiCost += xGetIEPRate() * ((uiCtxY-2)>>1);
   }
@@ -3002,7 +3002,7 @@ __inline Double TComTrQuant::xGetRateLast   ( const UInt                      ui
 __inline Double TComTrQuant::xGetRateSigCoef  ( UShort                          uiSignificance,
                                                 UShort                          ui16CtxNumSig ) const
 {
-  return xGetICost( m_pcEstBitsSbac->significantBits[ ui16CtxNumSig ][ uiSignificance ] );//significantBits������� ��������ϵ���Ƿ�Ϊ��
+  return xGetICost( m_pcEstBitsSbac->significantBits[ ui16CtxNumSig ][ uiSignificance ] );//significantBits编码损耗 表明量化系数是否为零
 }
 
 /** Get the cost for a specific rate
@@ -3011,14 +3011,14 @@ __inline Double TComTrQuant::xGetRateSigCoef  ( UShort                          
  */
 __inline Double TComTrQuant::xGetICost        ( Double                          dRate         ) const
 {
-  return m_dLambda * dRate;//����������
+  return m_dLambda * dRate;//计算编码损耗
 }
 
 /** Get the cost of an equal probable bit
  * \returns cost of equal probable bit
  */
 __inline Double TComTrQuant::xGetIEPRate      (                                               ) const
-{//һ�ȸ���λ������� ��·����
+{//一等概率位编码损耗 旁路编码
   return 32768;//1<<15
 }
 
@@ -3035,17 +3035,17 @@ UInt TComTrQuant::getSigCoeffGroupCtxInc  (const UInt*  uiSigCoeffGroupFlag,
                                            const UInt   uiCGPosY,
                                            const UInt   widthInGroups,
                                            const UInt   heightInGroups)
-{//��ǰCG��coeff_abs_significant_flag��CtxInc�����·����Ҳ�CG��coeff_abs_significant_flag�й�
+{//当前CG的coeff_abs_significant_flag的CtxInc与其下方和右侧CG的coeff_abs_significant_flag有关
   UInt sigRight = 0;
   UInt sigLower = 0;
 
-  if (uiCGPosX < (widthInGroups  - 1))//�����Ҳ�CG
+  if (uiCGPosX < (widthInGroups  - 1))//存在右侧CG
   {
-    sigRight = ((uiSigCoeffGroupFlag[ (uiCGPosY * widthInGroups) + uiCGPosX + 1 ] != 0) ? 1 : 0);//�Ҳ�CG��coeff_abs_significant_flag
+    sigRight = ((uiSigCoeffGroupFlag[ (uiCGPosY * widthInGroups) + uiCGPosX + 1 ] != 0) ? 1 : 0);//右侧CG的coeff_abs_significant_flag
   }
-  if (uiCGPosY < (heightInGroups - 1))//�����·�CG
+  if (uiCGPosY < (heightInGroups - 1))//存在下方CG
   {
-    sigLower = ((uiSigCoeffGroupFlag[ (uiCGPosY + 1) * widthInGroups + uiCGPosX ] != 0) ? 1 : 0);//�·�CG��coeff_abs_significant_flag
+    sigLower = ((uiSigCoeffGroupFlag[ (uiCGPosY + 1) * widthInGroups + uiCGPosX ] != 0) ? 1 : 0);//下方CG的coeff_abs_significant_flag
   }
 
   return ((sigRight + sigLower) != 0) ? 1 : 0;
@@ -3059,7 +3059,7 @@ UInt TComTrQuant::getSigCoeffGroupCtxInc  (const UInt*  uiSigCoeffGroupFlag,
  * \param bitDepths              reference to bit depth array for all channels
  */
 Void TComTrQuant::setScalingList(TComScalingList *scalingList, const Int maxLog2TrDynamicRange[MAX_NUM_CHANNEL_TYPE], const BitDepths &bitDepths)
-{//����ʱΪ����ϵ����ֵ
+{//编码时为量化系数赋值
   const Int minimumQp = 0;
   const Int maximumQp = SCALING_LIST_REM_NUM;
 
@@ -3067,7 +3067,7 @@ Void TComTrQuant::setScalingList(TComScalingList *scalingList, const Int maxLog2
   {
     for(UInt list = 0; list < SCALING_LIST_NUM; list++)//MAX_NUM_COMPONENT * NUMBER_OF_PREDICTION_MODES
     {
-      for(Int qp = minimumQp; qp < maximumQp; qp++)//qp����6 Qstep����һ��
+      for(Int qp = minimumQp; qp < maximumQp; qp++)//qp增加6 Qstep增大一倍
       {
         xSetScalingListEnc(scalingList,list,size,qp);
         xSetScalingListDec(*scalingList,list,size,qp);
@@ -3081,7 +3081,7 @@ Void TComTrQuant::setScalingList(TComScalingList *scalingList, const Int maxLog2
  * \param format      chroma format
  */
 Void TComTrQuant::setScalingListDec(const TComScalingList &scalingList)
-{//����ͬ�� ��ÿ�������ֵ
+//过程同上 对每种情况的反量化系数赋值
   const Int minimumQp = 0;
   const Int maximumQp = SCALING_LIST_REM_NUM;
 
@@ -3105,27 +3105,27 @@ Void TComTrQuant::setScalingListDec(const TComScalingList &scalingList)
  */
 Void TComTrQuant::setErrScaleCoeff(UInt list, UInt size, Int qp, const Int maxLog2TrDynamicRange[MAX_NUM_CHANNEL_TYPE], const BitDepths &bitDepths)
 {
-  const UInt uiLog2TrSize = g_aucConvertToBit[ g_scalingListSizeX[size] ] + 2;//TB���Сȡ����
-  const ChannelType channelType = ((list == 0) || (list == MAX_NUM_COMPONENT)) ? CHANNEL_TYPE_LUMA : CHANNEL_TYPE_CHROMA;//ͨ������
+  const UInt uiLog2TrSize = g_aucConvertToBit[ g_scalingListSizeX[size] ] + 2;//TB块大小取对数
+  const ChannelType channelType = ((list == 0) || (list == MAX_NUM_COMPONENT)) ? CHANNEL_TYPE_LUMA : CHANNEL_TYPE_CHROMA;//通道类型
 
-  const Int channelBitDepth    = bitDepths.recon[channelType];//ͨ��λ��
+  const Int channelBitDepth    = bitDepths.recon[channelType];//通道位深
   const Int iTransformShift = getTransformShift(channelBitDepth, uiLog2TrSize, maxLog2TrDynamicRange[channelType]);  // Represents scaling through forward transform
 
-  UInt i,uiMaxNumCoeff = g_scalingListSize[size];//��������ϵ������
+  UInt i,uiMaxNumCoeff = g_scalingListSize[size];//量化矩阵系数总数
   Int *piQuantcoeff;
   Double *pdErrScale;
-  piQuantcoeff   = getQuantCoeff(list, qp,size);//����ϵ��
+  piQuantcoeff   = getQuantCoeff(list, qp,size);//量化系数
   pdErrScale     = getErrScaleCoeff(list, size, qp);
 
   Double dErrScale = (Double)(1<<SCALE_BITS);                                // Compensate for scaling of bitcount in Lagrange cost function
   dErrScale = dErrScale*pow(2.0,(-2.0*iTransformShift));                     // Compensate for scaling through forward transform
 
-  for(i=0;i<uiMaxNumCoeff;i++)//������������ϵ��
+  for(i=0;i<uiMaxNumCoeff;i++)//遍历所有量化系数
   {
-    pdErrScale[i] =  dErrScale / piQuantcoeff[i] / piQuantcoeff[i] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));//����ÿ��ϵ����ErrScale
+    pdErrScale[i] =  dErrScale / piQuantcoeff[i] / piQuantcoeff[i] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));//计算每个系数的ErrScale
   }
 
-  getErrScaleCoeffNoScalingList(list, size, qp) = dErrScale / g_quantScales[qp] / g_quantScales[qp] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));//δʹ�����������ErrScale
+  getErrScaleCoeffNoScalingList(list, size, qp) = dErrScale / g_quantScales[qp] / g_quantScales[qp] / (1 << DISTORTION_PRECISION_ADJUSTMENT(2 * (bitDepths.recon[channelType] - 8)));//未使用量化矩阵的ErrScale
 }
 
 /** set quantized matrix coefficient for encode
@@ -3136,13 +3136,13 @@ Void TComTrQuant::setErrScaleCoeff(UInt list, UInt size, Int qp, const Int maxLo
  * \param format chroma format
  */
 Void TComTrQuant::xSetScalingListEnc(TComScalingList *scalingList, UInt listId, UInt sizeId, Int qp)
-{//����ʱ ��������ϵ��
-  UInt width  = g_scalingListSizeX[sizeId];//TB��Ŀ�
-  UInt height = g_scalingListSizeX[sizeId];//TB��ĸ�
-  UInt ratio  = g_scalingListSizeX[sizeId]/min(MAX_MATRIX_SIZE_NUM,(Int)g_scalingListSizeX[sizeId]);//�ϲ����� 16*16/32*32 ��ͨ��8*8�ϲ����õ�
+{//编码时 计算量化系数
+  UInt width  = g_scalingListSizeX[sizeId];//TB块的宽
+  UInt height = g_scalingListSizeX[sizeId];//TB块的高
+  UInt ratio  = g_scalingListSizeX[sizeId]/min(MAX_MATRIX_SIZE_NUM,(Int)g_scalingListSizeX[sizeId]);//上采样比 16*16/32*32 需通过8*8上采样得到
   Int *quantcoeff;
-  Int *coeff  = scalingList->getScalingListAddress(sizeId,listId);//��������ĵ�ַ
-  quantcoeff  = getQuantCoeff(listId, qp, sizeId);//��������ϵ��
+  Int *coeff  = scalingList->getScalingListAddress(sizeId,listId);//量化矩阵的地址
+  quantcoeff  = getQuantCoeff(listId, qp, sizeId);//最终量化系数
 
   Int quantScales = g_quantScales[qp];
 
@@ -3151,7 +3151,7 @@ Void TComTrQuant::xSetScalingListEnc(TComScalingList *scalingList, UInt listId, 
                         (quantScales << LOG2_SCALING_LIST_NEUTRAL_VALUE),
                         height, width, ratio,
                         min(MAX_MATRIX_SIZE_NUM, (Int)g_scalingListSizeX[sizeId]),
-                        scalingList->getScalingListDC(sizeId,listId));//��������ϵ��
+                        scalingList->getScalingListDC(sizeId,listId));//计算量化系数
 }
 
 /** set quantized matrix coefficient for decode
@@ -3162,7 +3162,7 @@ Void TComTrQuant::xSetScalingListEnc(TComScalingList *scalingList, UInt listId, 
  * \param format chroma format
  */
 Void TComTrQuant::xSetScalingListDec(const TComScalingList &scalingList, UInt listId, UInt sizeId, Int qp)
-{//�������ʱ������ϵ��  ����ͬ���� 
+{//计算解码时的量化系数  过程同编码 
   UInt width  = g_scalingListSizeX[sizeId];
   UInt height = g_scalingListSizeX[sizeId];
   UInt ratio  = g_scalingListSizeX[sizeId]/min(MAX_MATRIX_SIZE_NUM,(Int)g_scalingListSizeX[sizeId]);
@@ -3184,7 +3184,7 @@ Void TComTrQuant::xSetScalingListDec(const TComScalingList &scalingList, UInt li
 /** set flat matrix value to quantized coefficient
  */
 Void TComTrQuant::setFlatScalingList(const Int maxLog2TrDynamicRange[MAX_NUM_CHANNEL_TYPE], const BitDepths &bitDepths)
-{//��ʹ�����������ʹ��ͬһqpֵʱTB�������ϵ��
+{//不使用量化矩阵和使用同一qp值时TB块的量化系数
   const Int minimumQp = 0;
   const Int maximumQp = SCALING_LIST_REM_NUM;
 
@@ -3208,7 +3208,7 @@ Void TComTrQuant::setFlatScalingList(const Int maxLog2TrDynamicRange[MAX_NUM_CHA
  * \param format chroma format
  */
 Void TComTrQuant::xsetFlatScalingList(UInt list, UInt size, Int qp)
-{//��ʹ�����������ʹ��ͬһqpֵʱTB�������ϵ��
+{//不使用量化矩阵和使用同一qp值时TB块的量化系数
   UInt i,num = g_scalingListSize[size];
   Int *quantcoeff;
   Int *dequantcoeff;
@@ -3238,15 +3238,15 @@ Void TComTrQuant::xsetFlatScalingList(UInt list, UInt size, Int qp)
  */
 Void TComTrQuant::processScalingListEnc( Int *coeff, Int *quantcoeff, Int quantScales, UInt height, UInt width, UInt ratio, Int sizuNum, UInt dc)
 {
-  for(UInt j=0;j<height;j++)//������
+  for(UInt j=0;j<height;j++)//遍历行
   {
-    for(UInt i=0;i<width;i++)//������
+    for(UInt i=0;i<width;i++)//遍历列
     {
-      quantcoeff[j*width + i] = quantScales / coeff[sizuNum * (j / ratio) + i / ratio];//�������������TB����ÿ������ϵ����������������+qp������
+      quantcoeff[j*width + i] = quantScales / coeff[sizuNum * (j / ratio) + i / ratio];//由量化矩阵计算TB块中每个量化系数（量化矩阵缩放+qp量化）
     }
   }
 
-  if(ratio > 1)//�����ϲ������DC����ϵ�������¼���
+  if(ratio > 1)//经过上采样后的DC量化系数需重新计算
   {
     quantcoeff[0] = quantScales / dc;
   }
@@ -3263,7 +3263,7 @@ Void TComTrQuant::processScalingListEnc( Int *coeff, Int *quantcoeff, Int quantS
  * \param dc dc parameter
  */
 Void TComTrQuant::processScalingListDec( const Int *coeff, Int *dequantcoeff, Int invQuantScales, UInt height, UInt width, UInt ratio, Int sizuNum, UInt dc)
-{//������������������������ϵ�� ����ͬ����
+{//解码过程由量化矩阵计算量化系数 过程同编码
   for(UInt j=0;j<height;j++)
   {
     for(UInt i=0;i<width;i++)
@@ -3280,7 +3280,7 @@ Void TComTrQuant::processScalingListDec( const Int *coeff, Int *dequantcoeff, In
 
 /** initialization process of scaling list array
  */
-//��ʼ�������������
+//声明所需数组
 Void TComTrQuant::initScalingList()
 {
   for(UInt sizeId = 0; sizeId < SCALING_LIST_SIZE_NUM; sizeId++)
@@ -3299,7 +3299,7 @@ Void TComTrQuant::initScalingList()
 
 /** destroy quantization matrix array
  */
-//ɾ������ �ͷ���Դ
+//删除数组 释放资源
 Void TComTrQuant::destroyScalingList()   
 {
   for(UInt sizeId = 0; sizeId < SCALING_LIST_SIZE_NUM; sizeId++)

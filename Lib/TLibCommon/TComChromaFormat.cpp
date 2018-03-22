@@ -43,7 +43,7 @@
 
 //----------------------------------------------------------------------------------------------------------------------
 
-InputColourSpaceConversion stringToInputColourSpaceConvert(const std::string &value, const Bool bIsForward)
+InputColourSpaceConversion stringToInputColourSpaceConvert(const std::string &value, const Bool bIsForward)//根据输入的字符返回相应的色彩空间转换类型
 {
   if (value.empty() || value=="UNCHANGED")
   {
@@ -95,7 +95,7 @@ std::string getListOfColourSpaceConverts(const Bool bIsForward)
 
 Void getTUEntropyCodingParameters(      TUEntropyCodingParameters &result,
                                         TComTU                    &rTu,
-                                  const ComponentID                component)
+                                  const ComponentID                component)//得到tu块用于熵编码的参数
 {
   //------------------------------------------------
 
@@ -130,9 +130,9 @@ Void getTUEntropyCodingParameters(      TUEntropyCodingParameters &result,
   //------------------------------------------------
 
   //set the significance map context selection parameters
-
+  //根据tu块的大小和模式设置上下文起始索引
   if (pcCU->getSlice()->getSPS()->getSpsRangeExtension().getTransformSkipContextEnabledFlag()
-      && (pcCU->getCUTransquantBypass(uiAbsPartIdx) || (pcCU->getTransformSkip(uiAbsPartIdx, component) != 0)))
+      && (pcCU->getCUTransquantBypass(uiAbsPartIdx) || (pcCU->getTransformSkip(uiAbsPartIdx, component) != 0)))//为TransquantBypass或TransformSkip模式
   {
     result.firstSignificanceMapContext = significanceMapContextSetStart[channelType][CONTEXT_TYPE_SINGLE];
   }

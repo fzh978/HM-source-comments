@@ -87,17 +87,17 @@ Void TComPicYuv::create ( const Int iPicWidth,                ///< picture width
                           const Bool bUseMargin)              ///< if true, then a margin of uiMaxCUWidth+16 and uiMaxCUHeight+16 is created around the image.
 
 {
-  m_iPicWidth         = iPicWidth;
-  m_iPicHeight        = iPicHeight;
-  m_chromaFormatIDC   = chromaFormatIDC;
-  m_iMarginX          = (bUseMargin?uiMaxCUWidth:0) + 16;   // for 16-byte alignment
-  m_iMarginY          = (bUseMargin?uiMaxCUHeight:0) + 16;  // margin for 8-tap filter and infinite padding
+  m_iPicWidth         = iPicWidth;//图像的宽
+  m_iPicHeight        = iPicHeight;//图像的高
+  m_chromaFormatIDC   = chromaFormatIDC;//色度格式
+  m_iMarginX          = (bUseMargin?uiMaxCUWidth:0) + 16;   // for 16-byte alignment//保留的边缘
+  m_iMarginY          = (bUseMargin?uiMaxCUHeight:0) + 16;  // margin for 8-tap filter and infinite padding//保留的边缘
   m_bIsBorderExtended = false;
 
   // assign the picture arrays and set up the ptr to the top left of the original picture
   {
     Int chan=0;
-    for(; chan<getNumberValidComponents(); chan++)
+    for(; chan<getNumberValidComponents(); chan++)//分配内存空间
     {
       const ComponentID ch=ComponentID(chan);
       m_apiPicBuf[chan] = (Pel*)xMalloc( Pel, getStride(ch)       * getTotalHeight(ch));
@@ -111,8 +111,8 @@ Void TComPicYuv::create ( const Int iPicWidth,                ///< picture width
   }
 
 
-  const Int numCuInWidth  = m_iPicWidth  / uiMaxCUWidth  + (m_iPicWidth  % uiMaxCUWidth  != 0);
-  const Int numCuInHeight = m_iPicHeight / uiMaxCUHeight + (m_iPicHeight % uiMaxCUHeight != 0);
+  const Int numCuInWidth  = m_iPicWidth  / uiMaxCUWidth  + (m_iPicWidth  % uiMaxCUWidth  != 0);//图像的宽（以CTU为单位）
+  const Int numCuInHeight = m_iPicHeight / uiMaxCUHeight + (m_iPicHeight % uiMaxCUHeight != 0);//图像的高（以CTU为单位）
   for(Int chan=0; chan<2; chan++)
   {
     const ComponentID ch=ComponentID(chan);
@@ -120,28 +120,28 @@ Void TComPicYuv::create ( const Int iPicWidth,                ///< picture width
     const Int ctuWidth=uiMaxCUWidth>>getComponentScaleX(ch);
     const Int stride = getStride(ch);
 
-    m_ctuOffsetInBuffer[chan] = new Int[numCuInWidth * numCuInHeight];
+    m_ctuOffsetInBuffer[chan] = new Int[numCuInWidth * numCuInHeight];//当以CTu为单位指明在图像中的位置时 得到对应CTU（左上角像素）在图像中的像素位置
 
-    for (Int cuRow = 0; cuRow < numCuInHeight; cuRow++)
+    for (Int cuRow = 0; cuRow < numCuInHeight; cuRow++)//以CTU为单位逐行遍历图像
     {
       for (Int cuCol = 0; cuCol < numCuInWidth; cuCol++)
       {
-        m_ctuOffsetInBuffer[chan][cuRow * numCuInWidth + cuCol] = stride * cuRow * ctuHeight + cuCol * ctuWidth;
-      }
+        m_ctuOffsetInBuffer[chan][cuRow * numCuInWidth + cuCol] = stride * cuRow * ctuHeight + cuCol * ctuWidth;//将图像中CTU位置转为像素位置 
+      }//CTU在图像中的行列需乘上CTu的宽 和 高
     }
 
-    m_subCuOffsetInBuffer[chan] = new Int[(size_t)1 << (2 * uiMaxCUDepth)];
+    m_subCuOffsetInBuffer[chan] = new Int[(size_t)1 << (2 * uiMaxCUDepth)];//当以Cu为单位指明在图像中的位置时 得到对应CU（左上角像素）在图像中的像素位置
 
     const Int numSubBlockPartitions=(1<<uiMaxCUDepth);
-    const Int minSubBlockHeight    =(ctuHeight >> uiMaxCUDepth);
-    const Int minSubBlockWidth     =(ctuWidth  >> uiMaxCUDepth);
+    const Int minSubBlockHeight    =(ctuHeight >> uiMaxCUDepth);//Cu的高
+    const Int minSubBlockWidth     =(ctuWidth  >> uiMaxCUDepth);//Cu的宽
 
-    for (Int buRow = 0; buRow < numSubBlockPartitions; buRow++)
+    for (Int buRow = 0; buRow < numSubBlockPartitions; buRow++)//逐行遍历图像中的所有Cu
     {
       for (Int buCol = 0; buCol < numSubBlockPartitions; buCol++)
       {
-        m_subCuOffsetInBuffer[chan][(buRow << uiMaxCUDepth) + buCol] = stride  * buRow * minSubBlockHeight + buCol * minSubBlockWidth;
-      }
+        m_subCuOffsetInBuffer[chan][(buRow << uiMaxCUDepth) + buCol] = stride  * buRow * minSubBlockHeight + buCol * minSubBlockWidth;//将图像中Cu位置转为像素位置 
+      }//CU在图像中的行列需乘上Cu的宽 和 高
     }
   }
   return;
@@ -149,7 +149,7 @@ Void TComPicYuv::create ( const Int iPicWidth,                ///< picture width
 
 
 
-Void TComPicYuv::destroy()
+Void TComPicYuv::destroy()//释放内存
 {
   for(Int chan=0; chan<MAX_NUM_COMPONENT; chan++)
   {
@@ -179,7 +179,7 @@ Void TComPicYuv::destroy()
 
 
 
-Void  TComPicYuv::copyToPic (TComPicYuv*  pcPicYuvDst) const
+Void  TComPicYuv::copyToPic (TComPicYuv*  pcPicYuvDst) const//将当前图像复制到目标图像
 {
   assert( m_iPicWidth  == pcPicYuvDst->getWidth(COMPONENT_Y)  );
   assert( m_iPicHeight == pcPicYuvDst->getHeight(COMPONENT_Y) );
@@ -194,14 +194,14 @@ Void  TComPicYuv::copyToPic (TComPicYuv*  pcPicYuvDst) const
 }
 
 
-Void TComPicYuv::extendPicBorder ()
+Void TComPicYuv::extendPicBorder ()//扩展图像的边缘 
 {
-  if ( m_bIsBorderExtended )
+  if ( m_bIsBorderExtended )//如果已经扩展过
   {
-    return;
+    return;//方法结束
   }
 
-  for(Int chan=0; chan<getNumberValidComponents(); chan++)
+  for(Int chan=0; chan<getNumberValidComponents(); chan++)//依次为各个分量处理
   {
     const ComponentID ch=ComponentID(chan);
     Pel *piTxt=getAddr(ch); // piTxt = point to (0,0) of image within bigger picture.
@@ -211,22 +211,22 @@ Void TComPicYuv::extendPicBorder ()
     const Int iMarginX=getMarginX(ch);
     const Int iMarginY=getMarginY(ch);
 
-    Pel*  pi = piTxt;
+    Pel*  pi = piTxt;//图像的起始位置(0,0)
     // do left and right margins
-    for (Int y = 0; y < iHeight; y++)
+    for (Int y = 0; y < iHeight; y++)//逐行填充
     {
-      for (Int x = 0; x < iMarginX; x++ )
+      for (Int x = 0; x < iMarginX; x++ )//每行左右需填充iMarginX个像素
       {
-        pi[ -iMarginX + x ] = pi[0];
-        pi[    iWidth + x ] = pi[iWidth-1];
+        pi[ -iMarginX + x ] = pi[0];//每一行左边缘扩展用改行最左侧像素填充
+        pi[    iWidth + x ] = pi[iWidth-1];//每一行右边缘扩展用改行最右侧像素填充
       }
-      pi += iStride;
+      pi += iStride;//下一行
     }
 
     // pi is now the (0,height) (bottom left of image within bigger picture
     pi -= (iStride + iMarginX);
     // pi is now the (-marginX, height-1)
-    for (Int y = 0; y < iMarginY; y++ )
+    for (Int y = 0; y < iMarginY; y++ )//用(-marginX, height-1)处分量值填充图像底部的扩展行（每行iWidth + (iMarginX<<1)个像素 共iMarginY行）
     {
       ::memcpy( pi + (y+1)*iStride, pi, sizeof(Pel)*(iWidth + (iMarginX<<1)) );
     }
@@ -234,19 +234,19 @@ Void TComPicYuv::extendPicBorder ()
     // pi is still (-marginX, height-1)
     pi -= ((iHeight-1) * iStride);
     // pi is now (-marginX, 0)
-    for (Int y = 0; y < iMarginY; y++ )
+    for (Int y = 0; y < iMarginY; y++ )//用(-marginX, 0)处分量值填充图像顶部的扩展行（每行iWidth + (iMarginX<<1)个像素 共iMarginY行）
     {
       ::memcpy( pi - (y+1)*iStride, pi, sizeof(Pel)*(iWidth + (iMarginX<<1)) );
     }
   }
 
-  m_bIsBorderExtended = true;
+  m_bIsBorderExtended = true;//扩展完成 设置标志
 }
 
 
 
 // NOTE: This function is never called, but may be useful for developers.
-Void TComPicYuv::dump (const Char* pFileName, const BitDepths &bitDepths, Bool bAdd) const
+Void TComPicYuv::dump (const Char* pFileName, const BitDepths &bitDepths, Bool bAdd) const//将图像的像素值写入文件
 {
   FILE* pFile;
   if (!bAdd)
@@ -259,7 +259,7 @@ Void TComPicYuv::dump (const Char* pFileName, const BitDepths &bitDepths, Bool b
   }
 
 
-  for(Int chan = 0; chan < getNumberValidComponents(); chan++)
+  for(Int chan = 0; chan < getNumberValidComponents(); chan++)//依次将各个分量的分量值写入文件
   {
     const ComponentID  ch     = ComponentID(chan);
     const Int          shift  = bitDepths.recon[toChannelType(ch)] - 8;
@@ -273,14 +273,14 @@ Void TComPicYuv::dump (const Char* pFileName, const BitDepths &bitDepths, Bool b
     {
       for (Int x = 0; x < width; x++ )
       {
-        UChar uc = (UChar)Clip3<Pel>(0, 255, (pi[x]+offset)>>shift);
+        UChar uc = (UChar)Clip3<Pel>(0, 255, (pi[x]+offset)>>shift);//还原成最终8位的像素值 并限制其大小
         fwrite( &uc, sizeof(UChar), 1, pFile );
       }
-      pi += stride;
+      pi += stride;//下一行分量值
     }
   }
 
-  fclose(pFile);
+  fclose(pFile);//写入完成 关闭文件
 }
 
 //! \}

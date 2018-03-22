@@ -152,7 +152,7 @@ TComSlice::~TComSlice()//析构函数
 }
 
 
-Void TComSlice::initSlice()//为slice中部分参数附上初始值
+Void TComSlice::initSlice()//为slice中部分参数初始化
 {
   for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
   {
@@ -1260,7 +1260,7 @@ Int TComSlice::checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, c
       }
     }
   }
-
+  //根据不同的情况返回不同的值
   if(atLeastOneUnabledByRecoveryPoint || atLeastOneFlushedByPreviousIDR)
   {
     return -1;
@@ -1281,6 +1281,7 @@ Int TComSlice::checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, c
 
 /** Function for constructing an explicit Reference Picture Set out of the available pictures in a referenced Reference Picture Set
 */
+//创建本地的RPS
 Void TComSlice::createExplicitReferencePictureSetFromReference( TComList<TComPic*>& rcListPic, const TComReferencePictureSet *pReferencePictureSet, Bool isRAP, Int pocRandomAccess, Bool bUseRecoveryPoint, const Bool bEfficientFieldIRAPEnabled)
 {
   TComPic* rpcPic;
@@ -1294,36 +1295,36 @@ Void TComSlice::createExplicitReferencePictureSetFromReference( TComList<TComPic
   Bool irapIsInRPS = false; // Used when bEfficientFieldIRAPEnabled==true
 
   // loop through all pictures in the Reference Picture Set
-  for(i=0;i<pReferencePictureSet->getNumberOfPictures();i++)
+  for(i=0;i<pReferencePictureSet->getNumberOfPictures();i++)//遍历给定RPS中的所有图像
   {
     j = 0;
     // loop through all pictures in the reference picture buffer
     TComList<TComPic*>::iterator iterPic = rcListPic.begin();
-    while ( iterPic != rcListPic.end())
+    while ( iterPic != rcListPic.end())//遍历参考图像缓存中的所有图像
     {
       j++;
       rpcPic = *(iterPic++);
 
       if(rpcPic->getPicSym()->getSlice(0)->getPOC() == this->getPOC() + pReferencePictureSet->getDeltaPOC(i) && rpcPic->getSlice(0)->isReferenced())
-      {
+      {//如果参考图像缓存中该图像在RPS中用作参考图像 则将该图像添加到本地RPS中
         // This picture exists as a reference picture
         // and should be added to the explicit Reference Picture Set
-        pLocalRPS->setDeltaPOC(k, pReferencePictureSet->getDeltaPOC(i));
+        pLocalRPS->setDeltaPOC(k, pReferencePictureSet->getDeltaPOC(i));//给本地RPS中给第K帧参考图像设置参考信息
         pLocalRPS->setUsed(k, pReferencePictureSet->getUsed(i) && (!isRAP));
         if (bEfficientFieldIRAPEnabled)
         {
           pLocalRPS->setUsed(k, pLocalRPS->getUsed(k) && !(bUseRecoveryPoint && this->getPOC() > pocRandomAccess && this->getPOC() + pReferencePictureSet->getDeltaPOC(i) < pocRandomAccess) );
-        }
+        }//确保该帧参考图像当UseRecoveryPoint时可以获得 才能被标示为被当前图像用作参考
 
-        if(pLocalRPS->getDeltaPOC(k) < 0)
+        if(pLocalRPS->getDeltaPOC(k) < 0)//DeltaPOC<0 说明为前置参考图像
         {
           nrOfNegativePictures++;
         }
-        else
+        else//否则为后置参考图像
         {
-          if(bEfficientFieldIRAPEnabled && rpcPic->getPicSym()->getSlice(0)->getPOC() == this->getAssociatedIRAPPOC() && this->getAssociatedIRAPPOC() == this->getPOC()+1)
+          if(bEfficientFieldIRAPEnabled && rpcPic->getPicSym()->getSlice(0)->getPOC() == this->getAssociatedIRAPPOC() && this->getAssociatedIRAPPOC() == this->getPOC()+1)//如果当前图像邻近的IRAP在参考图像缓存中 则邻近IRAP已被添加至本地RPS
           {
-            irapIsInRPS = true;
+            irapIsInRPS = true;//irapIsInRPS标志置为1
           }
           nrOfPositivePictures++;
         }
@@ -1334,13 +1335,13 @@ Void TComSlice::createExplicitReferencePictureSetFromReference( TComList<TComPic
 
   Bool useNewRPS = false;
   // if current picture is complimentary field associated to IRAP, add the IRAP to its RPS. 
-  if(bEfficientFieldIRAPEnabled && m_pcPic->isField() && !irapIsInRPS)//IRAP不在RPS中
+  if(bEfficientFieldIRAPEnabled && m_pcPic->isField() && !irapIsInRPS)//IRAP不在给定的RPS中
   {
     TComList<TComPic*>::iterator iterPic = rcListPic.begin();
     while ( iterPic != rcListPic.end())
     {
       rpcPic = *(iterPic++);
-      if(rpcPic->getPicSym()->getSlice(0)->getPOC() == this->getAssociatedIRAPPOC() && this->getAssociatedIRAPPOC() == this->getPOC()+1)
+      if(rpcPic->getPicSym()->getSlice(0)->getPOC() == this->getAssociatedIRAPPOC() && this->getAssociatedIRAPPOC() == this->getPOC()+1)//将IRAP添加值本地RPS
       {
         pLocalRPS->setDeltaPOC(k, 1);
         pLocalRPS->setUsed(k, true);
@@ -1350,63 +1351,63 @@ Void TComSlice::createExplicitReferencePictureSetFromReference( TComList<TComPic
       }
     }
   }
-  pLocalRPS->setNumberOfNegativePictures(nrOfNegativePictures);
-  pLocalRPS->setNumberOfPositivePictures(nrOfPositivePictures);
-  pLocalRPS->setNumberOfPictures(nrOfNegativePictures+nrOfPositivePictures);
+  pLocalRPS->setNumberOfNegativePictures(nrOfNegativePictures);//设置本地RPS前置参考图像数
+  pLocalRPS->setNumberOfPositivePictures(nrOfPositivePictures);//设置本地RPS后置参考图像数
+  pLocalRPS->setNumberOfPictures(nrOfNegativePictures+nrOfPositivePictures);//设置本地RPS总参考图像数
   // This is a simplistic inter rps example. A smarter encoder will look for a better reference RPS to do the
   // inter RPS prediction with.  Here we just use the reference used by pReferencePictureSet.
   // If pReferencePictureSet is not inter_RPS_predicted, then inter_RPS_prediction is for the current RPS also disabled.
-  if (!pReferencePictureSet->getInterRPSPrediction() || useNewRPS )
+  if (!pReferencePictureSet->getInterRPSPrediction() || useNewRPS )//如果给定的RPS不是由参考RPS预测得到 
   {
-    pLocalRPS->setInterRPSPrediction(false);
+    pLocalRPS->setInterRPSPrediction(false);//那么本地PRS也无法由预测RPS得到（因为本地PRS是由给定的PRS得到）
     pLocalRPS->setNumRefIdc(0);
   }
-  else
+  else//如果给定的RPS是由参考RPS预测得到 那么本地PRS也由预测RPS得到 （该处应事先理解好PRS预测等内容）
   {
-    Int rIdx =  this->getRPSidx() - pReferencePictureSet->getDeltaRIdxMinus1() - 1;//
-    Int deltaRPS = pReferencePictureSet->getDeltaRPS();
-    const TComReferencePictureSet* pcRefRPS = this->getSPS()->getRPSList()->getReferencePictureSet(rIdx);
-    Int iRefPics = pcRefRPS->getNumberOfPictures();
+    Int rIdx =  this->getRPSidx() - pReferencePictureSet->getDeltaRIdxMinus1() - 1;//当前slice所属图像的RPS所参考的RPS在SPS中的索引
+    Int deltaRPS = pReferencePictureSet->getDeltaRPS();//给定的RPS与其参考的PRS的POC差值
+    const TComReferencePictureSet* pcRefRPS = this->getSPS()->getRPSList()->getReferencePictureSet(rIdx);//当前slice所属图像的RPS所参考的RPS
+    Int iRefPics = pcRefRPS->getNumberOfPictures();//用作参考的PRS的参考图像数
     Int iNewIdc=0;
-    for(i=0; i<= iRefPics; i++)
+    for(i=0; i<= iRefPics; i++)//预测得到的PRS的num_ref_idcs为用做参考的PRS的um_ref_idcs+1 +1即为用做参考的PRS所属的图像
     {
-      Int deltaPOC = ((i != iRefPics)? pcRefRPS->getDeltaPOC(i) : 0);  // check if the reference abs POC is >= 0
-      Int iRefIdc = 0;
+      Int deltaPOC = ((i != iRefPics)? pcRefRPS->getDeltaPOC(i) : 0);//当i == iRefPics时 参考图像即为用做参考的PRS所属的图像本身 故deltaPOC为0 // check if the reference abs POC is >= 0
+      Int iRefIdc = 0;//初始化赋值为0 说明参考PRS中参考图像不再被用作参考图像
       for (j=0; j < pLocalRPS->getNumberOfPictures(); j++) // loop through the  pictures in the new RPS
       {
-        if ( (deltaPOC + deltaRPS) == pLocalRPS->getDeltaPOC(j))
+        if ( (deltaPOC + deltaRPS) == pLocalRPS->getDeltaPOC(j))//如果参考PRS中的参考图像也为本地PRS中的参考图像
         {
-          if (pLocalRPS->getUsed(j))
+          if (pLocalRPS->getUsed(j))//若该参考图像被当前图像用作参考
           {
             iRefIdc = 1;
           }
-          else
+          else//未被当前图像用作参考（以后被用作参考图像）
           {
             iRefIdc = 2;
           }
         }
       }
-      pLocalRPS->setRefIdc(i, iRefIdc);
+      pLocalRPS->setRefIdc(i, iRefIdc);//给对应帧设置iRefIdc
       iNewIdc++;
     }
-    pLocalRPS->setInterRPSPrediction(true);
-    pLocalRPS->setNumRefIdc(iNewIdc);
-    pLocalRPS->setDeltaRPS(deltaRPS);
-    pLocalRPS->setDeltaRIdxMinus1(pReferencePictureSet->getDeltaRIdxMinus1() + this->getSPS()->getRPSList()->getNumberOfReferencePictureSets() - this->getRPSidx());
+    pLocalRPS->setInterRPSPrediction(true);//本地RPS为参考RPS预测得到
+    pLocalRPS->setNumRefIdc(iNewIdc);//设置NumRefIdc
+    pLocalRPS->setDeltaRPS(deltaRPS);//设置tDeltaRPS
+    pLocalRPS->setDeltaRIdxMinus1(pReferencePictureSet->getDeltaRIdxMinus1() + this->getSPS()->getRPSList()->getNumberOfReferencePictureSets() - this->getRPSidx());//当前PRS索引减去参考PRS索引值减1 (PRS索引可以认为为图像的解码顺序)
   }
 
-  this->setRPS(pLocalRPS);
-  this->setRPSidx(-1);
+  this->setRPS(pLocalRPS);//设置当前slice的RPS为本地PRS
+  this->setRPSidx(-1);//-1表示使用本地RPS 而不是通过索引使用SPS中的RPS
 }
 
 //! get AC and DC values for weighted pred
-Void  TComSlice::getWpAcDcParam(WPACDCParam *&wp)
+Void  TComSlice::getWpAcDcParam(WPACDCParam *&wp)//得到用于加权预测的权重值
 {
   wp = m_weightACDCParam;
 }
 
 //! init AC and DC values for weighted pred
-Void  TComSlice::initWpAcDcParam()
+Void  TComSlice::initWpAcDcParam()//初始化各个分量用于加权预测的权重值
 {
   for(Int iComp = 0; iComp < MAX_NUM_COMPONENT; iComp++ )
   {
@@ -1416,14 +1417,14 @@ Void  TComSlice::initWpAcDcParam()
 }
 
 //! get tables for weighted prediction
-Void  TComSlice::getWpScaling( RefPicList e, Int iRefIdx, WPScalingParam *&wp )
+Void  TComSlice::getWpScaling( RefPicList e, Int iRefIdx, WPScalingParam *&wp )//得到参考图像列表中对应参考图像加权预测的权重信息
 {
   assert (e<NUM_REF_PIC_LIST_01);
   wp = m_weightPredTable[e][iRefIdx];
 }
 
 //! reset Default WP tables settings : no weight.
-Void  TComSlice::resetWpScaling()
+Void  TComSlice::resetWpScaling()//将所有参考图像各个分量的权重信息重置为默认值
 {
   for ( Int e=0 ; e<NUM_REF_PIC_LIST_01 ; e++ )
   {
@@ -1443,7 +1444,7 @@ Void  TComSlice::resetWpScaling()
 }
 
 //! init WP table
-Void  TComSlice::initWpScaling(const TComSPS *sps)
+Void  TComSlice::initWpScaling(const TComSPS *sps)//初始化加权预测权重表
 {
   const Bool bUseHighPrecisionPredictionWeighting = sps->getSpsRangeExtension().getHighPrecisionOffsetsEnabledFlag();
   for ( Int e=0 ; e<NUM_REF_PIC_LIST_01 ; e++ )
@@ -1453,15 +1454,15 @@ Void  TComSlice::initWpScaling(const TComSPS *sps)
       for ( Int yuv=0 ; yuv<MAX_NUM_COMPONENT ; yuv++ )
       {
         WPScalingParam  *pwp = &(m_weightPredTable[e][i][yuv]);
-        if ( !pwp->bPresentFlag )
-        {
+        if ( !pwp->bPresentFlag )//pwp不存在 
+        {//则iWeight和iOffset推断如下
           // Inferring values not present :
           pwp->iWeight = (1 << pwp->uiLog2WeightDenom);
           pwp->iOffset = 0;
         }
 
         const Int offsetScalingFactor = bUseHighPrecisionPredictionWeighting ? 1 : (1 << (sps->getBitDepth(toChannelType(ComponentID(yuv)))-8));
-
+       // Weighted prediction scaling values built from above parameters (bitdepth scaled): 用于加权预测时提高计算精度
         pwp->w      = pwp->iWeight;
         pwp->o      = pwp->iOffset * offsetScalingFactor; //NOTE: This value of the ".o" variable is never used - .o is set immediately before it gets used
         pwp->shift  = pwp->uiLog2WeightDenom;
@@ -1499,7 +1500,7 @@ TComVPS::~TComVPS()
 }
 
 // ------------------------------------------------------------------------------------------------
-// Sequence parameter set (SPS)
+// Sequence parameter set (SPS)//该部分涉及许多参数 仅做简单描述 待到使用时 会有更深刻的理解
 // ------------------------------------------------------------------------------------------------
 
 TComSPSRExt::TComSPSRExt()
@@ -1518,37 +1519,37 @@ TComSPSRExt::TComSPSRExt()
   }
 }
 
-TComSPS::TComSPS()
-: m_SPSId                     (  0)
-, m_VPSId                     (  0)
-, m_chromaFormatIdc           (CHROMA_420)
-, m_uiMaxTLayers              (  1)
+TComSPS::TComSPS()//SPS参数初始化
+: m_SPSId                     (  0)//表示SPS的标示号
+, m_VPSId                     (  0)//当前激活的VPS的ID号
+, m_chromaFormatIdc           (CHROMA_420)//色度采样格式
+, m_uiMaxTLayers              (  1)//最大时域层
 // Structure
-, m_picWidthInLumaSamples     (352)
-, m_picHeightInLumaSamples    (288)
-, m_log2MinCodingBlockSize    (  0)
-, m_log2DiffMaxMinCodingBlockSize(0)
-, m_uiMaxCUWidth              ( 32)
-, m_uiMaxCUHeight             ( 32)
-, m_uiMaxTotalCUDepth         (  3)
-, m_bLongTermRefsPresent      (false)
-, m_uiQuadtreeTULog2MaxSize   (  0)
-, m_uiQuadtreeTULog2MinSize   (  0)
-, m_uiQuadtreeTUMaxDepthInter (  0)
-, m_uiQuadtreeTUMaxDepthIntra (  0)
+, m_picWidthInLumaSamples     (352)//图像中亮度样点的宽度
+, m_picHeightInLumaSamples    (288)//图像中亮度样点的高度
+, m_log2MinCodingBlockSize    (  0)//最小的亮度编码块的大小
+, m_log2DiffMaxMinCodingBlockSize(0)//最大的亮度编码块和最小亮度块的的差值
+, m_uiMaxCUWidth              ( 32)//最大CU块的宽
+, m_uiMaxCUHeight             ( 32)//最大CU块的高
+, m_uiMaxTotalCUDepth         (  3)//CTU划分为CU时允许的最大深度
+, m_bLongTermRefsPresent      (false)//帧间预测时是否使用long term参考图像
+, m_uiQuadtreeTULog2MaxSize   (  0)//TU块允许的最大大小
+, m_uiQuadtreeTULog2MinSize   (  0)//TU块允许的最小大小
+, m_uiQuadtreeTUMaxDepthInter (  0)//帧间预测时Cu划分为TU允许的最大深度
+, m_uiQuadtreeTUMaxDepthIntra (  0)//帧内预测时Cu划分为TU允许的最大深度
 // Tool list
-, m_usePCM                    (false)
-, m_pcmLog2MaxSize            (  5)
-, m_uiPCMLog2MinSize          (  7)
-, m_bPCMFilterDisableFlag     (false)
-, m_uiBitsForPOC              (  8)
-, m_numLongTermRefPicSPS      (  0)
-, m_uiMaxTrSize               ( 32)
-, m_bUseSAO                   (false)
-, m_bTemporalIdNestingFlag    (false)
-, m_scalingListEnabledFlag    (false)
-, m_useStrongIntraSmoothing   (false)
-, m_vuiParametersPresentFlag  (false)
+, m_usePCM                    (false)//是否使用PCM
+, m_pcmLog2MaxSize            (  5)//PCM模式下 编码块的最大尺寸
+, m_uiPCMLog2MinSize          (  7)//PCM模式下 编码块的最小尺寸 ？
+, m_bPCMFilterDisableFlag     (false)//PCM模式下 是否允许滤波
+, m_uiBitsForPOC              (  8)//表示图像POC值时的位数
+, m_numLongTermRefPicSPS      (  0)//SPS中ong term参考图像数目
+, m_uiMaxTrSize               ( 32)//最大变换块大小
+, m_bUseSAO                   (false)//是否使用SAO
+, m_bTemporalIdNestingFlag    (false)//和max_sub_layers联合使用 规定是否额外限制CVS的帧间预测
+, m_scalingListEnabledFlag    (false)//对变化系数量化过程中是否使用量化矩阵
+, m_useStrongIntraSmoothing   (false)//是否允许对帧内参考像素进行强滤波
+, m_vuiParametersPresentFlag  (false)//是否含有语法结构体m_vuiParameters()
 , m_vuiParameters             ()
 {
   for(Int ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
@@ -1604,32 +1605,32 @@ TComPPSRExt::TComPPSRExt()
 }
 
 TComPPS::TComPPS()
-: m_PPSId                            (0)
-, m_SPSId                            (0)
-, m_picInitQPMinus26                 (0)
-, m_useDQP                           (false)
-, m_bConstrainedIntraPred            (false)
-, m_bSliceChromaQpFlag               (false)
-, m_uiMaxCuDQPDepth                  (0)
-, m_chromaCbQpOffset                 (0)
-, m_chromaCrQpOffset                 (0)
-, m_numRefIdxL0DefaultActive         (1)
-, m_numRefIdxL1DefaultActive         (1)
-, m_TransquantBypassEnableFlag       (false)
-, m_useTransformSkip                 (false)
-, m_dependentSliceSegmentsEnabledFlag(false)
-, m_tilesEnabledFlag                 (false)
-, m_entropyCodingSyncEnabledFlag     (false)
-, m_loopFilterAcrossTilesEnabledFlag (true)
-, m_uniformSpacingFlag               (false)
-, m_numTileColumnsMinus1             (0)
-, m_numTileRowsMinus1                (0)
-, m_signHideFlag                     (false)
-, m_cabacInitPresentFlag             (false)
-, m_sliceHeaderExtensionPresentFlag  (false)
-, m_loopFilterAcrossSlicesEnabledFlag(false)
-, m_listsModificationPresentFlag     (0)
-, m_numExtraSliceHeaderBits          (0)
+: m_PPSId                            (0)//当前激活的PPS的ID号
+, m_SPSId                            (0)//当前激活的SPS的ID号
+, m_picInitQPMinus26                 (0)//规定了每个Slice中亮度分量的量化参数初始值
+, m_useDQP                           (false)//是否使用QG
+, m_bConstrainedIntraPred            (false)//是否允许使用采用帧间预测模式的邻近块信息进行帧内预测
+, m_bSliceChromaQpFlag               (false)//slice中是否存在色度QP
+, m_uiMaxCuDQPDepth                  (0)//QG相对CTU的深度
+, m_chromaCbQpOffset                 (0)//色度分量Cb采用的QP值相对亮度分量Qp值的偏移量
+, m_chromaCrQpOffset                 (0)//色度分量Cr采用的QP值相对亮度分量Qp值的偏移量
+, m_numRefIdxL0DefaultActive         (1)//引用list0中参考图像数目的最大默认值
+, m_numRefIdxL1DefaultActive         (1)//引用list1中参考图像数目的最大默认值
+, m_TransquantBypassEnableFlag       (false)//是否使用TransquantBypass
+, m_useTransformSkip                 (false)//是否使用TransformSkip模式
+, m_dependentSliceSegmentsEnabledFlag(false)//表示slice头中是否存在dependent_slice_segment_flag 用与当前slice是否为依赖片
+, m_tilesEnabledFlag                 (false)//是否使用tile模式
+, m_entropyCodingSyncEnabledFlag     (false)//是否使用熵编码同步机制
+, m_loopFilterAcrossTilesEnabledFlag (true)//环路滤波是否允许跨越Tiles边界
+, m_uniformSpacingFlag               (false)//表示图像中tile的列边界和行边界的分布是否一致
+, m_numTileColumnsMinus1             (0)//Tiles列数
+, m_numTileRowsMinus1                (0)//Tiles行数
+, m_signHideFlag                     (false)//是否使用signHide技术
+, m_cabacInitPresentFlag             (false)//是否需要判断CABAC中使用何种方法来确定上下文变量的初始值
+, m_sliceHeaderExtensionPresentFlag  (false)//是否允许扩展 供将来使用
+, m_loopFilterAcrossSlicesEnabledFlag(false)//环路滤波是否允许跨越slices边界
+, m_listsModificationPresentFlag     (0)//是否需要修正参考图像列表
+, m_numExtraSliceHeaderBits          (0)//slice header中额外的比特数 留作将来使用
 {
 }
 
@@ -1637,7 +1638,7 @@ TComPPS::~TComPPS()
 {
 }
 
-TComReferencePictureSet::TComReferencePictureSet()
+TComReferencePictureSet::TComReferencePictureSet()//PRS参数 之前已描述过
 : m_numberOfPictures (0)
 , m_numberOfNegativePictures (0)
 , m_numberOfPositivePictures (0)
@@ -1660,7 +1661,9 @@ TComReferencePictureSet::TComReferencePictureSet()
 TComReferencePictureSet::~TComReferencePictureSet()
 {
 }
-
+/**
+ 简单的set get方法 所涉及参数已在之前说明过 不在叙述
+ */
 Void TComReferencePictureSet::setUsed(Int bufferNum, Bool used)
 {
   m_used[bufferNum] = used;
@@ -1728,17 +1731,17 @@ Int  TComReferencePictureSet::getRefIdc(Int bufferNum) const
  *  +ve values are in increasing order.
  * \returns Void
  */
-Void TComReferencePictureSet::sortDeltaPOC()
+Void TComReferencePictureSet::sortDeltaPOC()//排列DeltaPOC的顺序
 {
   // sort in increasing order (smallest first)
-  for(Int j=1; j < getNumberOfPictures(); j++)
+  for(Int j=1; j < getNumberOfPictures(); j++)//从小到大排序 每次循环得到前j+1个排列好的数
   {
     Int deltaPOC = getDeltaPOC(j);
     Bool used = getUsed(j);
     for (Int k=j-1; k >= 0; k--)
     {
       Int temp = getDeltaPOC(k);
-      if (deltaPOC < temp)
+      if (deltaPOC < temp)//交换二者顺序
       {
         setDeltaPOC(k+1, temp);
         setUsed(k+1, getUsed(k));
@@ -1749,7 +1752,7 @@ Void TComReferencePictureSet::sortDeltaPOC()
   }
   // flip the negative values to largest first
   Int numNegPics = getNumberOfNegativePictures();
-  for(Int j=0, k=numNegPics-1; j < numNegPics>>1; j++, k--)
+  for(Int j=0, k=numNegPics-1; j < numNegPics>>1; j++, k--)//将负数部分从中心点翻转 将较大的负数置与较小的负数之前
   {
     Int deltaPOC = getDeltaPOC(j);
     Bool used = getUsed(j);
@@ -1764,7 +1767,7 @@ Void TComReferencePictureSet::sortDeltaPOC()
  *  A "*" is added to the deltaPOC value if it is Used bu current.
  * \returns Void
  */
-Void TComReferencePictureSet::printDeltaPOC() const
+Void TComReferencePictureSet::printDeltaPOC() const//打印deltaPOC和RefIdc信息 若参考图像被当前图像所参考 其deltaPOC上会加上*
 {
   printf("DeltaPOC = { ");
   for(Int j=0; j < getNumberOfPictures(); j++)
@@ -1794,20 +1797,24 @@ TComRefPicListModification::~TComRefPicListModification()
 {
 }
 
-TComScalingList::TComScalingList()
+TComScalingList::TComScalingList()//量化矩阵构造函数
 {
   for(UInt sizeId = 0; sizeId < SCALING_LIST_SIZE_NUM; sizeId++)
   {
     for(UInt listId = 0; listId < SCALING_LIST_NUM; listId++)
-    {
-      m_scalingListCoef[sizeId][listId].resize(min<Int>(MAX_MATRIX_COEF_NUM,(Int)g_scalingListSize[sizeId]));
+    {//初始化的值为0！
+      m_scalingListCoef[sizeId][listId].resize(min<Int>(MAX_MATRIX_COEF_NUM,(Int)g_scalingListSize[sizeId]));//量化矩阵大小不得超过8*8时因为8*8以上的大小可以通过8*8上采用得到
     }
   }
 }
 
+/**
+ * 此处开始涉及量化矩阵的内容
+ * 建议先查阅《T-REC-H》中Scaling list data semantics的内容
+ */
 /** set default quantization matrix to array
 */
-Void TComScalingList::setDefaultScalingList()
+Void TComScalingList::setDefaultScalingList()//将量化矩阵设为默认的量化矩阵
 {
   for(UInt sizeId = 0; sizeId < SCALING_LIST_SIZE_NUM; sizeId++)
   {
@@ -1820,7 +1827,7 @@ Void TComScalingList::setDefaultScalingList()
 /** check if use default quantization matrix
  * \returns true if use default quantization matrix in all size
 */
-Bool TComScalingList::checkDefaultScalingList()
+Bool TComScalingList::checkDefaultScalingList()//检查所有大小的量化矩阵是否都为默认量化矩阵
 {
   UInt defaultCounter=0;
 
@@ -1831,7 +1838,7 @@ Bool TComScalingList::checkDefaultScalingList()
       if( !memcmp(getScalingListAddress(sizeId,listId), getScalingListDefaultAddress(sizeId, listId),sizeof(Int)*min(MAX_MATRIX_COEF_NUM,(Int)g_scalingListSize[sizeId])) // check value of matrix
      && ((sizeId < SCALING_LIST_16x16) || (getScalingListDC(sizeId,listId) == 16))) // check DC value
       {
-        defaultCounter++;
+        defaultCounter++;//统计使用默认量化矩阵的量化矩阵数
       }
     }
   }
@@ -1844,13 +1851,13 @@ Bool TComScalingList::checkDefaultScalingList()
  * \param listId    index of input matrix
  * \param refListId index of reference matrix
  */
-Void TComScalingList::processRefMatrix( UInt sizeId, UInt listId , UInt refListId )
+Void TComScalingList::processRefMatrix( UInt sizeId, UInt listId , UInt refListId )//从给定的参考矩阵中得到量化矩阵
 {
   ::memcpy(getScalingListAddress(sizeId, listId),((listId == refListId)? getScalingListDefaultAddress(sizeId, refListId): getScalingListAddress(sizeId, refListId)),sizeof(Int)*min(MAX_MATRIX_COEF_NUM,(Int)g_scalingListSize[sizeId]));
 }
 
-Void TComScalingList::checkPredMode(UInt sizeId, UInt listId)
-{
+Void TComScalingList::checkPredMode(UInt sizeId, UInt listId)//判断scaling_list_pred_mode_flag
+{//若scaling_list_pred_mode_flag为0 说明当前量化矩阵可以通过之前存在的量化矩阵（参考量化矩阵）得到 若为1 则当前量化矩阵需要通过自定义量化矩阵得到
   Int predListStep = (sizeId == SCALING_LIST_32x32? (SCALING_LIST_NUM/NUMBER_OF_PREDICTION_MODES) : 1); // if 32x32, skip over chroma entries.
 
   for(Int predListIdx = (Int)listId ; predListIdx >= 0; predListIdx-=predListStep)
@@ -1858,16 +1865,16 @@ Void TComScalingList::checkPredMode(UInt sizeId, UInt listId)
     if( !memcmp(getScalingListAddress(sizeId,listId),((listId == predListIdx) ?
       getScalingListDefaultAddress(sizeId, predListIdx): getScalingListAddress(sizeId, predListIdx)),sizeof(Int)*min(MAX_MATRIX_COEF_NUM,(Int)g_scalingListSize[sizeId])) // check value of matrix
      && ((sizeId < SCALING_LIST_16x16) || (getScalingListDC(sizeId,listId) == getScalingListDC(sizeId,predListIdx)))) // check DC value
-    {
-      setRefMatrixId(sizeId, listId, predListIdx);
+    {//若存在已有的量化矩阵与当前量化矩阵相同 则可用之前的量化矩阵做参考 得到当前量化矩阵
+      setRefMatrixId(sizeId, listId, predListIdx);//设置参考量化矩阵
       setScalingListPredModeFlag(sizeId, listId, false);
       return;
     }
   }
-  setScalingListPredModeFlag(sizeId, listId, true);
+  setScalingListPredModeFlag(sizeId, listId, true);//需通过自定义量化矩阵得到
 }
 
-static Void outputScalingListHelp(std::ostream &os)
+static Void outputScalingListHelp(std::ostream &os)//打印量化矩阵的类型
 {
   os << "The scaling list file specifies all matrices and their DC values; none can be missing,\n"
          "but their order is arbitrary.\n\n"
@@ -1897,7 +1904,7 @@ static Void outputScalingListHelp(std::ostream &os)
   }
 }
 
-Void TComScalingList::outputScalingLists(std::ostream &os) const
+Void TComScalingList::outputScalingLists(std::ostream &os) const //打印不同的化矩阵的量化系数
 {
   for(UInt sizeIdc = 0; sizeIdc < SCALING_LIST_SIZE_NUM; sizeIdc++)
   {
@@ -1908,7 +1915,7 @@ Void TComScalingList::outputScalingLists(std::ostream &os) const
       {
         const Int *src = getScalingListAddress(sizeIdc, listIdc);
         os << (MatrixType[sizeIdc][listIdc]) << " =\n  ";
-        for(UInt y=0; y<size; y++)
+        for(UInt y=0; y<size; y++)//打印量化矩阵
         {
           for(UInt x=0; x<size; x++, src++)
           {
@@ -1926,13 +1933,13 @@ Void TComScalingList::outputScalingLists(std::ostream &os) const
   }
 }
 
-Bool TComScalingList::xParseScalingList(Char* pchFile)
+Bool TComScalingList::xParseScalingList(Char* pchFile)//从给定的文件中读取量化矩阵
 {
   static const Int LINE_SIZE=1024;
   FILE *fp = NULL;
   Char line[LINE_SIZE];
 
-  if (pchFile == NULL)
+  if (pchFile == NULL)//若为给定文件 输出错误信息
   {
     fprintf(stderr, "Error: no scaling list file specified. Help on scaling lists being output\n");
     outputScalingListHelp(std::cout);
@@ -1941,22 +1948,22 @@ Bool TComScalingList::xParseScalingList(Char* pchFile)
     exit (1);
     return true;
   }
-  else if ((fp = fopen(pchFile,"r")) == (FILE*)NULL)
+  else if ((fp = fopen(pchFile,"r")) == (FILE*)NULL)//打开文件为空
   {
     fprintf(stderr, "Error: cannot open scaling list file %s for reading\n",pchFile);
     return true;
   }
 
-  for(UInt sizeIdc = 0; sizeIdc < SCALING_LIST_SIZE_NUM; sizeIdc++)
+  for(UInt sizeIdc = 0; sizeIdc < SCALING_LIST_SIZE_NUM; sizeIdc++)//遍历各种大小的量化矩阵
   {
     const UInt size = min(MAX_MATRIX_COEF_NUM,(Int)g_scalingListSize[sizeIdc]);
 
-    for(UInt listIdc = 0; listIdc < SCALING_LIST_NUM; listIdc++)
+    for(UInt listIdc = 0; listIdc < SCALING_LIST_NUM; listIdc++)//遍历各种类型的量化矩阵
     {
-      Int * const src = getScalingListAddress(sizeIdc, listIdc);
+      Int * const src = getScalingListAddress(sizeIdc, listIdc);//量化矩阵起始地址
 
       if ((sizeIdc==SCALING_LIST_32x32) && (listIdc%(SCALING_LIST_NUM/NUMBER_OF_PREDICTION_MODES) != 0)) // derive chroma32x32 from chroma16x16
-      {
+      {//chroma32x32的量化矩阵从 chroma16x16的量化矩阵得到
         const Int *srcNextSmallerSize = getScalingListAddress(sizeIdc-1, listIdc);
         for(UInt i=0; i<size; i++)
         {
@@ -1972,44 +1979,44 @@ Bool TComScalingList::xParseScalingList(Char* pchFile)
           while ((!feof(fp)) && (!bFound))
           {
             Char *ret = fgets(line, LINE_SIZE, fp);
-            Char *findNamePosition= ret==NULL ? NULL : strstr(line, MatrixType[sizeIdc][listIdc]);
+            Char *findNamePosition= ret==NULL ? NULL : strstr(line, MatrixType[sizeIdc][listIdc]);//在给定文件中是否找到对应量化矩阵类型的字符 strstr(str1,str2) 函数用于判断字符串str2是否是str1的子串
             // This could be a match against the DC string as well, so verify it isn't
             if (findNamePosition!= NULL && (MatrixType_DC[sizeIdc][listIdc]==NULL || strstr(line, MatrixType_DC[sizeIdc][listIdc])==NULL))
             {
-              bFound=true;
+              bFound=true;//在文件中找到该量化矩阵的字符
             }
           }
-          if (!bFound)
+          if (!bFound)//若未找到 打印错误信息
           {
             fprintf(stderr, "Error: cannot find Matrix %s from scaling list file %s\n", MatrixType[sizeIdc][listIdc], pchFile);
             return true;
           }
         }
-        for (UInt i=0; i<size; i++)
+        for (UInt i=0; i<size; i++)//读取自定义文件中量化矩阵的值
         {
           Int data;
-          if (fscanf(fp, "%d,", &data)!=1)
+          if (fscanf(fp, "%d,", &data)!=1)//若读取发生错误打印错误信息
           {
             fprintf(stderr, "Error: cannot read value #%d for Matrix %s from scaling list file %s at file position %ld\n", i, MatrixType[sizeIdc][listIdc], pchFile, ftell(fp));
             return true;
           }
-          if (data<0 || data>255)
+          if (data<0 || data>255)//若值的范围不在（0,255）打印错误信息
           {
             fprintf(stderr, "Error: QMatrix entry #%d of value %d for Matrix %s from scaling list file %s at file position %ld is out of range (0 to 255)\n", i, data, MatrixType[sizeIdc][listIdc], pchFile, ftell(fp));
             return true;
           }
-          src[i] = data;
+          src[i] = data;//将读取的值赋给量化矩阵
         }
 
         //set DC value for default matrix check
         setScalingListDC(sizeIdc,listIdc,src[0]);
 
-        if(sizeIdc > SCALING_LIST_8x8)
+        if(sizeIdc > SCALING_LIST_8x8)//量化矩阵大于8*8 需重新设置DC值
         {
           {
             fseek(fp, 0, SEEK_SET);
             Bool bFound=false;
-            while ((!feof(fp)) && (!bFound))
+            while ((!feof(fp)) && (!bFound))//同上
             {
               Char *ret = fgets(line, LINE_SIZE, fp);
               Char *findNamePosition= ret==NULL ? NULL : strstr(line, MatrixType_DC[sizeIdc][listIdc]);
@@ -2019,25 +2026,25 @@ Bool TComScalingList::xParseScalingList(Char* pchFile)
                 bFound=true;
               }
             }
-            if (!bFound)
+            if (!bFound)//若未找到 打印错误信息
             {
               fprintf(stderr, "Error: cannot find DC Matrix %s from scaling list file %s\n", MatrixType_DC[sizeIdc][listIdc], pchFile);
               return true;
             }
           }
           Int data;
-          if (fscanf(fp, "%d,", &data)!=1)
+          if (fscanf(fp, "%d,", &data)!=1)//若读取发生错误打印错误信息
           {
             fprintf(stderr, "Error: cannot read DC %s from scaling list file %s at file position %ld\n", MatrixType_DC[sizeIdc][listIdc], pchFile, ftell(fp));
             return true;
           }
-          if (data<0 || data>255)
+          if (data<0 || data>255)//若值的范围不在（0,255）打印错误信息
           {
             fprintf(stderr, "Error: DC value %d for Matrix %s from scaling list file %s at file position %ld is out of range (0 to 255)\n", data, MatrixType[sizeIdc][listIdc], pchFile, ftell(fp));
             return true;
           }
           //overwrite DC value when size of matrix is larger than 16x16
-          setScalingListDC(sizeIdc,listIdc,data);
+          setScalingListDC(sizeIdc,listIdc,data);//量化矩阵大于8*8 需重新设置DC值
         }
       }
     }
@@ -2080,7 +2087,7 @@ const Int* TComScalingList::getScalingListDefaultAddress(UInt sizeId, UInt listI
  * \param sizeId size index
  * \param listId index of input matrix
  */
-Void TComScalingList::processDefaultMatrix(UInt sizeId, UInt listId)
+Void TComScalingList::processDefaultMatrix(UInt sizeId, UInt listId)//使用默认量化矩阵作为量化矩阵
 {
   ::memcpy(getScalingListAddress(sizeId, listId),getScalingListDefaultAddress(sizeId,listId),sizeof(Int)*min(MAX_MATRIX_COEF_NUM,(Int)g_scalingListSize[sizeId]));
   setScalingListDC(sizeId,listId,SCALING_LIST_DC);
@@ -2088,7 +2095,7 @@ Void TComScalingList::processDefaultMatrix(UInt sizeId, UInt listId)
 
 /** check DC value of matrix for default matrix signaling
  */
-Void TComScalingList::checkDcOfMatrix()
+Void TComScalingList::checkDcOfMatrix()//量化矩阵的DC值为0 则将其设为默认量化矩阵
 {
   for(UInt sizeId = 0; sizeId < SCALING_LIST_SIZE_NUM; sizeId++)
   {
@@ -2146,34 +2153,34 @@ ParameterSetManager::~ParameterSetManager()
 
 //! activate a PPS and depending on isIDR parameter also SPS and VPS
 //! \returns true, if activation is successful
-Bool ParameterSetManager::activatePPS(Int ppsId, Bool isIRAP)
+Bool ParameterSetManager::activatePPS(Int ppsId, Bool isIRAP)//激活ID为ppsId的PPS 激活成功返回真(类似链表 PPS->SPS->VPS)
 {
-  TComPPS *pps = m_ppsMap.getPS(ppsId);
-  if (pps)
+  TComPPS *pps = m_ppsMap.getPS(ppsId);//ID为ppsId的PPS
+  if (pps)//如果该PPS存在
   {
-    Int spsId = pps->getSPSId();
-    if (!isIRAP && (spsId != m_activeSPSId ))
+    Int spsId = pps->getSPSId();//得到该PPS所用SPS的ID
+    if (!isIRAP && (spsId != m_activeSPSId ))//该PPS所用SPS未激活 即无法得到该SPS参数 而该帧图像又不为IDR(IDR图像不需要SPS参数)
     {
-      printf("Warning: tried to activate PPS referring to a inactive SPS at non-IDR.");
+      printf("Warning: tried to activate PPS referring to a inactive SPS at non-IDR.");//则该帧图像的PPS激活失败
     }
-    else
+    else//该PPS所用SPS激活
     {
-      TComSPS *sps = m_spsMap.getPS(spsId);
-      if (sps)
+      TComSPS *sps = m_spsMap.getPS(spsId);//该PPS所用SPS
+      if (sps)//该PPS所用SPS存在
       {
-        Int vpsId = sps->getVPSId();
-        if (!isIRAP && (vpsId != m_activeVPSId ))
+        Int vpsId = sps->getVPSId();//得到该PPS所用SPS所用的VPS的ID
+        if (!isIRAP && (vpsId != m_activeVPSId ))//该SPS所用vps未激活 即无法得到该vps参数 而该帧图像又不为IDR(IDR图像不需要vps参数)
         {
           printf("Warning: tried to activate PPS referring to a inactive VPS at non-IDR.");
         }
         else
         {
           TComVPS *vps =m_vpsMap.getPS(vpsId);
-          if (vps)
+          if (vps)//该SPS所用vps存在
           {
-            m_activeVPSId = vpsId;
-            m_activeSPSId = spsId;
-            return true;
+            m_activeVPSId = vpsId;//保存vpsId
+            m_activeSPSId = spsId;//保存spsId
+            return true;//激活成功
           }
           else
           {
@@ -2193,7 +2200,7 @@ Bool ParameterSetManager::activatePPS(Int ppsId, Bool isIRAP)
   }
 
   // Failed to activate if reach here.
-  m_activeSPSId=-1;
+  m_activeSPSId=-1;//激活失败 置为-1作为标志
   m_activeVPSId=-1;
   return false;
 }
@@ -2217,18 +2224,18 @@ TComPTL::TComPTL()
   ::memset(m_subLayerLevelPresentFlag,   0, sizeof(m_subLayerLevelPresentFlag  ));
 }
 
-Void calculateParameterSetChangedFlag(Bool &bChanged, const std::vector<UChar> *pOldData, const std::vector<UChar> &newData)
+Void calculateParameterSetChangedFlag(Bool &bChanged, const std::vector<UChar> *pOldData, const std::vector<UChar> &newData)//比较给定的给定两组数是否改变
 {
   if (!bChanged)
   {
-    if ((pOldData==0 && pOldData!=0) || (pOldData!=0 && pOldData==0))
+    if ((pOldData==0 && pOldData!=0) || (pOldData!=0 && pOldData==0))//一组为0 另一组不为0 则肯定改变过
     {
       bChanged=true;
     }
-    else if (pOldData!=0 && pOldData!=0)
+    else if (pOldData!=0 && pOldData!=0)//两组都不为0
     {
       // compare the two
-      if (pOldData->size() != pOldData->size())
+      if (pOldData->size() != pOldData->size())//若两组数的个数不同 则肯定改变过
       {
         bChanged=true;
       }
@@ -2236,7 +2243,7 @@ Void calculateParameterSetChangedFlag(Bool &bChanged, const std::vector<UChar> *
       {
         const UChar *pNewDataArray=&(newData)[0];
         const UChar *pOldDataArray=&(*pOldData)[0];
-        if (memcmp(pOldDataArray, pNewDataArray, pOldData->size()))
+        if (memcmp(pOldDataArray, pNewDataArray, pOldData->size()))//若两组数不完全一样 则肯定改变过
         {
           bChanged=true;
         }

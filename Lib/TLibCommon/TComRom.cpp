@@ -598,7 +598,7 @@ const UInt g_uiMinInGroup[ LAST_SIGNIFICANT_GROUPS ] = {0,1,2,3,4,6,8,12,16,24};
 const UInt g_uiGroupIdx[ MAX_TU_SIZE ]   = {0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9};
 
 const Char *MatrixType[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
-{
+{//不同量化矩阵的类型说明 用于打印信息
   {
     "INTRA4X4_LUMA",
     "INTRA4X4_CHROMAU",
@@ -634,7 +634,7 @@ const Char *MatrixType[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
 };
 
 const Char *MatrixType_DC[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
-{
+{//不同量化矩阵DC值类型说明 用于打印信息
   {
   },
   {
@@ -658,7 +658,7 @@ const Char *MatrixType_DC[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
 };
 
 const Int g_quantTSDefault4x4[4*4] =
-{
+{//4*4TSD变换默认量化矩阵
   16,16,16,16,
   16,16,16,16,
   16,16,16,16,
@@ -666,7 +666,7 @@ const Int g_quantTSDefault4x4[4*4] =
 };
 
 const Int g_quantIntraDefault8x8[8*8] =
-{
+{//8*8zhen帧内预测 默认量化矩阵
   16,16,16,16,17,18,21,24,
   16,16,16,16,17,19,22,25,
   16,16,17,18,20,22,25,29,
@@ -678,7 +678,7 @@ const Int g_quantIntraDefault8x8[8*8] =
 };
 
 const Int g_quantInterDefault8x8[8*8] =
-{
+{//8*8zhen帧间预测 默认量化矩阵
   16,16,16,16,17,18,20,24,
   16,16,16,17,18,20,24,25,
   16,16,17,18,20,24,25,28,

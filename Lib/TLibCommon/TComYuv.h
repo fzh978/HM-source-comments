@@ -170,8 +170,8 @@ public:
   Pel*         getAddr                    (const ComponentID id, const UInt iTransUnitIdx, const UInt iBlkSizeForComponent)
                                               {
                                                 UInt width=getWidth(id);
-                                                Int blkX = ( iTransUnitIdx * iBlkSizeForComponent ) &  ( width - 1 );
-                                                Int blkY = ( iTransUnitIdx * iBlkSizeForComponent ) &~ ( width - 1 );
+                                                Int blkX = ( iTransUnitIdx * iBlkSizeForComponent ) &  ( width - 1 );//( iTransUnitIdx * iBlkSizeForComponent ) % width
+                                                Int blkY = ( iTransUnitIdx * iBlkSizeForComponent ) &~ ( width - 1 );//( iTransUnitIdx * iBlkSizeForComponent ) / width * width
                                                 if (m_chromaFormatIDC==CHROMA_422 && id!=COMPONENT_Y)
                                                 {
                                                   blkY<<=1;
