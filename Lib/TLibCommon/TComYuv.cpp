@@ -413,7 +413,7 @@ Void TComYuv::removeHighFreq( const TComYuv* pcYuvSrc,
                               const Int bitDepths[MAX_NUM_CHANNEL_TYPE],
                               const Bool bClipToBitDepths
                               )
-{//当前像素减去源像素的差值加上当前像素值
+{//当前图像加上与另一参考图像中已确定的最优预测像素间的预测误差
   for(Int comp=0; comp<getNumberValidComponents(); comp++)//处理各个分量
   {
     const ComponentID compID=ComponentID(comp);

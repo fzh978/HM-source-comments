@@ -48,21 +48,21 @@
 //! \ingroup TLibEncoder
 //! \{
 
-static const TComMv s_acMvRefineH[9] =
-{
-  TComMv(  0,  0 ), // 0
-  TComMv(  0, -1 ), // 1
-  TComMv(  0,  1 ), // 2
-  TComMv( -1,  0 ), // 3
-  TComMv(  1,  0 ), // 4
-  TComMv( -1, -1 ), // 5
-  TComMv(  1, -1 ), // 6
-  TComMv( -1,  1 ), // 7
-  TComMv(  1,  1 )  // 8
+static const TComMv s_acMvRefineH[9] =//当前像素下个位置共有9种选择
+{//1/2像素精度运动估计
+  TComMv(  0,  0 ), // 0//原位置
+  TComMv(  0, -1 ), // 1//上方
+  TComMv(  0,  1 ), // 2//下方
+  TComMv( -1,  0 ), // 3//左侧
+  TComMv(  1,  0 ), // 4//右侧
+  TComMv( -1, -1 ), // 5//左上
+  TComMv(  1, -1 ), // 6//右上
+  TComMv( -1,  1 ), // 7//左下
+  TComMv(  1,  1 )  // 8//右下
 };
 
 static const TComMv s_acMvRefineQ[9] =
-{
+{//1/4像素精度运动估计
   TComMv(  0,  0 ), // 0
   TComMv(  0, -1 ), // 1
   TComMv(  0,  1 ), // 2
@@ -81,37 +81,37 @@ static const UInt s_auiDFilter[9] =
   0, 1, 0
 };
 
-static Void offsetSubTUCBFs(TComTU &rTu, const ComponentID compID)
+static Void offsetSubTUCBFs(TComTU &rTu, const ComponentID compID)//根据子Tu的cbfs设置父Tu的cbf？？？
 {
-        TComDataCU *pcCU              = rTu.getCU();
-  const UInt        uiTrDepth         = rTu.GetTransformDepthRel();
-  const UInt        uiAbsPartIdx      = rTu.GetAbsPartIdxTU(compID);
-  const UInt        partIdxesPerSubTU = rTu.GetAbsPartIdxNumParts(compID) >> 1;
+        TComDataCU *pcCU              = rTu.getCU();//该Tu所在Cu
+  const UInt        uiTrDepth         = rTu.GetTransformDepthRel();//该Tu相对CU的深度
+  const UInt        uiAbsPartIdx      = rTu.GetAbsPartIdxTU(compID);//该Tu（左上角4*4小块）在CTU中的位置
+  const UInt        partIdxesPerSubTU = rTu.GetAbsPartIdxNumParts(compID) >> 1;//每个子Tu的小块个数 水平分割？？
 
   //move the CBFs down a level and set the parent CBF
 
   UChar subTUCBF[2];
   UChar combinedSubTUCBF = 0;
 
-  for (UInt subTU = 0; subTU < 2; subTU++)
+  for (UInt subTU = 0; subTU < 2; subTU++)//遍历每个子Tu
   {
     const UInt subTUAbsPartIdx = uiAbsPartIdx + (subTU * partIdxesPerSubTU);
 
-    subTUCBF[subTU]   = pcCU->getCbf(subTUAbsPartIdx, compID, uiTrDepth);
-    combinedSubTUCBF |= subTUCBF[subTU];
-  }
+    subTUCBF[subTU]   = pcCU->getCbf(subTUAbsPartIdx, compID, uiTrDepth);//每个子TU的cbf
+    combinedSubTUCBF |= subTUCBF[subTU];//若子tu存在非零系数 则父tu一定存在非零系数
+  }//遍历结束 combinedSubTUCBF为父tu的cbf
 
-  for (UInt subTU = 0; subTU < 2; subTU++)
+  for (UInt subTU = 0; subTU < 2; subTU++)//给每个子tu赋值
   {
     const UInt subTUAbsPartIdx = uiAbsPartIdx + (subTU * partIdxesPerSubTU);
-    const UChar compositeCBF = (subTUCBF[subTU] << 1) | combinedSubTUCBF;
+    const UChar compositeCBF = (subTUCBF[subTU] << 1) | combinedSubTUCBF;//cbf最终值用不同的位高代表不同的深度tu的cbf
 
-    pcCU->setCbfPartRange((compositeCBF << uiTrDepth), compID, subTUAbsPartIdx, partIdxesPerSubTU);
+    pcCU->setCbfPartRange((compositeCBF << uiTrDepth), compID, subTUAbsPartIdx, partIdxesPerSubTU);//cbf赋给对应深度
   }
 }
 
 
-TEncSearch::TEncSearch()
+TEncSearch::TEncSearch()//构造函数 初始化参数
 : m_puhQTTempTrIdx(NULL)
 , m_pcQTTempTComYuv(NULL)
 , m_pcEncCfg (NULL)
@@ -158,7 +158,7 @@ TEncSearch::TEncSearch()
 }
 
 
-Void TEncSearch::destroy()
+Void TEncSearch::destroy()//释放资源
 {
   assert (m_isInitialized);
   if ( m_pTempPel )
@@ -214,9 +214,9 @@ Void TEncSearch::destroy()
   m_isInitialized = false;
 }
 
-TEncSearch::~TEncSearch()
+TEncSearch::~TEncSearch()//析构函数
 {
-  if (m_isInitialized)
+  if (m_isInitialized)//若对象已初始化过 则销毁
   {
     destroy();
   }
@@ -237,9 +237,9 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
                       TComRdCost*   pcRdCost,
                       TEncSbac*** pppcRDSbacCoder,
                       TEncSbac*   pcRDGoOnSbacCoder
-                      )
+                      )//初始化各参数 
 {
-  assert (!m_isInitialized);
+  assert (!m_isInitialized);//未被初始化过才能进行初始化
   m_pcEncCfg             = pcEncCfg;
   m_pcTrQuant            = pcTrQuant;
   m_iSearchRange         = iSearchRange;
@@ -316,7 +316,7 @@ Void TEncSearch::init(TEncCfg*      pcEncCfg,
   m_pcQTTempTComYuv  = new TComYuv[uiNumLayersToAllocate];
   for( UInt ui = 0; ui < uiNumLayersToAllocate; ++ui )
   {
-    m_pcQTTempTComYuv[ui].create( maxCUWidth, maxCUHeight, pcEncCfg->getChromaFormatIdc() );
+    m_pcQTTempTComYuv[ui].create( maxCUWidth, maxCUHeight, pcEncCfg->getChromaFormatIdc() );//64*64
   }
   m_pcQTTempTransformSkipTComYuv.create( maxCUWidth, maxCUHeight, pcEncCfg->getChromaFormatIdc() );
   m_tmpYuvPred.create(MAX_CU_SIZE, MAX_CU_SIZE, pcEncCfg->getChromaFormatIdc());
@@ -359,78 +359,78 @@ const UInt uiStarRefinementRounds   = 2;  /* star refinement stop X rounds after
 
 
 __inline Void TEncSearch::xTZSearchHelp( TComPattern* pcPatternKey, IntTZSearchStruct& rcStruct, const Int iSearchX, const Int iSearchY, const UChar ucPointNr, const UInt uiDistance )
-{
+{//判断给定位置的搜索是否为当前最优搜索 若是 则更新最优搜索信息
   Distortion  uiSad = 0;
 
   Pel*  piRefSrch;
 
-  piRefSrch = rcStruct.piRefY + iSearchY * rcStruct.iYStride + iSearchX;
+  piRefSrch = rcStruct.piRefY + iSearchY * rcStruct.iYStride + iSearchX;//搜索位置为（iSearchX，iSearchY）的参考像素块的起始位置（参考像素块指的是当前像素块用该块做参考来预测 计算预测残差）
 
   //-- jclee for using the SAD function pointer
-  m_pcRdCost->setDistParam( pcPatternKey, piRefSrch, rcStruct.iYStride,  m_cDistParam );
+  m_pcRdCost->setDistParam( pcPatternKey, piRefSrch, rcStruct.iYStride,  m_cDistParam );//设置失真参数 用于计算参考像素块与当前像素块之前的失真
 
-  if(m_pcEncCfg->getFastSearch() != SELECTIVE)
+  if(m_pcEncCfg->getFastSearch() != SELECTIVE)//为全搜索或菱形搜索
   {
     // fast encoder decision: use subsampled SAD when rows > 8 for integer ME
-    if ( m_pcEncCfg->getUseFastEnc() )
+    if ( m_pcEncCfg->getUseFastEnc() )//若使用快速编码
     {
-      if ( m_cDistParam.iRows > 8 )
+      if ( m_cDistParam.iRows > 8 )//当像素块的行大于8时
       {
-        m_cDistParam.iSubShift = 1;
+        m_cDistParam.iSubShift = 1;//使用子采样 SAD 采样率为2
       }
     }
   }
 
-  setDistParamComp(COMPONENT_Y);
+  setDistParamComp(COMPONENT_Y);//设置分量索引
 
   // distortion
   m_cDistParam.bitDepth = pcPatternKey->getBitDepthY();
-  if(m_pcEncCfg->getFastSearch() == SELECTIVE)
+  if(m_pcEncCfg->getFastSearch() == SELECTIVE)//若使用子采样计算失真
   {
     Int isubShift = 0;
     // motion cost
-    Distortion uiBitCost = m_pcRdCost->getCost( iSearchX, iSearchY );
-
+    Distortion uiBitCost = m_pcRdCost->getCost( iSearchX, iSearchY );//编码搜索位置（iSearchX, iSearchY）的比特损耗
+    //根据像素块的行数决定采样率
     if ( m_cDistParam.iRows > 32 )
     {
-      m_cDistParam.iSubShift = 4;
+      m_cDistParam.iSubShift = 4;//采样率为1<<4
     }
     else if ( m_cDistParam.iRows > 16 )
     {
-      m_cDistParam.iSubShift = 3;
+      m_cDistParam.iSubShift = 3;//采样率为1<<3
     }
     else if ( m_cDistParam.iRows > 8 )
     {
-      m_cDistParam.iSubShift = 2;
+      m_cDistParam.iSubShift = 2;//采样率为1<<2
     }
     else
     {
-      m_cDistParam.iSubShift = 1;
+      m_cDistParam.iSubShift = 1;//采样率为1<<1
     }
 
-    Distortion uiTempSad = m_cDistParam.DistFunc( &m_cDistParam );
-    if((uiTempSad + uiBitCost) < rcStruct.uiBestSad)
-    {
+    Distortion uiTempSad = m_cDistParam.DistFunc( &m_cDistParam );//计算参考像素块与当前像素块之前的失真(m_cDistParam给定了失真计算的方法)
+    if((uiTempSad + uiBitCost) < rcStruct.uiBestSad)//若使用子采样的总损耗小于之前的最优损耗
+    {//该部分的主要目的是先通过较大的采样率计算总损耗是否优于最优损耗 若优于 则进一步增加采样行数 反复如此直至将像素块中所有行采样完 看是否还优于最优损耗 这样做的目的还是为了在保证计算精度的同时 降低计算复杂度 
       uiSad += uiTempSad >>  m_cDistParam.iSubShift;
-      while(m_cDistParam.iSubShift > 0)
+      while(m_cDistParam.iSubShift > 0)//该段循环不容易想明白 建议举证个例子照着走一遍 例如像素块行数为16
       {
         isubShift         = m_cDistParam.iSubShift -1;
-        m_cDistParam.pOrg = pcPatternKey->getROIY() + (pcPatternKey->getPatternLStride() << isubShift);
+        m_cDistParam.pOrg = pcPatternKey->getROIY() + (pcPatternKey->getPatternLStride() << isubShift);//采样起始行的偏移量
         m_cDistParam.pCur = piRefSrch + (rcStruct.iYStride << isubShift);
-        uiTempSad = m_cDistParam.DistFunc( &m_cDistParam );
-        uiSad += uiTempSad >>  m_cDistParam.iSubShift;
-        if(((uiSad << isubShift) + uiBitCost) > rcStruct.uiBestSad)
+        uiTempSad = m_cDistParam.DistFunc( &m_cDistParam );//通过采样行估算整个像素块的失真
+        uiSad += uiTempSad >>  m_cDistParam.iSubShift;//被采样行的失真（不是整个像素块的失真！!）
+        if(((uiSad << isubShift) + uiBitCost) > rcStruct.uiBestSad)//若增加采样行后仍大于最优损耗 则提前结束 不用再计算
         {
           break;
         }
 
-        m_cDistParam.iSubShift--;
+        m_cDistParam.iSubShift--;//若增加采样行后仍小于最优损耗 则继续增加采样行 直至将所有行采样完
       }
 
-      if(m_cDistParam.iSubShift == 0)
+      if(m_cDistParam.iSubShift == 0)//若整个像素块所有行均被采样过   即即求得的失真为真总失真（而不是估算的失真）
       {
         uiSad += uiBitCost;
-        if( uiSad < rcStruct.uiBestSad )
+        if( uiSad < rcStruct.uiBestSad )//总损耗小于最优损耗 则将该搜索设置成最优搜索
         {
           rcStruct.uiBestSad      = uiSad;
           rcStruct.iBestX         = iSearchX;
@@ -442,14 +442,14 @@ __inline Void TEncSearch::xTZSearchHelp( TComPattern* pcPatternKey, IntTZSearchS
       }
     }
   }
-  else
+  else//若不使用子采样计算失真
   {
-    uiSad = m_cDistParam.DistFunc( &m_cDistParam );
+    uiSad = m_cDistParam.DistFunc( &m_cDistParam );//直接计算像素块总失真
 
     // motion cost
-    uiSad += m_pcRdCost->getCost( iSearchX, iSearchY );
+    uiSad += m_pcRdCost->getCost( iSearchX, iSearchY );//总损耗（失真+编码损耗）
 
-    if( uiSad < rcStruct.uiBestSad )
+    if( uiSad < rcStruct.uiBestSad )//总损耗小于最优损耗 则将该搜索设置成最优搜索
     {
       rcStruct.uiBestSad      = uiSad;
       rcStruct.iBestX         = iSearchX;
@@ -465,28 +465,28 @@ __inline Void TEncSearch::xTZSearchHelp( TComPattern* pcPatternKey, IntTZSearchS
 
 
 __inline Void TEncSearch::xTZ2PointSearch( TComPattern* pcPatternKey, IntTZSearchStruct& rcStruct, TComMv* pcMvSrchRngLT, TComMv* pcMvSrchRngRB )
-{
-  Int   iSrchRngHorLeft   = pcMvSrchRngLT->getHor();
-  Int   iSrchRngHorRight  = pcMvSrchRngRB->getHor();
-  Int   iSrchRngVerTop    = pcMvSrchRngLT->getVer();
-  Int   iSrchRngVerBottom = pcMvSrchRngRB->getVer();
+{//两点搜索 pcMvSrchRngLT pcMvSrchRngRB限定了搜索的范围
+  Int   iSrchRngHorLeft   = pcMvSrchRngLT->getHor();//允许搜索的最左边界
+  Int   iSrchRngHorRight  = pcMvSrchRngRB->getHor();//允许搜索的最右边界
+  Int   iSrchRngVerTop    = pcMvSrchRngLT->getVer();//允许搜索的最上边界
+  Int   iSrchRngVerBottom = pcMvSrchRngRB->getVer();//允许搜索的最下边界
 
   // 2 point search,                   //   1 2 3
   // check only the 2 untested points  //   4 0 5
   // around the start point            //   6 7 8
-  Int iStartX = rcStruct.iBestX;
+  Int iStartX = rcStruct.iBestX;//之前搜索的最优位置为二点搜索的起始位置
   Int iStartY = rcStruct.iBestY;
-  switch( rcStruct.ucPointNr )
+  switch( rcStruct.ucPointNr )//两点搜索总共只有这8种情况 菱形搜索对应（2 4 5 7）4种 正方形搜索对应全部8种 8种情况当前位置示意图如上.
   {
     case 1:
     {
       if ( (iStartX - 1) >= iSrchRngHorLeft )
       {
-        xTZSearchHelp( pcPatternKey, rcStruct, iStartX - 1, iStartY, 0, 2 );
+        xTZSearchHelp( pcPatternKey, rcStruct, iStartX - 1, iStartY, 0, 2 );//搜索左侧相邻点
       }
       if ( (iStartY - 1) >= iSrchRngVerTop )
       {
-        xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iStartY - 1, 0, 2 );
+        xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iStartY - 1, 0, 2 );//搜索上方相邻点
       }
     }
       break;
@@ -496,11 +496,11 @@ __inline Void TEncSearch::xTZ2PointSearch( TComPattern* pcPatternKey, IntTZSearc
       {
         if ( (iStartX - 1) >= iSrchRngHorLeft )
         {
-          xTZSearchHelp( pcPatternKey, rcStruct, iStartX - 1, iStartY - 1, 0, 2 );
+          xTZSearchHelp( pcPatternKey, rcStruct, iStartX - 1, iStartY - 1, 0, 2 );//搜索左上相邻点
         }
         if ( (iStartX + 1) <= iSrchRngHorRight )
         {
-          xTZSearchHelp( pcPatternKey, rcStruct, iStartX + 1, iStartY - 1, 0, 2 );
+          xTZSearchHelp( pcPatternKey, rcStruct, iStartX + 1, iStartY - 1, 0, 2 );//搜索右上相邻点
         }
       }
     }
@@ -509,11 +509,11 @@ __inline Void TEncSearch::xTZ2PointSearch( TComPattern* pcPatternKey, IntTZSearc
     {
       if ( (iStartY - 1) >= iSrchRngVerTop )
       {
-        xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iStartY - 1, 0, 2 );
+        xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iStartY - 1, 0, 2 );//搜索上方相邻点
       }
       if ( (iStartX + 1) <= iSrchRngHorRight )
       {
-        xTZSearchHelp( pcPatternKey, rcStruct, iStartX + 1, iStartY, 0, 2 );
+        xTZSearchHelp( pcPatternKey, rcStruct, iStartX + 1, iStartY, 0, 2 );//搜索右侧相邻点
       }
     }
       break;
@@ -523,11 +523,11 @@ __inline Void TEncSearch::xTZ2PointSearch( TComPattern* pcPatternKey, IntTZSearc
       {
         if ( (iStartY + 1) <= iSrchRngVerBottom )
         {
-          xTZSearchHelp( pcPatternKey, rcStruct, iStartX - 1, iStartY + 1, 0, 2 );
+          xTZSearchHelp( pcPatternKey, rcStruct, iStartX - 1, iStartY + 1, 0, 2 );//搜索左下相邻点
         }
         if ( (iStartY - 1) >= iSrchRngVerTop )
         {
-          xTZSearchHelp( pcPatternKey, rcStruct, iStartX - 1, iStartY - 1, 0, 2 );
+          xTZSearchHelp( pcPatternKey, rcStruct, iStartX - 1, iStartY - 1, 0, 2 );//搜索左上相邻点
         }
       }
     }
@@ -538,11 +538,11 @@ __inline Void TEncSearch::xTZ2PointSearch( TComPattern* pcPatternKey, IntTZSearc
       {
         if ( (iStartY - 1) >= iSrchRngVerTop )
         {
-          xTZSearchHelp( pcPatternKey, rcStruct, iStartX + 1, iStartY - 1, 0, 2 );
+          xTZSearchHelp( pcPatternKey, rcStruct, iStartX + 1, iStartY - 1, 0, 2 );//搜索右上相邻点
         }
         if ( (iStartY + 1) <= iSrchRngVerBottom )
         {
-          xTZSearchHelp( pcPatternKey, rcStruct, iStartX + 1, iStartY + 1, 0, 2 );
+          xTZSearchHelp( pcPatternKey, rcStruct, iStartX + 1, iStartY + 1, 0, 2 );//搜索右下相邻点
         }
       }
     }
@@ -551,11 +551,11 @@ __inline Void TEncSearch::xTZ2PointSearch( TComPattern* pcPatternKey, IntTZSearc
     {
       if ( (iStartX - 1) >= iSrchRngHorLeft )
       {
-        xTZSearchHelp( pcPatternKey, rcStruct, iStartX - 1, iStartY , 0, 2 );
+        xTZSearchHelp( pcPatternKey, rcStruct, iStartX - 1, iStartY , 0, 2 );////搜索左侧相邻点
       }
       if ( (iStartY + 1) <= iSrchRngVerBottom )
       {
-        xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iStartY + 1, 0, 2 );
+        xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iStartY + 1, 0, 2 );//搜索下方相邻点
       }
     }
       break;
@@ -565,11 +565,11 @@ __inline Void TEncSearch::xTZ2PointSearch( TComPattern* pcPatternKey, IntTZSearc
       {
         if ( (iStartX - 1) >= iSrchRngHorLeft )
         {
-          xTZSearchHelp( pcPatternKey, rcStruct, iStartX - 1, iStartY + 1, 0, 2 );
+          xTZSearchHelp( pcPatternKey, rcStruct, iStartX - 1, iStartY + 1, 0, 2 );//搜索左下相邻点
         }
         if ( (iStartX + 1) <= iSrchRngHorRight )
         {
-          xTZSearchHelp( pcPatternKey, rcStruct, iStartX + 1, iStartY + 1, 0, 2 );
+          xTZSearchHelp( pcPatternKey, rcStruct, iStartX + 1, iStartY + 1, 0, 2 );//搜索右下相邻点
         }
       }
     }
@@ -578,11 +578,11 @@ __inline Void TEncSearch::xTZ2PointSearch( TComPattern* pcPatternKey, IntTZSearc
     {
       if ( (iStartX + 1) <= iSrchRngHorRight )
       {
-        xTZSearchHelp( pcPatternKey, rcStruct, iStartX + 1, iStartY, 0, 2 );
+        xTZSearchHelp( pcPatternKey, rcStruct, iStartX + 1, iStartY, 0, 2 );////搜索右侧相邻点
       }
       if ( (iStartY + 1) <= iSrchRngVerBottom )
       {
-        xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iStartY + 1, 0, 2 );
+        xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iStartY + 1, 0, 2 );//搜索下方相邻点
       }
     }
       break;
@@ -598,56 +598,56 @@ __inline Void TEncSearch::xTZ2PointSearch( TComPattern* pcPatternKey, IntTZSearc
 
 
 __inline Void TEncSearch::xTZ8PointSquareSearch( TComPattern* pcPatternKey, IntTZSearchStruct& rcStruct, TComMv* pcMvSrchRngLT, TComMv* pcMvSrchRngRB, const Int iStartX, const Int iStartY, const Int iDist )
-{
-  Int   iSrchRngHorLeft   = pcMvSrchRngLT->getHor();
-  Int   iSrchRngHorRight  = pcMvSrchRngRB->getHor();
-  Int   iSrchRngVerTop    = pcMvSrchRngLT->getVer();
-  Int   iSrchRngVerBottom = pcMvSrchRngRB->getVer();
+{//8点正方形搜索 按照给定步长 搜索不同方向的8点 （8点连起来为正方形故称之为正方形搜索） 
+  Int   iSrchRngHorLeft   = pcMvSrchRngLT->getHor();//允许搜索的最左边界
+  Int   iSrchRngHorRight  = pcMvSrchRngRB->getHor();//允许搜索的最由边界
+  Int   iSrchRngVerTop    = pcMvSrchRngLT->getVer();//允许搜索的最上边界
+  Int   iSrchRngVerBottom = pcMvSrchRngRB->getVer();//允许搜索的最下边界
 
   // 8 point search,                   //   1 2 3
   // search around the start point     //   4 0 5
   // with the required  distance       //   6 7 8
   assert( iDist != 0 );
-  const Int iTop        = iStartY - iDist;
-  const Int iBottom     = iStartY + iDist;
-  const Int iLeft       = iStartX - iDist;
-  const Int iRight      = iStartX + iDist;
-  rcStruct.uiBestRound += 1;
-
+  const Int iTop        = iStartY - iDist;//上方向位置
+  const Int iBottom     = iStartY + iDist;//下方向位置
+  const Int iLeft       = iStartX - iDist;//左方向位置
+  const Int iRight      = iStartX + iDist;//右方向位置
+  rcStruct.uiBestRound += 1;//搜索的圈数（给定步长 所有方位搜索一遍称为一圈）
+  //ucPointNr须跟2点搜索中的位置对应
   if ( iTop >= iSrchRngVerTop ) // check top
   {
     if ( iLeft >= iSrchRngHorLeft ) // check top left
     {
-      xTZSearchHelp( pcPatternKey, rcStruct, iLeft, iTop, 1, iDist );
+      xTZSearchHelp( pcPatternKey, rcStruct, iLeft, iTop, 1, iDist );//搜索左上点
     }
     // top middle
-    xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iTop, 2, iDist );
+    xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iTop, 2, iDist );//搜索上方点
 
     if ( iRight <= iSrchRngHorRight ) // check top right
     {
-      xTZSearchHelp( pcPatternKey, rcStruct, iRight, iTop, 3, iDist );
+      xTZSearchHelp( pcPatternKey, rcStruct, iRight, iTop, 3, iDist );//搜索右上点
     }
   } // check top
   if ( iLeft >= iSrchRngHorLeft ) // check middle left
   {
-    xTZSearchHelp( pcPatternKey, rcStruct, iLeft, iStartY, 4, iDist );
+    xTZSearchHelp( pcPatternKey, rcStruct, iLeft, iStartY, 4, iDist );//搜索左侧点
   }
   if ( iRight <= iSrchRngHorRight ) // check middle right
   {
-    xTZSearchHelp( pcPatternKey, rcStruct, iRight, iStartY, 5, iDist );
+    xTZSearchHelp( pcPatternKey, rcStruct, iRight, iStartY, 5, iDist );//搜索右侧点
   }
   if ( iBottom <= iSrchRngVerBottom ) // check bottom
   {
     if ( iLeft >= iSrchRngHorLeft ) // check bottom left
     {
-      xTZSearchHelp( pcPatternKey, rcStruct, iLeft, iBottom, 6, iDist );
+      xTZSearchHelp( pcPatternKey, rcStruct, iLeft, iBottom, 6, iDist );//搜索左下点
     }
     // check bottom middle
-    xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iBottom, 7, iDist );
+    xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iBottom, 7, iDist );//搜索下方点
 
     if ( iRight <= iSrchRngHorRight ) // check bottom right
     {
-      xTZSearchHelp( pcPatternKey, rcStruct, iRight, iBottom, 8, iDist );
+      xTZSearchHelp( pcPatternKey, rcStruct, iRight, iBottom, 8, iDist );//搜索右下点
     }
   } // check bottom
 }
@@ -656,7 +656,7 @@ __inline Void TEncSearch::xTZ8PointSquareSearch( TComPattern* pcPatternKey, IntT
 
 
 __inline Void TEncSearch::xTZ8PointDiamondSearch( TComPattern* pcPatternKey, IntTZSearchStruct& rcStruct, TComMv* pcMvSrchRngLT, TComMv* pcMvSrchRngRB, const Int iStartX, const Int iStartY, const Int iDist )
-{
+{//8点菱形搜索 按照给定步长 搜索不同方向的各点（搜索点数与步长有关）
   Int   iSrchRngHorLeft   = pcMvSrchRngLT->getHor();
   Int   iSrchRngHorRight  = pcMvSrchRngRB->getHor();
   Int   iSrchRngVerTop    = pcMvSrchRngLT->getVer();
@@ -670,30 +670,30 @@ __inline Void TEncSearch::xTZ8PointDiamondSearch( TComPattern* pcPatternKey, Int
   const Int iBottom     = iStartY + iDist;
   const Int iLeft       = iStartX - iDist;
   const Int iRight      = iStartX + iDist;
-  rcStruct.uiBestRound += 1;
+  rcStruct.uiBestRound += 1;//搜索的圈数
 
-  if ( iDist == 1 ) // iDist == 1
+  if ( iDist == 1 ) // iDist == 1//搜索步长为1 则只搜索（2 4 5 7）这四点
   {
     if ( iTop >= iSrchRngVerTop ) // check top
     {
-      xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iTop, 2, iDist );
+      xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iTop, 2, iDist );//搜索相邻上方点
     }
     if ( iLeft >= iSrchRngHorLeft ) // check middle left
     {
-      xTZSearchHelp( pcPatternKey, rcStruct, iLeft, iStartY, 4, iDist );
+      xTZSearchHelp( pcPatternKey, rcStruct, iLeft, iStartY, 4, iDist );//搜索相邻左侧点
     }
     if ( iRight <= iSrchRngHorRight ) // check middle right
     {
-      xTZSearchHelp( pcPatternKey, rcStruct, iRight, iStartY, 5, iDist );
+      xTZSearchHelp( pcPatternKey, rcStruct, iRight, iStartY, 5, iDist );//搜索相邻右侧点
     }
     if ( iBottom <= iSrchRngVerBottom ) // check bottom
     {
-      xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iBottom, 7, iDist );
+      xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iBottom, 7, iDist );//搜索相邻下方点
     }
   }
   else // if (iDist != 1)
   {
-    if ( iDist <= 8 )
+    if ( iDist <= 8 )//搜索步长大于1小于8
     {
       const Int iTop_2      = iStartY - (iDist>>1);
       const Int iBottom_2   = iStartY + (iDist>>1);
@@ -701,18 +701,18 @@ __inline Void TEncSearch::xTZ8PointDiamondSearch( TComPattern* pcPatternKey, Int
       const Int iRight_2    = iStartX + (iDist>>1);
 
       if (  iTop >= iSrchRngVerTop && iLeft >= iSrchRngHorLeft &&
-          iRight <= iSrchRngHorRight && iBottom <= iSrchRngVerBottom ) // check border
-      {
-        xTZSearchHelp( pcPatternKey, rcStruct, iStartX,  iTop,      2, iDist    );
-        xTZSearchHelp( pcPatternKey, rcStruct, iLeft_2,  iTop_2,    1, iDist>>1 );
-        xTZSearchHelp( pcPatternKey, rcStruct, iRight_2, iTop_2,    3, iDist>>1 );
-        xTZSearchHelp( pcPatternKey, rcStruct, iLeft,    iStartY,   4, iDist    );
-        xTZSearchHelp( pcPatternKey, rcStruct, iRight,   iStartY,   5, iDist    );
-        xTZSearchHelp( pcPatternKey, rcStruct, iLeft_2,  iBottom_2, 6, iDist>>1 );
-        xTZSearchHelp( pcPatternKey, rcStruct, iRight_2, iBottom_2, 8, iDist>>1 );
-        xTZSearchHelp( pcPatternKey, rcStruct, iStartX,  iBottom,   7, iDist    );
-      }
-      else // check border
+          iRight <= iSrchRngHorRight && iBottom <= iSrchRngVerBottom ) // check border//若各点均在规定的搜索范围内 
+      {//
+        xTZSearchHelp( pcPatternKey, rcStruct, iStartX,  iTop,      2, iDist    );//左侧点
+        xTZSearchHelp( pcPatternKey, rcStruct, iLeft_2,  iTop_2,    1, iDist>>1 );//左侧点和上方点的中点
+        xTZSearchHelp( pcPatternKey, rcStruct, iRight_2, iTop_2,    3, iDist>>1 );//右侧点和上方点的中点
+        xTZSearchHelp( pcPatternKey, rcStruct, iLeft,    iStartY,   4, iDist    );//左侧点
+        xTZSearchHelp( pcPatternKey, rcStruct, iRight,   iStartY,   5, iDist    );//右侧点
+        xTZSearchHelp( pcPatternKey, rcStruct, iLeft_2,  iBottom_2, 6, iDist>>1 );//左侧点和下方点的中点
+        xTZSearchHelp( pcPatternKey, rcStruct, iRight_2, iBottom_2, 8, iDist>>1 );//右侧点和下方点的中点
+        xTZSearchHelp( pcPatternKey, rcStruct, iStartX,  iBottom,   7, iDist    );//下方点
+      }//搜索给定步长的菱形8点
+      else // check border//若存在搜索点不在规定的搜索范围内 则单独检测各点是否在搜索范围内 若在 则进行搜索
       {
         if ( iTop >= iSrchRngVerTop ) // check top
         {
@@ -754,16 +754,16 @@ __inline Void TEncSearch::xTZ8PointDiamondSearch( TComPattern* pcPatternKey, Int
         }
       } // check border
     }
-    else // iDist > 8
+    else // iDist > 8//搜索步长大于8 
     {
       if ( iTop >= iSrchRngVerTop && iLeft >= iSrchRngHorLeft &&
-          iRight <= iSrchRngHorRight && iBottom <= iSrchRngVerBottom ) // check border
+          iRight <= iSrchRngHorRight && iBottom <= iSrchRngVerBottom ) // check border//各点均在搜索范围内
       {
         xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iTop,    0, iDist );
         xTZSearchHelp( pcPatternKey, rcStruct, iLeft,   iStartY, 0, iDist );
         xTZSearchHelp( pcPatternKey, rcStruct, iRight,  iStartY, 0, iDist );
-        xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iBottom, 0, iDist );
-        for ( Int index = 1; index < 4; index++ )
+        xTZSearchHelp( pcPatternKey, rcStruct, iStartX, iBottom, 0, iDist );//先搜索正上 左 右 下四点
+        for ( Int index = 1; index < 4; index++ )//再搜索左侧点和上方点 右侧点和上方点 左侧点和下方点 右侧点和下方点 连线的1/4处 2/4处 3/4处
         {
           Int iPosYT = iTop    + ((iDist>>2) * index);
           Int iPosYB = iBottom - ((iDist>>2) * index);
@@ -775,7 +775,7 @@ __inline Void TEncSearch::xTZ8PointDiamondSearch( TComPattern* pcPatternKey, Int
           xTZSearchHelp( pcPatternKey, rcStruct, iPosXR, iPosYB, 0, iDist );
         }
       }
-      else // check border
+      else // check border//若存在搜索点不在规定的搜索范围内 则单独检测各点是否在搜索范围内 若在 则进行搜索
       {
         if ( iTop >= iSrchRngVerTop ) // check top
         {
@@ -835,58 +835,58 @@ __inline Void TEncSearch::xTZ8PointDiamondSearch( TComPattern* pcPatternKey, Int
 //<--
 
 Distortion TEncSearch::xPatternRefinement( TComPattern* pcPatternKey,
-                                           TComMv baseRefMv,
-                                           Int iFrac, TComMv& rcMvFrac,
+                                           TComMv baseRefMv,//baseRefMv为上一精度下 求得的最优的像素偏移量(以上一精度为单位)
+                                           Int iFrac, TComMv& rcMvFrac,//rcMvFrac为上一精度下的最优运动矢量（以当前像素精度为单位） 用于计算运动矢量编码损耗
                                            Bool bAllowUseOfHadamard
-                                         )
+                                         )//进行亚精度像素运动估计 iFrac为不同像素精度下 运动矢量的放大值 以最小精度运动矢量为单位（1/2像素精度时为2 1/4像素精度时为1）
 {
   Distortion  uiDist;
-  Distortion  uiDistBest  = std::numeric_limits<Distortion>::max();
+  Distortion  uiDistBest  = std::numeric_limits<Distortion>::max();//初始化失真为最大值
   UInt        uiDirecBest = 0;
 
   Pel*  piRefPos;
-  Int iRefStride = m_filteredBlock[0][0].getStride(COMPONENT_Y);
+  Int iRefStride = m_filteredBlock[0][0].getStride(COMPONENT_Y);// m_filteredBlock为1/4像素精度下各位置的插值像素块
 
-  m_pcRdCost->setDistParam( pcPatternKey, m_filteredBlock[0][0].getAddr(COMPONENT_Y), iRefStride, 1, m_cDistParam, m_pcEncCfg->getUseHADME() && bAllowUseOfHadamard );
+  m_pcRdCost->setDistParam( pcPatternKey, m_filteredBlock[0][0].getAddr(COMPONENT_Y), iRefStride, 1, m_cDistParam, m_pcEncCfg->getUseHADME() && bAllowUseOfHadamard );//设置失真参数
 
-  const TComMv* pcMvRefine = (iFrac == 2 ? s_acMvRefineH : s_acMvRefineQ);
+  const TComMv* pcMvRefine = (iFrac == 2 ? s_acMvRefineH : s_acMvRefineQ);//根据亚像素估计的精度（1/2?1/4）选择运动矢量偏移数组 
 
-  for (UInt i = 0; i < 9; i++)
+  for (UInt i = 0; i < 9; i++)//遍历所有方位
   {
     TComMv cMvTest = pcMvRefine[i];
-    cMvTest += baseRefMv;
+    cMvTest += baseRefMv;//该方位下的总的像素偏移量（较（0,0）位置 加上一精度的偏移量)
 
     Int horVal = cMvTest.getHor() * iFrac;
-    Int verVal = cMvTest.getVer() * iFrac;
-    piRefPos = m_filteredBlock[ verVal & 3 ][ horVal & 3 ].getAddr(COMPONENT_Y);
-    if ( horVal == 2 && ( verVal & 1 ) == 0 )
-    {
+    Int verVal = cMvTest.getVer() * iFrac;//像素偏移值（以当前像素精度为单位）
+    piRefPos = m_filteredBlock[ verVal & 3 ][ horVal & 3 ].getAddr(COMPONENT_Y);//（取正值（-1）&3=3 （-3）&3=1）得到当前像素偏移值所在的插值像素块起始位置（即当前运动矢量对应的参考像素块）
+    if ( horVal == 2 && ( verVal & 1 ) == 0 )//一个整像素块存在16个1/4像素精度的像素块 但一个整像素点到邻近另一个整像素点之间的亚像素点存在4个方位 所以对应4种不同的亚像素块参考像素起始点
+    {//若1/2像素精度的水平偏移量为正值 则亚像素块的参考像素起始点需右移一个像素点 1/4 3/4处不需要移动是因为1/4 3/4处的亚像素块在生成过程中已根据1/2精度时的运动矢量做过处理
       piRefPos += 1;
     }
     if ( ( horVal & 1 ) == 0 && verVal == 2 )
-    {
+    {//若1/2像素精度的垂直偏移量为正值 则亚像素块的参考像素起始点需下移一个像素点 1/4 3/4处不需要移动是因为1/4 3/4处的亚像素块在生成过程中已根据1/2精度时的运动矢量做处过理
       piRefPos += iRefStride;
     }
     cMvTest = pcMvRefine[i];
-    cMvTest += rcMvFrac;
+    cMvTest += rcMvFrac;//上一精度最优运动矢量加上当前像素偏移值为最终的运动矢量
 
-    setDistParamComp(COMPONENT_Y);
+    setDistParamComp(COMPONENT_Y);//设置分量索引
 
-    m_cDistParam.pCur = piRefPos;
+    m_cDistParam.pCur = piRefPos;//参考像素块起始位置
     m_cDistParam.bitDepth = pcPatternKey->getBitDepthY();
-    uiDist = m_cDistParam.DistFunc( &m_cDistParam );
-    uiDist += m_pcRdCost->getCost( cMvTest.getHor(), cMvTest.getVer() );
+    uiDist = m_cDistParam.DistFunc( &m_cDistParam );//计算当前运动矢量下的失真
+    uiDist += m_pcRdCost->getCost( cMvTest.getHor(), cMvTest.getVer() );//当前运动矢量下的总损耗
 
-    if ( uiDist < uiDistBest )
+    if ( uiDist < uiDistBest )//如果优于之前的最优损耗
     {
-      uiDistBest  = uiDist;
-      uiDirecBest = i;
+      uiDistBest  = uiDist;//更新最优损耗
+      uiDirecBest = i;//更新当前精度下最优方位
     }
   }
+  //遍历完所有方位
+  rcMvFrac = pcMvRefine[uiDirecBest];//得到最优方位（较上一像素精度下的运动矢量 ）
 
-  rcMvFrac = pcMvRefine[uiDirecBest];
-
-  return uiDistBest;
+  return uiDistBest;//返回最优损耗
 }
 
 
@@ -894,54 +894,54 @@ Distortion TEncSearch::xPatternRefinement( TComPattern* pcPatternKey,
 Void
 TEncSearch::xEncSubdivCbfQT(TComTU      &rTu,
                             Bool         bLuma,
-                            Bool         bChroma )
+                            Bool         bChroma )//递归的编码当前TU的CBf
 {
-  TComDataCU* pcCU=rTu.getCU();
-  const UInt uiAbsPartIdx         = rTu.GetAbsPartIdxTU();
-  const UInt uiTrDepth            = rTu.GetTransformDepthRel();
+  TComDataCU* pcCU=rTu.getCU();//该Tu所在的Cu
+  const UInt uiAbsPartIdx         = rTu.GetAbsPartIdxTU();//该Tu在Ctu中的位置
+  const UInt uiTrDepth            = rTu.GetTransformDepthRel();//该TU相对其Cu的深度
   const UInt uiTrMode             = pcCU->getTransformIdx( uiAbsPartIdx );
-  const UInt uiSubdiv             = ( uiTrMode > uiTrDepth ? 1 : 0 );
-  const UInt uiLog2LumaTrafoSize  = rTu.GetLog2LumaTrSize();
+  const UInt uiSubdiv             = ( uiTrMode > uiTrDepth ? 1 : 0 );//该Tu是否存在子Tu
+  const UInt uiLog2LumaTrafoSize  = rTu.GetLog2LumaTrSize();//该Tu块的大小
 
   if( pcCU->isIntra(0) && pcCU->getPartitionSize(0) == SIZE_NxN && uiTrDepth == 0 )
-  {
+  {//如果帧内预测该Tu所在Cu的PU分割模式为NxN 且该TU与其Cu等大 则该Tu必定继续分割  注:CU帧间预测 分割模式为NxN 只有当该CU为规定的最小Cu时才可能出现
     assert( uiSubdiv );
   }
   else if( uiLog2LumaTrafoSize > pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() )
-  {
+  {//该TU大于规定的最大Tu 则该Tu必定继续分割
     assert( uiSubdiv );
   }
   else if( uiLog2LumaTrafoSize == pcCU->getSlice()->getSPS()->getQuadtreeTULog2MinSize() )
-  {
+  {//该TU等于规定的最小Tu 则该Tu必定不会分割
     assert( !uiSubdiv );
   }
   else if( uiLog2LumaTrafoSize == pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) )
-  {
+  {//该TU等于CU中允许的最小Tu 则该Tu必定不会分割
     assert( !uiSubdiv );
   }
   else
   {
     assert( uiLog2LumaTrafoSize > pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) );
-    if( bLuma )
+    if( bLuma )//如果为亮度分量
     {
-      m_pcEntropyCoder->encodeTransformSubdivFlag( uiSubdiv, 5 - uiLog2LumaTrafoSize );
+      m_pcEntropyCoder->encodeTransformSubdivFlag( uiSubdiv, 5 - uiLog2LumaTrafoSize );//则需要编码SubdivFlag(该Tu是否需要继续分割的标志)
     }
   }
 
-  if ( bChroma )
+  if ( bChroma )//色度分量
   {
     const UInt numberValidComponents = getNumberValidComponents(rTu.GetChromaFormat());
-    for (UInt ch=COMPONENT_Cb; ch<numberValidComponents; ch++)
+    for (UInt ch=COMPONENT_Cb; ch<numberValidComponents; ch++)//Cr Cb 两个色度分量
     {
       const ComponentID compID=ComponentID(ch);
-      if( rTu.ProcessingAllQuadrants(compID) && (uiTrDepth==0 || pcCU->getCbf( uiAbsPartIdx, compID, uiTrDepth-1 ) ))
+      if( rTu.ProcessingAllQuadrants(compID) && (uiTrDepth==0 || pcCU->getCbf( uiAbsPartIdx, compID, uiTrDepth-1 ) ))//上一深度的色度块Tu 存在非零系数
       {
-        m_pcEntropyCoder->encodeQtCbf(rTu, compID, (uiSubdiv == 0));
+        m_pcEntropyCoder->encodeQtCbf(rTu, compID, (uiSubdiv == 0));//编码该色度分量的CBf
       }
     }
   }
 
-  if( uiSubdiv )
+  if( uiSubdiv )//如果该Tu存在子Tu 则深度遍历处理所有子Tu
   {
     TComTURecurse tuRecurse(rTu, false);
     do
@@ -949,12 +949,12 @@ TEncSearch::xEncSubdivCbfQT(TComTU      &rTu,
       xEncSubdivCbfQT( tuRecurse, bLuma, bChroma );
     } while (tuRecurse.nextSection(rTu));
   }
-  else
+  else//该Tu为叶节点
   {
     //===== Cbfs =====
     if( bLuma )
     {
-      m_pcEntropyCoder->encodeQtCbf( rTu, COMPONENT_Y, true );
+      m_pcEntropyCoder->encodeQtCbf( rTu, COMPONENT_Y, true );//编码该Tu的cbf
     }
   }
 }
@@ -965,16 +965,16 @@ TEncSearch::xEncSubdivCbfQT(TComTU      &rTu,
 Void
 TEncSearch::xEncCoeffQT(TComTU &rTu,
                         const ComponentID  component,
-                        Bool         bRealCoeff )
+                        Bool         bRealCoeff )//编码TU的系数
 {
   TComDataCU* pcCU=rTu.getCU();
   const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
   const UInt uiTrDepth=rTu.GetTransformDepthRel();
 
   const UInt  uiTrMode        = pcCU->getTransformIdx( uiAbsPartIdx );
-  const UInt  uiSubdiv        = ( uiTrMode > uiTrDepth ? 1 : 0 );
+  const UInt  uiSubdiv        = ( uiTrMode > uiTrDepth ? 1 : 0 );//是否存在子TU
 
-  if( uiSubdiv )
+  if( uiSubdiv )//如果存在子Tu 则深度遍历编码所有子Tu
   {
     TComTURecurse tuRecurseChild(rTu, false);
     do
@@ -982,20 +982,20 @@ TEncSearch::xEncCoeffQT(TComTU &rTu,
       xEncCoeffQT( tuRecurseChild, component, bRealCoeff );
     } while (tuRecurseChild.nextSection(rTu) );
   }
-  else if (rTu.ProcessComponentSection(component))
+  else if (rTu.ProcessComponentSection(component))//需要处理的Tu
   {
     //===== coefficients =====
-    const UInt  uiLog2TrafoSize = rTu.GetLog2LumaTrSize();
-    UInt    uiCoeffOffset   = rTu.getCoefficientOffset(component);
+    const UInt  uiLog2TrafoSize = rTu.GetLog2LumaTrSize();//Tu块大小
+    UInt    uiCoeffOffset   = rTu.getCoefficientOffset(component);//系数的偏移量
     UInt    uiQTLayer       = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2TrafoSize;
-    TCoeff* pcCoeff         = bRealCoeff ? pcCU->getCoeff(component) : m_ppcQTTempCoeff[component][uiQTLayer];
+    TCoeff* pcCoeff         = bRealCoeff ? pcCU->getCoeff(component) : m_ppcQTTempCoeff[component][uiQTLayer];//待编码的系数
 
-    if (isChroma(component) && (pcCU->getCbf( rTu.GetAbsPartIdxTU(), COMPONENT_Y, uiTrMode ) != 0) && pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag() )
+    if (isChroma(component) && (pcCU->getCbf( rTu.GetAbsPartIdxTU(), COMPONENT_Y, uiTrMode ) != 0) && pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag() )//如果为色度分量且使用CCP技术
     {
-      m_pcEntropyCoder->encodeCrossComponentPrediction( rTu, component );
+      m_pcEntropyCoder->encodeCrossComponentPrediction( rTu, component );//则还需编码CCP信息(如alpha值)
     }
 
-    m_pcEntropyCoder->encodeCoeffNxN( rTu, pcCoeff+uiCoeffOffset, component );
+    m_pcEntropyCoder->encodeCoeffNxN( rTu, pcCoeff+uiCoeffOffset, component );//编码系数
   }
 }
 
@@ -1007,53 +1007,53 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
                             UInt         uiTrDepth,
                             UInt         uiAbsPartIdx,
                             Bool         bLuma,
-                            Bool         bChroma )
+                            Bool         bChroma )//编码帧内预测相关的一些信息
 {
-  if( bLuma )
+  if( bLuma )//色度分量
   {
     // CU header
-    if( uiAbsPartIdx == 0 )
+    if( uiAbsPartIdx == 0 )//该tu为CU的首地址 因为一个CU中不同Tu的帧内预测一定相同 所以只需要CU中第一个Tu编码一遍该信息即可!!!!! 下同
     {
-      if( !pcCU->getSlice()->isIntra() )
+      if( !pcCU->getSlice()->isIntra() )//该Pu所在slic帧间预测模式(P B slice中的CU块也允许帧内预测)
       {
         if (pcCU->getSlice()->getPPS()->getTransquantBypassEnableFlag())
         {
-          m_pcEntropyCoder->encodeCUTransquantBypassFlag( pcCU, 0, true );
+          m_pcEntropyCoder->encodeCUTransquantBypassFlag( pcCU, 0, true );//编码CUTransquantBypass标志
         }
-        m_pcEntropyCoder->encodeSkipFlag( pcCU, 0, true );
-        m_pcEntropyCoder->encodePredMode( pcCU, 0, true );
+        m_pcEntropyCoder->encodeSkipFlag( pcCU, 0, true );//编码skip标志
+        m_pcEntropyCoder->encodePredMode( pcCU, 0, true );//编码预测模式(帧内 帧间)
       }
-      m_pcEntropyCoder  ->encodePartSize( pcCU, 0, pcCU->getDepth(0), true );
+      m_pcEntropyCoder  ->encodePartSize( pcCU, 0, pcCU->getDepth(0), true );//编码Cu分割Pu的方式
 
       if (pcCU->isIntra(0) && pcCU->getPartitionSize(0) == SIZE_2Nx2N )
       {
-        m_pcEntropyCoder->encodeIPCMInfo( pcCU, 0, true );
+        m_pcEntropyCoder->encodeIPCMInfo( pcCU, 0, true );//编码PCM信息
 
-        if ( pcCU->getIPCMFlag (0))
+        if ( pcCU->getIPCMFlag (0))//如果使用PCM模式 则方法结束 无需在编码其他信息
         {
           return;
         }
       }
     }
     // luma prediction mode
-    if( pcCU->getPartitionSize(0) == SIZE_2Nx2N )
+    if( pcCU->getPartitionSize(0) == SIZE_2Nx2N )//CU的PU分割方式为2Nx2N
     {
-      if (uiAbsPartIdx==0)
+      if (uiAbsPartIdx==0)//该tu为CU的首地址 
       {
-        m_pcEntropyCoder->encodeIntraDirModeLuma ( pcCU, 0 );
+        m_pcEntropyCoder->encodeIntraDirModeLuma ( pcCU, 0 );//编码帧内预测模式
       }
     }
-    else
+    else//为NxN
     {
       UInt uiQNumParts = pcCU->getTotalNumPart() >> 2;
-      if (uiTrDepth>0 && (uiAbsPartIdx%uiQNumParts)==0)
+      if (uiTrDepth>0 && (uiAbsPartIdx%uiQNumParts)==0)//uiAbsPartIdx为Cu中PU块的首地址
       {
-        m_pcEntropyCoder->encodeIntraDirModeLuma ( pcCU, uiAbsPartIdx );
+        m_pcEntropyCoder->encodeIntraDirModeLuma ( pcCU, uiAbsPartIdx );//编码帧内预测模式
       }
     }
   }
 
-  if( bChroma )
+  if( bChroma )//同亮度分量
   {
     if( pcCU->getPartitionSize(0) == SIZE_2Nx2N || !enable4ChromaPUsInIntraNxNCU(pcCU->getPic()->getChromaFormat()))
     {
@@ -1081,7 +1081,7 @@ UInt
 TEncSearch::xGetIntraBitsQT(TComTU &rTu,
                             Bool         bLuma,
                             Bool         bChroma,
-                            Bool         bRealCoeff /* just for test */ )
+                            Bool         bRealCoeff /* just for test */ )//返回帧内预测编码Tu块的比特数
 {
   TComDataCU* pcCU=rTu.getCU();
   const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
@@ -1092,12 +1092,12 @@ TEncSearch::xGetIntraBitsQT(TComTU &rTu,
 
   if( bLuma )
   {
-    xEncCoeffQT   ( rTu, COMPONENT_Y,      bRealCoeff );
+    xEncCoeffQT   ( rTu, COMPONENT_Y,      bRealCoeff );//编码亮度分量量化值
   }
   if( bChroma )
   {
-    xEncCoeffQT   ( rTu, COMPONENT_Cb,  bRealCoeff );
-    xEncCoeffQT   ( rTu, COMPONENT_Cr,  bRealCoeff );
+    xEncCoeffQT   ( rTu, COMPONENT_Cb,  bRealCoeff );//编码色度分量Cb量化值
+    xEncCoeffQT   ( rTu, COMPONENT_Cr,  bRealCoeff );//编码色度分量Cb量化值
   }
   UInt   uiBits = m_pcEntropyCoder->getNumberOfWrittenBits();
 
@@ -1106,7 +1106,7 @@ TEncSearch::xGetIntraBitsQT(TComTU &rTu,
 
 UInt TEncSearch::xGetIntraBitsQTChroma(TComTU &rTu,
                                        ComponentID compID,
-                                       Bool         bRealCoeff /* just for test */ )
+                                       Bool         bRealCoeff /* just for test */ )//返回帧内预测编码色度分量Tu块系数的比特数
 {
   m_pcEntropyCoder->resetBits();
   xEncCoeffQT   ( rTu, compID,  bRealCoeff );
@@ -1114,68 +1114,68 @@ UInt TEncSearch::xGetIntraBitsQTChroma(TComTU &rTu,
   return uiBits;
 }
 
-Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
-                                            TComYuv*    pcPredYuv,
-                                            TComYuv*    pcResiYuv,
-                                            Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
+Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,//原始像素值
+                                            TComYuv*    pcPredYuv,//保存最终的重建像素值
+                                            TComYuv*    pcResiYuv,//保存最终的残差值
+                                            Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],//保存计算得到的两种残差值(正变换前 反变换后)
                                       const Bool        checkCrossCPrediction,
                                             Distortion& ruiDist,
-                                      const ComponentID compID,
+                                      const ComponentID compID,//分量类型 一般先处理亮度分量
                                             TComTU&     rTu
                                       DEBUG_STRING_FN_DECLARE(sDebug)
                                            ,Int         default0Save1Load2
-                                     )
-{
-  if (!rTu.ProcessComponentSection(compID))
+                                     )//计算该Tu块在其帧内预测模式下预测(残差) 变换 量化 反量化 反变换后的重建像素值与原始像素值间的失真 残差 量化值
+{//注:帧内预测是以Tu块为单位完成的!!!
+  if (!rTu.ProcessComponentSection(compID))//如果不需要处理该分量该TU
   {
-    return;
+    return;//结束方法
   }
-  const Bool           bIsLuma          = isLuma(compID);
-  const TComRectangle &rect             = rTu.getRect(compID);
-        TComDataCU    *pcCU             = rTu.getCU();
-  const UInt           uiAbsPartIdx     = rTu.GetAbsPartIdxTU();
-  const TComSPS       &sps              = *(pcCU->getSlice()->getSPS());
+  const Bool           bIsLuma          = isLuma(compID);//是否为亮度分量
+  const TComRectangle &rect             = rTu.getRect(compID);//该TU的位置信息
+        TComDataCU    *pcCU             = rTu.getCU();//该Tu所在的Cu
+  const UInt           uiAbsPartIdx     = rTu.GetAbsPartIdxTU();//该TU在Ctu中的位置
+  const TComSPS       &sps              = *(pcCU->getSlice()->getSPS());//SPS信息
 
-  const UInt           uiTrDepth        = rTu.GetTransformDepthRelAdj(compID);
-  const UInt           uiFullDepth      = rTu.GetTransformDepthTotal();
-  const UInt           uiLog2TrSize     = rTu.GetLog2LumaTrSize();
-  const ChromaFormat   chFmt            = pcOrgYuv->getChromaFormat();
-  const ChannelType    chType           = toChannelType(compID);
-  const Int            bitDepth         = sps.getBitDepth(chType);
+  const UInt           uiTrDepth        = rTu.GetTransformDepthRelAdj(compID);//该TU相对其所在的CU的深度
+  const UInt           uiFullDepth      = rTu.GetTransformDepthTotal();//该Tu的总深度(相对Ctu)
+  const UInt           uiLog2TrSize     = rTu.GetLog2LumaTrSize();//该Tu的大小
+  const ChromaFormat   chFmt            = pcOrgYuv->getChromaFormat();//色度格式
+  const ChannelType    chType           = toChannelType(compID);//通道类型
+  const Int            bitDepth         = sps.getBitDepth(chType);//通道位深
 
-  const UInt           uiWidth          = rect.width;
+  const UInt           uiWidth          = rect.width;//该tu的宽和高
   const UInt           uiHeight         = rect.height;
   const UInt           uiStride         = pcOrgYuv ->getStride (compID);
-        Pel           *piOrg            = pcOrgYuv ->getAddr( compID, uiAbsPartIdx );
-        Pel           *piPred           = pcPredYuv->getAddr( compID, uiAbsPartIdx );
-        Pel           *piResi           = pcResiYuv->getAddr( compID, uiAbsPartIdx );
-        Pel           *piReco           = pcPredYuv->getAddr( compID, uiAbsPartIdx );
-  const UInt           uiQTLayer        = sps.getQuadtreeTULog2MaxSize() - uiLog2TrSize;
-        Pel           *piRecQt          = m_pcQTTempTComYuv[ uiQTLayer ].getAddr( compID, uiAbsPartIdx );
+        Pel           *piOrg            = pcOrgYuv ->getAddr( compID, uiAbsPartIdx );//该Tu块原始像素值
+        Pel           *piPred           = pcPredYuv->getAddr( compID, uiAbsPartIdx );//保存该Tu块预测(重建)像素值
+        Pel           *piResi           = pcResiYuv->getAddr( compID, uiAbsPartIdx );//保存Tu块重建像素值与原始像素值间的残差值
+        Pel           *piReco           = pcPredYuv->getAddr( compID, uiAbsPartIdx );////保存该Tu块重建(预测)像素值
+  const UInt           uiQTLayer        = sps.getQuadtreeTULog2MaxSize() - uiLog2TrSize;//该TU块所在层(类似深度 表明该TU的划分)
+        Pel           *piRecQt          = m_pcQTTempTComYuv[ uiQTLayer ].getAddr( compID, uiAbsPartIdx );//将该层的TU重建像素值保存到m_pcQTTempTComYuv(用于Quadtree Tu块的划分)不同层的TU的重建像素值保存在不同QTLayer
   const UInt           uiRecQtStride    = m_pcQTTempTComYuv[ uiQTLayer ].getStride(compID);
-  const UInt           uiZOrder         = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
-        Pel           *piRecIPred       = pcCU->getPic()->getPicYuvRec()->getAddr( compID, pcCU->getCtuRsAddr(), uiZOrder );
+  const UInt           uiZOrder         = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;//
+        Pel           *piRecIPred       = pcCU->getPic()->getPicYuvRec()->getAddr( compID, pcCU->getCtuRsAddr(), uiZOrder );//将重建像素值保存到m_apcPicYuv[PIC_YUV_REC]Tu块对应位置 无法保存不同层Tu的重建像素值 只保存最后一次变换的重建像素值 (用于得到帧内预测的参考像素)
         UInt           uiRecIPredStride = pcCU->getPic()->getPicYuvRec()->getStride  ( compID );
-        TCoeff        *pcCoeff          = m_ppcQTTempCoeff[compID][uiQTLayer] + rTu.getCoefficientOffset(compID);
-        Bool           useTransformSkip = pcCU->getTransformSkip(uiAbsPartIdx, compID);
+        TCoeff        *pcCoeff          = m_ppcQTTempCoeff[compID][uiQTLayer] + rTu.getCoefficientOffset(compID);//该Tu块(变换量化后的)系数(量化值)保存至m_ppcQTTempCoeff
+        Bool           useTransformSkip = pcCU->getTransformSkip(uiAbsPartIdx, compID);//是否TransformSkip(由CU信息得到)
 
 #if ADAPTIVE_QP_SELECTION
         TCoeff        *pcArlCoeff       = m_ppcQTTempArlCoeff[compID][ uiQTLayer ] + rTu.getCoefficientOffset(compID);
 #endif
 
-  const UInt           uiChPredMode     = pcCU->getIntraDir( chType, uiAbsPartIdx );
-  const UInt           partsPerMinCU    = 1<<(2*(sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));
-  const UInt           uiChCodedMode    = (uiChPredMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;
-  const UInt           uiChFinalMode    = ((chFmt == CHROMA_422)       && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;
+  const UInt           uiChPredMode     = pcCU->getIntraDir( chType, uiAbsPartIdx );//帧内预测模式
+  const UInt           partsPerMinCU    = 1<<(2*(sps.getMaxTotalCUDepth() - sps.getLog2DiffMaxMinCodingBlockSize()));//1<<2 用于得到计算亮度分量与之对应的色度分量位置的掩码
+  const UInt           uiChCodedMode    = (uiChPredMode==DM_CHROMA_IDX && !bIsLuma) ? pcCU->getIntraDir(CHANNEL_TYPE_LUMA, getChromasCorrespondingPULumaIdx(uiAbsPartIdx, chFmt, partsPerMinCU)) : uiChPredMode;//处理色度分量的帧内预测模式
+  const UInt           uiChFinalMode    = ((chFmt == CHROMA_422)       && !bIsLuma) ? g_chroma422IntraAngleMappingTable[uiChCodedMode] : uiChCodedMode;//最终的帧内预测模式(无论色度还是亮度分量)
 
   const Int            blkX                                 = g_auiRasterToPelX[ g_auiZscanToRaster[ uiAbsPartIdx ] ];
-  const Int            blkY                                 = g_auiRasterToPelY[ g_auiZscanToRaster[ uiAbsPartIdx ] ];
+  const Int            blkY                                 = g_auiRasterToPelY[ g_auiZscanToRaster[ uiAbsPartIdx ] ];//该Tu(左上角像素)在Ctu中的坐标位置
   const Int            bufferOffset                         = blkX + (blkY * MAX_CU_SIZE);
-        Pel  *const    encoderLumaResidual                  = resiLuma[RESIDUAL_ENCODER_SIDE ] + bufferOffset;
-        Pel  *const    reconstructedLumaResidual            = resiLuma[RESIDUAL_RECONSTRUCTED] + bufferOffset;
-  const Bool           bUseCrossCPrediction                 = isChroma(compID) && (uiChPredMode == DM_CHROMA_IDX) && checkCrossCPrediction;
-  const Bool           bUseReconstructedResidualForEstimate = m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate();
-        Pel *const     lumaResidualForEstimate              = bUseReconstructedResidualForEstimate ? reconstructedLumaResidual : encoderLumaResidual;
+        Pel  *const    encoderLumaResidual                  = resiLuma[RESIDUAL_ENCODER_SIDE ] + bufferOffset;//正变换前原像素与帧内预测像素值的残差值
+        Pel  *const    reconstructedLumaResidual            = resiLuma[RESIDUAL_RECONSTRUCTED] + bufferOffset;//反变换后重建像素值与原像素值的残差值
+  const Bool           bUseCrossCPrediction                 = isChroma(compID) && (uiChPredMode == DM_CHROMA_IDX) && checkCrossCPrediction;//是否能使用CCp
+  const Bool           bUseReconstructedResidualForEstimate = m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate();//是否使用亮度分量重建残差用于色度分量残差预测
+        Pel *const     lumaResidualForEstimate              = bUseReconstructedResidualForEstimate ? reconstructedLumaResidual : encoderLumaResidual;//用于色度分量预测的残差 计算alpha值 (变换残差 重建残差)
 
 #if DEBUG_STRING
   const Int debugPredModeMask=DebugStringGetPredModeMask(MODE_INTRA);
@@ -1185,18 +1185,18 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   DEBUG_STRING_NEW(sTemp)
 
 #if !DEBUG_STRING
-  if( default0Save1Load2 != 2 )
+  if( default0Save1Load2 != 2 )//不为load(需要计算帧内预测像素值)
 #endif
   {
-    const Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+    const Bool bUseFilteredPredictions=TComPrediction::filteringIntraReferenceSamples(compID, uiChFinalMode, uiWidth, uiHeight, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());//是否对帧内预测参考像素滤波
 
-    initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );
+    initIntraPatternChType( rTu, compID, bUseFilteredPredictions DEBUG_STRING_PASS_INTO(sDebug) );//得到当前Tu帧内预测的参考像素值
 
     //===== get prediction signal =====
-    predIntraAng( compID, uiChFinalMode, piOrg, uiStride, piPred, uiStride, rTu, bUseFilteredPredictions );
+    predIntraAng( compID, uiChFinalMode, piOrg, uiStride, piPred, uiStride, rTu, bUseFilteredPredictions );//根据帧内预测模式得到当前Tu帧内预测像素值piPred
 
     // save prediction
-    if( default0Save1Load2 == 1 )
+    if( default0Save1Load2 == 1 )//需要保存预测像素值
     {
       Pel*  pPred   = piPred;
       Pel*  pPredBuf = m_pSharedPredTransformSkip[compID];
@@ -1205,14 +1205,14 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
       {
         for( UInt uiX = 0; uiX < uiWidth; uiX++ )
         {
-          pPredBuf[ k ++ ] = pPred[ uiX ];
+          pPredBuf[ k ++ ] = pPred[ uiX ];//将预测像素值保存在pPredBuf中
         }
         pPred += uiStride;
       }
     }
   }
 #if !DEBUG_STRING
-  else
+  else//load  直接读取已经存在的预测像素值
   {
     // load prediction
     Pel*  pPred   = piPred;
@@ -1222,7 +1222,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     {
       for( UInt uiX = 0; uiX < uiWidth; uiX++ )
       {
-        pPred[ uiX ] = pPredBuf[ k ++ ];
+        pPred[ uiX ] = pPredBuf[ k ++ ];//读取 pPredBuf中已经存在的预测像素值到piPred
       }
       pPred += uiStride;
     }
@@ -1236,11 +1236,11 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     Pel*  pPred   = piPred;
     Pel*  pResi   = piResi;
 
-    for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+    for( UInt uiY = 0; uiY < uiHeight; uiY++ )//遍历TU块中所有像素值
     {
       for( UInt uiX = 0; uiX < uiWidth; uiX++ )
       {
-        pResi[ uiX ] = pOrg[ uiX ] - pPred[ uiX ];
+        pResi[ uiX ] = pOrg[ uiX ] - pPred[ uiX ];//计算该TU的原像素值与预测像素值之间的残差值
       }
 
       pOrg  += uiStride;
@@ -1249,37 +1249,37 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     }
   }
 
-  if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
+  if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())//允许使用CCp
   {
-    if (bUseCrossCPrediction)
+    if (bUseCrossCPrediction)//能够使用CCP
     {
-      if (xCalcCrossComponentPredictionAlpha( rTu, compID, lumaResidualForEstimate, piResi, uiWidth, uiHeight, MAX_CU_SIZE, uiStride ) == 0)
+      if (xCalcCrossComponentPredictionAlpha( rTu, compID, lumaResidualForEstimate, piResi, uiWidth, uiHeight, MAX_CU_SIZE, uiStride ) == 0)//计算CCp的alpha值并保存 若为零则无需计算色度残差的预测值
       {
         return;
       }
-      TComTrQuant::crossComponentPrediction ( rTu, compID, reconstructedLumaResidual, piResi, piResi, uiWidth, uiHeight, MAX_CU_SIZE, uiStride, uiStride, false );
+      TComTrQuant::crossComponentPrediction ( rTu, compID, reconstructedLumaResidual, piResi, piResi, uiWidth, uiHeight, MAX_CU_SIZE, uiStride, uiStride, false );//CCP计算色度残差
     }
-    else if (isLuma(compID) && !bUseReconstructedResidualForEstimate)
+    else if (isLuma(compID) && !bUseReconstructedResidualForEstimate)//不使用CCp 亮度分量
     {
-      xStoreCrossComponentPredictionResult( encoderLumaResidual, piResi, rTu, 0, 0, MAX_CU_SIZE, uiStride );
+      xStoreCrossComponentPredictionResult( encoderLumaResidual, piResi, rTu, 0, 0, MAX_CU_SIZE, uiStride );//直接存储正变换前原始亮度残差至encoderLumaResidual
     }
   }
 
   //===== transform and quantization =====
   //--- init rate estimation arrays for RDOQ ---
-  if( useTransformSkip ? m_pcEncCfg->getUseRDOQTS() : m_pcEncCfg->getUseRDOQ() )
+  if( useTransformSkip ? m_pcEncCfg->getUseRDOQTS() : m_pcEncCfg->getUseRDOQ() )//若使用率失真优化量化
   {
-    m_pcEntropyCoder->estimateBit( m_pcTrQuant->m_pcEstBitsSbac, uiWidth, uiHeight, chType );
+    m_pcEntropyCoder->estimateBit( m_pcTrQuant->m_pcEstBitsSbac, uiWidth, uiHeight, chType );//init rate estimation arrays
   }
 
   //--- transform and quantization ---
   TCoeff uiAbsSum = 0;
-  if (bIsLuma)
+  if (bIsLuma)//亮度分量
   {
-    pcCU       ->setTrIdxSubParts ( uiTrDepth, uiAbsPartIdx, uiFullDepth );
+    pcCU       ->setTrIdxSubParts ( uiTrDepth, uiAbsPartIdx, uiFullDepth );//设置TrIdx(该TU相对其所在的CU的深度)
   }
 
-  const QpParam cQP(*pcCU, compID);
+  const QpParam cQP(*pcCU, compID);//根据当前TU所在Cu得到QP信息
 
 #if RDOQ_CHROMA_LAMBDA
   m_pcTrQuant->selectLambda     (compID);
@@ -1289,28 +1289,28 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 #if ADAPTIVE_QP_SELECTION
     pcArlCoeff,
 #endif
-    uiAbsSum, cQP
-    );
+    uiAbsSum, cQP 
+    );//正变换(包括量化) pcCoeff为变换后的量化值
 
   //--- inverse transform ---
 
 #if DEBUG_STRING
   if ( (uiAbsSum > 0) || (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask) )
 #else
-  if ( uiAbsSum > 0 )
+  if ( uiAbsSum > 0 )//存在非零的量化值
 #endif
   {
     m_pcTrQuant->invTransformNxN ( rTu, compID, piResi, uiStride, pcCoeff, cQP DEBUG_STRING_PASS_INTO_OPTIONAL(&sDebug, (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask)) );
-  }
-  else
+  }//反量化 反变换 piResi为反变换后的像素残差值
+  else//若不存在非零量化值
   {
     Pel* pResi = piResi;
-    memset( pcCoeff, 0, sizeof( TCoeff ) * uiWidth * uiHeight );
+    memset( pcCoeff, 0, sizeof( TCoeff ) * uiWidth * uiHeight );//则量化值全为0
     for( UInt uiY = 0; uiY < uiHeight; uiY++ )
     {
       memset( pResi, 0, sizeof( Pel ) * uiWidth );
       pResi += uiStride;
-    }
+    }//则反变换后的像素残差值全为0
   }
 
 
@@ -1322,7 +1322,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
     Pel* pRecQt     = piRecQt;
     Pel* pRecIPred  = piRecIPred;
 
-    if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
+    if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())//CCP计算重建后的色度值
     {
       if (bUseCrossCPrediction)
       {
@@ -1330,7 +1330,7 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
       }
       else if (isLuma(compID))
       {
-        xStoreCrossComponentPredictionResult( reconstructedLumaResidual, piResi, rTu, 0, 0, MAX_CU_SIZE, uiStride );
+        xStoreCrossComponentPredictionResult( reconstructedLumaResidual, piResi, rTu, 0, 0, MAX_CU_SIZE, uiStride );//直接存储反变换后的亮度残差至encoderLumaResidual
       }
     }
 
@@ -1389,13 +1389,13 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
 #endif
     {
 
-      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )//遍历当前TU的所有像素值
       {
         for( UInt uiX = 0; uiX < uiWidth; uiX++ )
         {
-          pReco    [ uiX ] = Pel(ClipBD<Int>( Int(pPred[uiX]) + Int(pResi[uiX]), bitDepth ));
+          pReco    [ uiX ] = Pel(ClipBD<Int>( Int(pPred[uiX]) + Int(pResi[uiX]), bitDepth ));//重建像素值
           pRecQt   [ uiX ] = pReco[ uiX ];
-          pRecIPred[ uiX ] = pReco[ uiX ];
+          pRecIPred[ uiX ] = pReco[ uiX ];//保存重建像素值
         }
         pPred     += uiStride;
         pResi     += uiStride;
@@ -1407,43 +1407,43 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,
   }
 
   //===== update distortion =====
-  ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID );
+  ruiDist += m_pcRdCost->getDistPart( bitDepth, piReco, uiStride, piOrg, uiStride, uiWidth, uiHeight, compID );//总失真加上该Tu块在其帧内预测模式下预测(残差) 变换 量化 反量化 反变换后的重建像素值与原始像素值间的失真
 }
 
 
 
-
+// 该方法涉及复杂的递归 Tu块的子Tu划分过程不好理解 需细细思索
 Void
 TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
                                     TComYuv*    pcPredYuv,
                                     TComYuv*    pcResiYuv,
                                     Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE],
-                                    Distortion& ruiDistY,
+                                    Distortion& ruiDistY,//该Tu最优分割时的总失真
 #if HHI_RQT_INTRA_SPEEDUP
                                     Bool        bCheckFirst,
 #endif
-                                    Double&     dRDCost,
+                                    Double&     dRDCost,//该Tu最优分割时的总损耗
                                     TComTU&     rTu
-                                    DEBUG_STRING_FN_DECLARE(sDebug))
+                                    DEBUG_STRING_FN_DECLARE(sDebug))//以该TU作为根节点四叉树深度遍历直到允许的最小子Tu 通过率失真找出该Tu最优的子Tu划分
 {
   TComDataCU   *pcCU          = rTu.getCU();
-  const UInt    uiAbsPartIdx  = rTu.GetAbsPartIdxTU();
-  const UInt    uiFullDepth   = rTu.GetTransformDepthTotal();
-  const UInt    uiTrDepth     = rTu.GetTransformDepthRel();
-  const UInt    uiLog2TrSize  = rTu.GetLog2LumaTrSize();
-        Bool    bCheckFull    = ( uiLog2TrSize  <= pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() );
-        Bool    bCheckSplit   = ( uiLog2TrSize  >  pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) );
+  const UInt    uiAbsPartIdx  = rTu.GetAbsPartIdxTU();//该Tu在Ctu中的位置
+  const UInt    uiFullDepth   = rTu.GetTransformDepthTotal();//该Tu的总深度
+  const UInt    uiTrDepth     = rTu.GetTransformDepthRel();//该Tu相对CU的深度
+  const UInt    uiLog2TrSize  = rTu.GetLog2LumaTrSize();//该TU的大小
+        Bool    bCheckFull    = ( uiLog2TrSize  <= pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() );//小于或等于最大Tu大小 说明可能不继续分割
+        Bool    bCheckSplit   = ( uiLog2TrSize  >  pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) );//大于最小TU 说明该Tu可能继续四叉树分割        // (以上为TU信息 递归时子Tu其信息会更新)
 
-        Pel     resiLumaSplit [NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];
-        Pel     resiLumaSingle[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];
+        Pel     resiLumaSplit [NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];//该Tu向下分割时 保存其子Tu的重建像素值(变换前 变换后)
+        Pel     resiLumaSingle[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE];//该Tu不分割时 保存Tu的重建像素值(变换前 变换后)
 
         Bool    bMaintainResidual[NUMBER_OF_STORED_RESIDUAL_TYPES];
         for (UInt residualTypeIndex = 0; residualTypeIndex < NUMBER_OF_STORED_RESIDUAL_TYPES; residualTypeIndex++)
         {
-          bMaintainResidual[residualTypeIndex] = true; //assume true unless specified otherwise
+          bMaintainResidual[residualTypeIndex] = true; //assume true unless specified otherwise//默认为真
         }
 
-        bMaintainResidual[RESIDUAL_ENCODER_SIDE] = !(m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate());
+        bMaintainResidual[RESIDUAL_ENCODER_SIDE] = !(m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate());//如果使用重建残差(变换后)做CCP预测 则不用保存RESIDUAL_ENCODER 编码残差(变换后)
 
 #if HHI_RQT_INTRA_SPEEDUP
   Int maxTuSize = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize();
@@ -1470,30 +1470,30 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
   Int maxTuSize = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize();
   Int isIntraSlice = (pcCU->getSlice()->getSliceType() == I_SLICE);
   // if maximum RD-penalty don't check TU size 32x32
-  if((m_pcEncCfg->getRDpenalty()==2)  && !isIntraSlice)
+  if((m_pcEncCfg->getRDpenalty()==2)  && !isIntraSlice)//如果 RD-penalty为2 则非I帧的帧内预测的32*32Tu块不需要判断是否不分割 必定分割 该情况下不存在32*32Tu 变换块越大块效应越明显
   {
     bCheckFull    = ( uiLog2TrSize  <= min(maxTuSize,4));
   }
 #endif
-  Double     dSingleCost                        = MAX_DOUBLE;
-  Distortion uiSingleDistLuma                   = 0;
-  UInt       uiSingleCbfLuma                    = 0;
+  Double     dSingleCost                        = MAX_DOUBLE;//不分割时损耗
+  Distortion uiSingleDistLuma                   = 0;//不分割时失真
+  UInt       uiSingleCbfLuma                    = 0;//不分割时cbf
   Bool       checkTransformSkip  = pcCU->getSlice()->getPPS()->getUseTransformSkip();
   Int        bestModeId[MAX_NUM_COMPONENT] = { 0, 0, 0};
   checkTransformSkip           &= TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(COMPONENT_Y), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize());
-  checkTransformSkip           &= (!pcCU->getCUTransquantBypass(0));
+  checkTransformSkip           &= (!pcCU->getCUTransquantBypass(0));//该Tu是否可能为TransformSkip模式
 
   assert (rTu.ProcessComponentSection(COMPONENT_Y));
   const UInt totalAdjustedDepthChan   = rTu.GetTransformDepthTotalAdj(COMPONENT_Y);
 
-  if ( m_pcEncCfg->getUseTransformSkipFast() )
+  if ( m_pcEncCfg->getUseTransformSkipFast() )//TransformSkip模式快速判断 reduced testing of the transform-skipping mode decision for chroma TUs
   {
     checkTransformSkip       &= (pcCU->getPartitionSize(uiAbsPartIdx)==SIZE_NxN);
   }
 
   if( bCheckFull )
   {
-    if(checkTransformSkip == true)
+    if(checkTransformSkip == true)//需要判断是否使用TransformSkip模式
     {
       //----- store original entropy coding status -----
       m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
@@ -1501,110 +1501,110 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       Distortion singleDistTmpLuma                    = 0;
       UInt       singleCbfTmpLuma                     = 0;
       Double     singleCostTmp                        = 0;
-      Int        firstCheckId                         = 0;
+      Int        firstCheckId                         = 0;//首先判断使用TransformSkip模式
 
-      for(Int modeId = firstCheckId; modeId < 2; modeId ++)
+      for(Int modeId = firstCheckId; modeId < 2; modeId ++)//遍历使用和不使用TransformSkip模式两种情况
       {
         DEBUG_STRING_NEW(sModeString)
         Int  default0Save1Load2 = 0;
         singleDistTmpLuma=0;
-        if(modeId == firstCheckId)
+        if(modeId == firstCheckId)//如果为第一次判断
         {
-          default0Save1Load2 = 1;
+          default0Save1Load2 = 1;//则需要保存帧内预测像素值 以免下次判断重新计算
         }
         else
         {
-          default0Save1Load2 = 2;
+          default0Save1Load2 = 2;//后续判断直接读取预测像素值
         }
 
 
-        pcCU->setTransformSkipSubParts ( modeId, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-        xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2 );
+        pcCU->setTransformSkipSubParts ( modeId, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );//设置是否使用TransformSkip 若使用则对变换前残差只做量化 不做变换
+        xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, singleDistTmpLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sModeString), default0Save1Load2 );//计算该情况下的失真和重建残差
 
-        singleCbfTmpLuma = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );
+        singleCbfTmpLuma = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );//得到该Tu的CBf(cbf在xIntraCodingTUBlock中根据量化值进行了设置)
 
         //----- determine rate and r-d cost -----
-        if(modeId == 1 && singleCbfTmpLuma == 0)
+        if(modeId == 1 && singleCbfTmpLuma == 0)//使用TransformSkip且不存在非零系数 这种情况是不允许的
         {
           //In order not to code TS flag when cbf is zero, the case for TS with cbf being zero is forbidden.
           singleCostTmp = MAX_DOUBLE;
         }
         else
         {
-          UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );
-          singleCostTmp     = m_pcRdCost->calcRdCost( uiSingleBits, singleDistTmpLuma );
+          UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );//编码该Tu块的所有信息
+          singleCostTmp     = m_pcRdCost->calcRdCost( uiSingleBits, singleDistTmpLuma );//计算该Tu的总损耗
         }
-        if(singleCostTmp < dSingleCost)
-        {
+        if(singleCostTmp < dSingleCost)//该mode下总损耗更小
+        {//更新信息
           DEBUG_STRING_SWAP(sDebug, sModeString)
           dSingleCost   = singleCostTmp;
           uiSingleDistLuma = singleDistTmpLuma;
           uiSingleCbfLuma = singleCbfTmpLuma;
 
           bestModeId[COMPONENT_Y] = modeId;
-          if(bestModeId[COMPONENT_Y] == firstCheckId)
+          if(bestModeId[COMPONENT_Y] == firstCheckId)//当前最优mode为第一次判断
           {
             xStoreIntraResultQT(COMPONENT_Y, rTu );
             m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
           }
 
-          if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
+          if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())//如果允许使用CCP
           {
             const Int xOffset = rTu.getRect( COMPONENT_Y ).x0;
-            const Int yOffset = rTu.getRect( COMPONENT_Y ).y0;
+            const Int yOffset = rTu.getRect( COMPONENT_Y ).y0;//注意为亮度分量!!!
             for (UInt storedResidualIndex = 0; storedResidualIndex < NUMBER_OF_STORED_RESIDUAL_TYPES; storedResidualIndex++)
             {
               if (bMaintainResidual[storedResidualIndex])
               {
-                xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaSingle[storedResidualIndex], rTu, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE);
+                xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaSingle[storedResidualIndex], rTu, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE);//将残差像素值存储在resiLuma[storedResidualIndex] 色度分量CCP时需要使用
               }
             }
           }
         }
-        if (modeId == firstCheckId)
+        if (modeId == firstCheckId)//第一次判断
         {
           m_pcRDGoOnSbacCoder->load ( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
         }
       }
 
-      pcCU ->setTransformSkipSubParts ( bestModeId[COMPONENT_Y], COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
+      pcCU ->setTransformSkipSubParts ( bestModeId[COMPONENT_Y], COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );//根据最优mode设置是否使用TransformSkip
 
-      if(bestModeId[COMPONENT_Y] == firstCheckId)
+      if(bestModeId[COMPONENT_Y] == firstCheckId)//最终的最优mode为不使用TransformSkip
       {
         xLoadIntraResultQT(COMPONENT_Y, rTu );
-        pcCU->setCbfSubParts  ( uiSingleCbfLuma << uiTrDepth, COMPONENT_Y, uiAbsPartIdx, rTu.GetTransformDepthTotalAdj(COMPONENT_Y) );
+        pcCU->setCbfSubParts  ( uiSingleCbfLuma << uiTrDepth, COMPONENT_Y, uiAbsPartIdx, rTu.GetTransformDepthTotalAdj(COMPONENT_Y) );//设置cbf标志
 
         m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
       }
     }
-    else
+    else//不需要判断是否TransformSkip
     {
       //----- store original entropy coding status -----
-      if( bCheckSplit )
+      if( bCheckSplit )//
       {
         m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
       }
       //----- code luma/chroma block with given intra prediction mode and store Cbf-----
       dSingleCost   = 0.0;
 
-      pcCU ->setTransformSkipSubParts ( 0, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-      xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug));
+      pcCU ->setTransformSkipSubParts ( 0, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );//不需要判断是否TransformSkip 则不使用TransformSkip
+      xIntraCodingTUBlock( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaSingle, false, uiSingleDistLuma, COMPONENT_Y, rTu DEBUG_STRING_PASS_INTO(sDebug));//计算失真 量化值
 
       if( bCheckSplit )
       {
         uiSingleCbfLuma = pcCU->getCbf( uiAbsPartIdx, COMPONENT_Y, uiTrDepth );
       }
       //----- determine rate and r-d cost -----
-      UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );
+      UInt uiSingleBits = xGetIntraBitsQT( rTu, true, false, false );//编码该TU所有的信息(如量化值等)
 
-      if(m_pcEncCfg->getRDpenalty() && (uiLog2TrSize==5) && !isIntraSlice)
-      {
+      if(m_pcEncCfg->getRDpenalty() && (uiLog2TrSize==5) && !isIntraSlice)//<software-manual>官方说明:RD-penalty for 32x32 TU for intra in non-intra slices. 
+      {                                                                   //Enabling this param-eter can reduce the visibility of CU boundaries in the coded picture
         uiSingleBits=uiSingleBits*4;
       }
 
-      dSingleCost       = m_pcRdCost->calcRdCost( uiSingleBits, uiSingleDistLuma );
+      dSingleCost       = m_pcRdCost->calcRdCost( uiSingleBits, uiSingleDistLuma );//计算该Tu的总损耗
 
-      if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
+      if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())//如果允许使用CCP
       {
         const Int xOffset = rTu.getRect( COMPONENT_Y ).x0;
         const Int yOffset = rTu.getRect( COMPONENT_Y ).y0;
@@ -1612,14 +1612,14 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
         {
           if (bMaintainResidual[storedResidualIndex])
           {
-            xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaSingle[storedResidualIndex], rTu, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE);
+            xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaSingle[storedResidualIndex], rTu, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE);//将残差像素值存储在resiLuma[storedResidualIndex] 色度分量CCP时需要使用
           }
         }
       }
     }
   }
 
-  if( bCheckSplit )
+  if( bCheckSplit )//需要判断是否该Tu是否继续四叉树分割
   {
     //----- store full entropy coding status, load original entropy coding status -----
     if( bCheckFull )
@@ -1636,9 +1636,9 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     Distortion uiSplitDistLuma = 0;
     UInt       uiSplitCbfLuma  = 0;
 
-    TComTURecurse tuRecurseChild(rTu, false);
+    TComTURecurse tuRecurseChild(rTu, false);//该TU四叉树划分的子Tu
     DEBUG_STRING_NEW(sSplit)
-    do
+    do//对该Tu进行四叉树划分 计算每个子Tu的最小损耗并对该Tu内的所有子Tu的损耗求和 递归如此直至达到允许的最大Tu深度
     {
       DEBUG_STRING_NEW(sChild)
 #if HHI_RQT_INTRA_SPEEDUP
@@ -1648,17 +1648,17 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
       DEBUG_STRING_APPEND(sSplit, sChild)
       uiSplitCbfLuma |= pcCU->getCbf( tuRecurseChild.GetAbsPartIdxTU(), COMPONENT_Y, tuRecurseChild.GetTransformDepthRel() );
-    } while (tuRecurseChild.nextSection(rTu) );
+    } while (tuRecurseChild.nextSection(rTu) );//四叉树深度遍历
 
     UInt    uiPartsDiv     = rTu.GetAbsPartIdxNumParts();
     {
-      if (uiSplitCbfLuma)
+      if (uiSplitCbfLuma)//如果存在子Tu的cbf为1(存在非零系数)
       {
-        const UInt flag=1<<uiTrDepth;
+        const UInt flag=1<<uiTrDepth;//存在含有非零系数的子Tu 则父Tu一定含有非零系数
         UChar *pBase=pcCU->getCbf( COMPONENT_Y );
         for( UInt uiOffs = 0; uiOffs < uiPartsDiv; uiOffs++ )
         {
-          pBase[ uiAbsPartIdx + uiOffs ] |= flag;
+          pBase[ uiAbsPartIdx + uiOffs ] |= flag;//设置4个子Tu的cbf(包含父Tu的cbf信息)
         }
       }
     }
@@ -1666,18 +1666,18 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     m_pcRDGoOnSbacCoder->load ( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_ROOT ] );
     
     //----- determine rate and r-d cost -----
-    UInt uiSplitBits = xGetIntraBitsQT( rTu, true, false, false );
-    dSplitCost       = m_pcRdCost->calcRdCost( uiSplitBits, uiSplitDistLuma );
+    UInt uiSplitBits = xGetIntraBitsQT( rTu, true, false, false );//计算该Tu四叉树划分的编码比特数
+    dSplitCost       = m_pcRdCost->calcRdCost( uiSplitBits, uiSplitDistLuma );//该Tu四叉树划分的总损耗
 
     //===== compare and set best =====
-    if( dSplitCost < dSingleCost )
+    if( dSplitCost < dSingleCost )//比较4个子Tu与Tu的总损耗 若Tu继续分割时总损耗较小
     {
       //--- update cost ---
       DEBUG_STRING_SWAP(sSplit, sDebug)
-      ruiDistY += uiSplitDistLuma;
-      dRDCost  += dSplitCost;
+      ruiDistY += uiSplitDistLuma;//该Tu的最优失真
+      dRDCost  += dSplitCost;//该Tu的最优损耗
 
-      if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
+      if (pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())//允许使用CCP 处理同上
       {
         const Int xOffset = rTu.getRect( COMPONENT_Y ).x0;
         const Int yOffset = rTu.getRect( COMPONENT_Y ).y0;
@@ -1695,33 +1695,33 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 
     //----- set entropy coding status -----
     m_pcRDGoOnSbacCoder->load ( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_TEST ] );
-
-    //--- set transform index and Cbf values ---
-    pcCU->setTrIdxSubParts( uiTrDepth, uiAbsPartIdx, uiFullDepth );
+    //若该Tu不继续分割时总损耗较小
+    //--- set transform index and Cbf values ---//设置TrIdx和cbf 表明该Tu的最优分割方式
+    pcCU->setTrIdxSubParts( uiTrDepth, uiAbsPartIdx, uiFullDepth );//
     const TComRectangle &tuRect=rTu.getRect(COMPONENT_Y);
     pcCU->setCbfSubParts  ( uiSingleCbfLuma << uiTrDepth, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
     pcCU ->setTransformSkipSubParts  ( bestModeId[COMPONENT_Y], COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
 
-    //--- set reconstruction for next intra prediction blocks ---
+    //--- set reconstruction for next intra prediction blocks ---//设置帧内预测需要用到的重建像素
     const UInt  uiQTLayer   = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2TrSize;
     const UInt  uiZOrder    = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
     const UInt  uiWidth     = tuRect.width;
     const UInt  uiHeight    = tuRect.height;
-    Pel*  piSrc       = m_pcQTTempTComYuv[ uiQTLayer ].getAddr( COMPONENT_Y, uiAbsPartIdx );
+    Pel*  piSrc       = m_pcQTTempTComYuv[ uiQTLayer ].getAddr( COMPONENT_Y, uiAbsPartIdx );//该层Tu的重建像素值
     UInt  uiSrcStride = m_pcQTTempTComYuv[ uiQTLayer ].getStride  ( COMPONENT_Y );
-    Pel*  piDes       = pcCU->getPic()->getPicYuvRec()->getAddr( COMPONENT_Y, pcCU->getCtuRsAddr(), uiZOrder );
+    Pel*  piDes       = pcCU->getPic()->getPicYuvRec()->getAddr( COMPONENT_Y, pcCU->getCtuRsAddr(), uiZOrder );//帧内预测所用到的参考像素的起始位置
     UInt  uiDesStride = pcCU->getPic()->getPicYuvRec()->getStride  ( COMPONENT_Y );
-
-    for( UInt uiY = 0; uiY < uiHeight; uiY++, piSrc += uiSrcStride, piDes += uiDesStride )
+    //注意:PicYuvRec的重建值为分割时最小Tu对应组成的重建像素值 而m_pcQTTempTComYuv重建值为最优分割对应层的Tu重建像素值 即最终按照该最优分割变换后的重建值 所以帧间预测的参考值得重新赋值
+    for( UInt uiY = 0; uiY < uiHeight; uiY++, piSrc += uiSrcStride, piDes += uiDesStride )//遍历该Tu块中的所有重建像素值
     {
       for( UInt uiX = 0; uiX < uiWidth; uiX++ )
       {
-        piDes[ uiX ] = piSrc[ uiX ];
+        piDes[ uiX ] = piSrc[ uiX ];//设置帧内预测需要用到的重建像素
       }
     }
   }
-  ruiDistY += uiSingleDistLuma;
-  dRDCost  += dSingleCost;
+  ruiDistY += uiSingleDistLuma;//该Tu的最优失真
+  dRDCost  += dSingleCost;//该Tu的最优损耗
 }
 
 
@@ -1885,15 +1885,9 @@ TEncSearch::xCalcCrossComponentPredictionAlpha(       TComTU &rTu,
                                                 const Int         height,
                                                 const Int         strideL,
                                                 const Int         strideC )
-<<<<<<< HEAD
 {//计算ccp的alpha值　ccp用于帧内／帧间预测中消除颜色组成间的相关性　提高编码效率　（从HM16中开始并入到主线）
   const Pel *pResiL = piResiL;//初始化亮度残差
   const Pel *pResiC = piResiC;//初始化色度残差
-=======
-{
-  const Pel *pResiL = piResiL;
-  const Pel *pResiC = piResiC;
->>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
 
         TComDataCU *pCU = rTu.getCU();
   const Int  absPartIdx = rTu.GetAbsPartIdxTU( compID );
@@ -1903,7 +1897,6 @@ TEncSearch::xCalcCrossComponentPredictionAlpha(       TComTU &rTu,
   Int SSxy  = 0;
   Int SSxx  = 0;
 
-<<<<<<< HEAD
   for( UInt uiY = 0; uiY < height; uiY++ )//遍历所有残差
   {
     for( UInt uiX = 0; uiX < width; uiX++ )
@@ -1911,22 +1904,12 @@ TEncSearch::xCalcCrossComponentPredictionAlpha(       TComTU &rTu,
       const Pel scaledResiL = rightShift( pResiL[ uiX ], diffBitDepth );//处理亮度和色度组成间的bit深度差异，调整亮度残差
       SSxy += ( scaledResiL * pResiC[ uiX ] );//计算亮度残差和色度残差的乘积和sum(x*y)
       SSxx += ( scaledResiL * scaledResiL   );//计算亮度残差的平方和sum(x*x)
-=======
-  for( UInt uiY = 0; uiY < height; uiY++ )
-  {
-    for( UInt uiX = 0; uiX < width; uiX++ )
-    {
-      const Pel scaledResiL = rightShift( pResiL[ uiX ], diffBitDepth );
-      SSxy += ( scaledResiL * pResiC[ uiX ] );
-      SSxx += ( scaledResiL * scaledResiL   );
->>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
     }
 
     pResiL += strideL;
     pResiC += strideC;
   }
 
-<<<<<<< HEAD
   if( SSxx != 0 )//当亮度残差的平方不为０时，计算alpha＝sum(x*y)/sum(x*x)
   {
     Double dAlpha = SSxy / Double( SSxx );
@@ -1935,16 +1918,7 @@ TEncSearch::xCalcCrossComponentPredictionAlpha(       TComTU &rTu,
     static const Char alphaQuant[17] = {0, 1, 1, 2, 2, 2, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8};
 
     alpha = (alpha < 0) ? -alphaQuant[Int(-alpha)] : alphaQuant[Int(alpha)];//最终的alpha
-=======
-  if( SSxx != 0 )
-  {
-    Double dAlpha = SSxy / Double( SSxx );
-    alpha = Char(Clip3<Int>(-16, 16, (Int)(dAlpha * 16)));
 
-    static const Char alphaQuant[17] = {0, 1, 1, 2, 2, 2, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8};
-
-    alpha = (alpha < 0) ? -alphaQuant[Int(-alpha)] : alphaQuant[Int(alpha)];
->>>>>>> 0570385d3f2e289018a9a67ece33f3b3c8ae19b2
   }
   pCU->setCrossComponentPredictionAlphaPartRange( alpha, compID, absPartIdx, rTu.GetAbsPartIdxNumParts( compID ) );
 
@@ -2844,14 +2818,14 @@ Void TEncSearch::IPCMSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPre
 
 
 
-Void TEncSearch::xGetInterPredictionError( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPartIdx, Distortion& ruiErr, Bool /*bHadamard*/ )
-{
-  motionCompensation( pcCU, &m_tmpYuvPred, REF_PIC_LIST_X, iPartIdx );
+Void TEncSearch::xGetInterPredictionError( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPartIdx, Distortion& ruiErr, Bool /*bHadamard*/ )//计算帧间预测误差
+{//pcYuvOrg为原像素(当前像素)
+  motionCompensation( pcCU, &m_tmpYuvPred, REF_PIC_LIST_X, iPartIdx );//运动补偿 计算帧间预测值
 
   UInt uiAbsPartIdx = 0;
   Int iWidth = 0;
   Int iHeight = 0;
-  pcCU->getPartIndexAndSize( iPartIdx, uiAbsPartIdx, iWidth, iHeight );
+  pcCU->getPartIndexAndSize( iPartIdx, uiAbsPartIdx, iWidth, iHeight );//得到该cu指定索引的pu块的宽 高 和位置
 
   DistParam cDistParam;
 
@@ -2861,9 +2835,9 @@ Void TEncSearch::xGetInterPredictionError( TComDataCU* pcCU, TComYuv* pcYuvOrg, 
   m_pcRdCost->setDistParam( cDistParam, pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA),
                             pcYuvOrg->getAddr( COMPONENT_Y, uiAbsPartIdx ), pcYuvOrg->getStride(COMPONENT_Y),
                             m_tmpYuvPred .getAddr( COMPONENT_Y, uiAbsPartIdx ), m_tmpYuvPred.getStride(COMPONENT_Y),
-                            iWidth, iHeight, m_pcEncCfg->getUseHADME() && (pcCU->getCUTransquantBypass(iPartIdx) == 0) );
+                            iWidth, iHeight, m_pcEncCfg->getUseHADME() && (pcCU->getCUTransquantBypass(iPartIdx) == 0) );//设置失真参数
 
-  ruiErr = cDistParam.DistFunc( &cDistParam );
+  ruiErr = cDistParam.DistFunc( &cDistParam );//计算失真误差
 }
 
 //! estimation of best merge coding
@@ -2873,51 +2847,51 @@ Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUI
   Int iWidth = 0;
   Int iHeight = 0;
 
-  pcCU->getPartIndexAndSize( iPUIdx, uiAbsPartIdx, iWidth, iHeight );
+  pcCU->getPartIndexAndSize( iPUIdx, uiAbsPartIdx, iWidth, iHeight );//得到该cu指定索引的pu块的宽 高 和位置
   UInt uiDepth = pcCU->getDepth( uiAbsPartIdx );
 
-  PartSize partSize = pcCU->getPartitionSize( 0 );
-  if ( pcCU->getSlice()->getPPS()->getLog2ParallelMergeLevelMinus2() && partSize != SIZE_2Nx2N && pcCU->getWidth( 0 ) <= 8 )
+  PartSize partSize = pcCU->getPartitionSize( 0 );//该cu的pu的分割模式
+  if ( pcCU->getSlice()->getPPS()->getLog2ParallelMergeLevelMinus2() && partSize != SIZE_2Nx2N && pcCU->getWidth( 0 ) <= 8 )//当MER>4*4 且CU为8*8时 为了增加吞吐量 只允许一个(左上角PU的)merge候选列表作为该cu中所有PU的候选merge列表
   {
     if ( iPUIdx == 0 )
     {
-      pcCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uiDepth ); // temporarily set
-      pcCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours,uhInterDirNeighbours, numValidMergeCand );
-      pcCU->setPartSizeSubParts( partSize, 0, uiDepth ); // restore
+      pcCU->setPartSizeSubParts( SIZE_2Nx2N, 0, uiDepth ); // temporarily set//将该CU中的所有PU视为同一个PU
+      pcCU->getInterMergeCandidates( 0, 0, cMvFieldNeighbours,uhInterDirNeighbours, numValidMergeCand );//得到该PU的候选merge列表
+      pcCU->setPartSizeSubParts( partSize, 0, uiDepth ); // restore//将该CU的PU分割方式还原回去
     }
   }
   else
   {
-    pcCU->getInterMergeCandidates( uiAbsPartIdx, iPUIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand );
+    pcCU->getInterMergeCandidates( uiAbsPartIdx, iPUIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand );//得到该pu的merge候选运动矢量信息(包括参考图像)
   }
 
-  xRestrictBipredMergeCand( pcCU, iPUIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand );
+  xRestrictBipredMergeCand( pcCU, iPUIdx, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand );//若限制Bi预测 则将list1中的运动矢量清除
 
   ruiCost = std::numeric_limits<Distortion>::max();
-  for( UInt uiMergeCand = 0; uiMergeCand < numValidMergeCand; ++uiMergeCand )
+  for( UInt uiMergeCand = 0; uiMergeCand < numValidMergeCand; ++uiMergeCand )//遍历候选运动矢量列表中的所有运动矢量(包括运动矢量对应的参考图像)
   {
     Distortion uiCostCand = std::numeric_limits<Distortion>::max();
     UInt       uiBitsCand = 0;
 
     PartSize ePartSize = pcCU->getPartitionSize( 0 );
 
-    pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMvField( cMvFieldNeighbours[0 + 2*uiMergeCand], ePartSize, uiAbsPartIdx, 0, iPUIdx );
-    pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMvField( cMvFieldNeighbours[1 + 2*uiMergeCand], ePartSize, uiAbsPartIdx, 0, iPUIdx );
+    pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMvField( cMvFieldNeighbours[0 + 2*uiMergeCand], ePartSize, uiAbsPartIdx, 0, iPUIdx );//list0中的运动矢量
+    pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMvField( cMvFieldNeighbours[1 + 2*uiMergeCand], ePartSize, uiAbsPartIdx, 0, iPUIdx );//list1中的运动矢量
 
-    xGetInterPredictionError( pcCU, pcYuvOrg, iPUIdx, uiCostCand, m_pcEncCfg->getUseHADME() );
-    uiBitsCand = uiMergeCand + 1;
-    if (uiMergeCand == m_pcEncCfg->getMaxNumMergeCand() -1)
+    xGetInterPredictionError( pcCU, pcYuvOrg, iPUIdx, uiCostCand, m_pcEncCfg->getUseHADME() );//计算帧间预测误差 保存在uiCostCand中
+    uiBitsCand = uiMergeCand + 1;//计算编码MergeIndex所需的比特数 MergeIndex二元化方法为TrU Cmax=MaxNumMergeCand
+    if (uiMergeCand == m_pcEncCfg->getMaxNumMergeCand() -1)//所以当N<Cmax时 比特数为N+1 N=Cmax时截断 需减一
     {
         uiBitsCand--;
     }
-    uiCostCand = uiCostCand + m_pcRdCost->getCost( uiBitsCand );
-    if ( uiCostCand < ruiCost )
-    {
-      ruiCost = uiCostCand;
-      pacMvField[0] = cMvFieldNeighbours[0 + 2*uiMergeCand];
-      pacMvField[1] = cMvFieldNeighbours[1 + 2*uiMergeCand];
-      uiInterDir = uhInterDirNeighbours[uiMergeCand];
-      uiMergeIndex = uiMergeCand;
+    uiCostCand = uiCostCand + m_pcRdCost->getCost( uiBitsCand );//该候选运动矢量的总损耗(失真加上编码候选矢量在候选运动矢量列表中的位置的比特损耗)
+    if ( uiCostCand < ruiCost )//若总损耗小于之前的最优损耗
+    {//更新最优信息
+      ruiCost = uiCostCand;//损耗值
+      pacMvField[0] = cMvFieldNeighbours[0 + 2*uiMergeCand];//list0中的运动矢量
+      pacMvField[1] = cMvFieldNeighbours[1 + 2*uiMergeCand];//list1中的运动矢量
+      uiInterDir = uhInterDirNeighbours[uiMergeCand];//帧间预测方向
+      uiMergeIndex = uiMergeCand;//最优矢量在候选列表中的索引
     }
   }
 }
@@ -2932,24 +2906,28 @@ Void TEncSearch::xMergeEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPUI
  */
 Void TEncSearch::xRestrictBipredMergeCand( TComDataCU* pcCU, UInt puIdx, TComMvField* mvFieldNeighbours, UChar* interDirNeighbours, Int numValidMergeCand )
 {
-  if ( pcCU->isBipredRestriction(puIdx) )
+  if ( pcCU->isBipredRestriction(puIdx) )//若限制Bi预测
   {
-    for( UInt mergeCand = 0; mergeCand < numValidMergeCand; ++mergeCand )
+    for( UInt mergeCand = 0; mergeCand < numValidMergeCand; ++mergeCand )//遍历所有候选运动运动矢量
     {
-      if ( interDirNeighbours[mergeCand] == 3 )
+      if ( interDirNeighbours[mergeCand] == 3 )//若该候选运动矢量为Bi预测
       {
-        interDirNeighbours[mergeCand] = 1;
-        mvFieldNeighbours[(mergeCand << 1) + 1].setMvField(TComMv(0,0), -1);
+        interDihbours[mergeCand] = 1;//改为单向预测
+        mvFieldNeighbours[(mergeCand << 1) + 1].setMvField(TComMv(0,0), -1);//清除list1中的运动矢量(运动矢量置零 参考图像置为无效)
       }
     }
   }
 }
 
 //! search of the best candidate for inter prediction
+//! 该方法较为复杂 涉及的方法和变量众多 建议分段阅读 熟悉好每个变量的含义
+//! B slice  可以只从list0中选取一帧参考图像做参考 也可以只从list1中选取一帧图像参考 也可以都两个列表参考  双向预测指的为list0 list1中均存在一帧参考图像用作当前PU参考
+//! P slice  只能从list0或list1中选取最优的一帧图像做参考 不允许选取两帧参考图像做参考加权得到预测像素块
+//! B slice即可以为单向预测也可以为双向预测(大多数情况为双向预测 因为一般情况下双向预测有更小的率失真) 而P slice只能为单向预测
 #if AMP_MRG
 Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, TComYuv* pcRecoYuv DEBUG_STRING_FN_DECLARE(sDebug), Bool bUseRes, Bool bUseMRG )
 #else
-Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, TComYuv* pcRecoYuv, Bool bUseRes )
+Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, TComYuv* pcRecoYuv, Bool bUseRes )//帧间预测搜索最优的运动矢量及参考图像
 #endif
 {
   for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)
@@ -2957,14 +2935,14 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     m_acYuvPred[i].clear();
   }
   m_cYuvPredTemp.clear();
-  pcPredYuv->clear();
+  pcPredYuv->clear();//清空待使用的变量
 
-  if ( !bUseRes )
+  if ( !bUseRes )//若不使用残差
   {
-    pcResiYuv->clear();
+    pcResiYuv->clear();//清空残差
   }
 
-  pcRecoYuv->clear();
+  pcRecoYuv->clear();//清空重建像素块
 
   TComMv       cMvSrchRngLT;
   TComMv       cMvSrchRngRB;
@@ -2972,48 +2950,48 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
   TComMv       cMvZero;
   TComMv       TempMv; //kolya
 
-  TComMv       cMv[2];
-  TComMv       cMvBi[2];
-  TComMv       cMvTemp[2][33];
+  TComMv       cMv[2];//参考图像列表(list0 list1)中最优的MV
+  TComMv       cMvBi[2];//双向预测时参考列表(list0 list1)中最优的MV
+  TComMv       cMvTemp[2][33];//保存参考图像列表(list0 list1)中每帧参考图像运动估计得到MV
 
-  Int          iNumPart    = pcCU->getNumPartitions();
-  Int          iNumPredDir = pcCU->getSlice()->isInterP() ? 1 : 2;
+  Int          iNumPart    = pcCU->getNumPartitions();//该CU中pu块的个数
+  Int          iNumPredDir = pcCU->getSlice()->isInterP() ? 1 : 2;//根据是否为P slice得到预测方向
 
-  TComMv       cMvPred[2][33];
+  TComMv       cMvPred[2][33];//该CU的PU对应参考图像列表(list0 list1)中每帧参考图像的最优MVP
 
-  TComMv       cMvPredBi[2][33];
-  Int          aaiMvpIdxBi[2][33];
+  TComMv       cMvPredBi[2][33];//双向预测时该CU的PU对应参考图像列表(list0 list1)中每帧参考图像的最优MVP
+  Int          aaiMvpIdxBi[2][33];//双向预测时PU对应参考图像列表(list0 list1)中每帧参考图像的最优MVP在候选MVP列表中的索引
 
-  Int          aaiMvpIdx[2][33];
-  Int          aaiMvpNum[2][33];
+  Int          aaiMvpIdx[2][33];//PU对应参考图像列表(list0 list1)中每帧参考图像的最优MVP在候选MVP列表中的索引
+  Int          aaiMvpNum[2][33];//PU对应参考图像列表(list0 list1)中每帧参考图像的候选MVP列表中候选MV的个数
 
-  AMVPInfo     aacAMVPInfo[2][33];
+  AMVPInfo     aacAMVPInfo[2][33];//保存PU对应参考图像列表(list0 list1)中每帧参考图像的候选MVP列表信息
 
-  Int          iRefIdx[2]={0,0}; //If un-initialized, may cause SEGV in bi-directional prediction iterative stage.
-  Int          iRefIdxBi[2];
+  Int          iRefIdx[2]={0,0}; //If un-initialized, may cause SEGV in bi-directional prediction iterative stage.//参考列表(list0 list1)中最优的参考图像的索引
+  Int          iRefIdxBi[2];//双向预测时参考列表(list0 list1)中最优的参考图像的索引
 
-  UInt         uiPartAddr;
-  Int          iRoiWidth, iRoiHeight;
+  UInt         uiPartAddr;//PU块在其Cu中的位置
+  Int          iRoiWidth, iRoiHeight;//PU块的宽 高
 
   UInt         uiMbBits[3] = {1, 1, 0};
 
   UInt         uiLastMode = 0;
-  Int          iRefStart, iRefEnd;
+  Int          iRefStart, iRefEnd;//参考图像列表中参考起始参考图像索引 和最后参考图像索引
 
-  PartSize     ePartSize = pcCU->getPartitionSize( 0 );
+  PartSize     ePartSize = pcCU->getPartitionSize( 0 );//该CU的PU分割模式
 
-  Int          bestBiPRefIdxL1 = 0;
-  Int          bestBiPMvpL1 = 0;
-  Distortion   biPDistTemp = std::numeric_limits<Distortion>::max();
+  Int          bestBiPRefIdxL1 = 0;//BiP(广义B帧 list1中参考图像在list0中存在)最优参考图像索引
+  Int          bestBiPMvpL1 = 0;//BiP 最优MVP在候选MVP列表中的索引
+  Distortion   biPDistTemp = std::numeric_limits<Distortion>::max();//BiP 失真
 
-  TComMvField cMvFieldNeighbours[MRG_MAX_NUM_CANDS << 1]; // double length for mv of both lists
-  UChar uhInterDirNeighbours[MRG_MAX_NUM_CANDS];
+  TComMvField cMvFieldNeighbours[MRG_MAX_NUM_CANDS << 1]; // double length for mv of both lists//merge 候选运动矢量
+  UChar uhInterDirNeighbours[MRG_MAX_NUM_CANDS];//merge 候选运动矢量的方向(预测类型)
   Int numValidMergeCand = 0 ;
 
-  for ( Int iPartIdx = 0; iPartIdx < iNumPart; iPartIdx++ )
+  for ( Int iPartIdx = 0; iPartIdx < iNumPart; iPartIdx++ )//遍历处理该CU中的每个Pu
   {
     Distortion   uiCost[2] = { std::numeric_limits<Distortion>::max(), std::numeric_limits<Distortion>::max() };
-    Distortion   uiCostBi  =   std::numeric_limits<Distortion>::max();
+    Distortion   uiCostBi  =   std::numeric_limits<Distortion>::max();//初始化双向预测
     Distortion   uiCostTemp;
 
     UInt         uiBits[3];
@@ -3030,9 +3008,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     TComMv       mvValidList1;
     Int          refIdxValidList1 = 0;
     UInt         bitsValidList1 = MAX_UINT;
-    Distortion   costValidList1 = std::numeric_limits<Distortion>::max();
+    Distortion   costValidList1 = std::numeric_limits<Distortion>::max();//声明 初始化需要用到的变量
 
-    xGetBlkBits( ePartSize, pcCU->getSlice()->isInterP(), iPartIdx, uiLastMode, uiMbBits);
+    xGetBlkBits( ePartSize, pcCU->getSlice()->isInterP(), iPartIdx, uiLastMode, uiMbBits);//得到该Pu下编码不同参考图像列表所需(前向 后向 双向)的比特数???(还是不知道这Bit值怎么来的-_-||)
 
     pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );
 
@@ -3049,13 +3027,13 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 #endif
 
     //  Uni-directional prediction
-    for ( Int iRefList = 0; iRefList < iNumPredDir; iRefList++ )
+    for ( Int iRefList = 0; iRefList < iNumPredDir; iRefList++ )//根据预测类型遍历所有用到的参考图像列表
     {
-      RefPicList  eRefPicList = ( iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0 );
+      RefPicList  eRefPicList = ( iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0 );//当前的参考图像列表(先遍历list0 在遍历list1)
 
-      for ( Int iRefIdxTemp = 0; iRefIdxTemp < pcCU->getSlice()->getNumRefIdx(eRefPicList); iRefIdxTemp++ )
+      for ( Int iRefIdxTemp = 0; iRefIdxTemp < pcCU->getSlice()->getNumRefIdx(eRefPicList); iRefIdxTemp++ )//遍历该参考图像列表中的所有参考图像
       {
-        uiBitsTemp = uiMbBits[iRefList];
+        uiBitsTemp = uiMbBits[iRefList];//得到PU在该参考图像列表编码比特数
         if ( pcCU->getSlice()->getNumRefIdx(eRefPicList) > 1 )
         {
           uiBitsTemp += iRefIdxTemp+1;
@@ -3063,63 +3041,63 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
           {
             uiBitsTemp--;
           }
+        }//比特数需加上编码参考图像索引的编码比特数
+        xEstimateMvPredAMVP( pcCU, pcOrgYuv, iPartIdx, eRefPicList, iRefIdxTemp, cMvPred[iRefList][iRefIdxTemp], false, &biPDistTemp);//搜索该PU在该参考图像中的最优MVP 保存在cMvPred[iRefList][iRefIdxTemp中 并计算出总损耗保存在biPDistTemp
+        aaiMvpIdx[iRefList][iRefIdxTemp] = pcCU->getMVPIdx(eRefPicList, uiPartAddr);//得到搜索到的最优MVP的索引 保存在aaiMvpIdx[iRefList][iRefIdxTemp]中
+        aaiMvpNum[iRefList][iRefIdxTemp] = pcCU->getMVPNum(eRefPicList, uiPartAddr);//得到搜索到的MVP列表中候选MV的个数  保存在aaiMvpNum[iRefList][iRefIdxTemp]中
+
+        if(pcCU->getSlice()->getMvdL1ZeroFlag() && iRefList==1 && biPDistTemp < bestBiPDist)//为参考列表1 list1中不存在MVd 也就不存在运动估计之说 直接用最优的MVP作为最终的运动矢量(BiP帧)  该参考图像下Bip损耗优于最优BiP损耗
+        {//则更新最优BIP矢量信息
+          bestBiPDist = biPDistTemp;//最优损耗
+          bestBiPMvpL1 = aaiMvpIdx[iRefList][iRefIdxTemp];//最优矢量在MVP中的索引
+          bestBiPRefIdxL1 = iRefIdxTemp;//最优矢量的参考图像索引
         }
-        xEstimateMvPredAMVP( pcCU, pcOrgYuv, iPartIdx, eRefPicList, iRefIdxTemp, cMvPred[iRefList][iRefIdxTemp], false, &biPDistTemp);
-        aaiMvpIdx[iRefList][iRefIdxTemp] = pcCU->getMVPIdx(eRefPicList, uiPartAddr);
-        aaiMvpNum[iRefList][iRefIdxTemp] = pcCU->getMVPNum(eRefPicList, uiPartAddr);
 
-        if(pcCU->getSlice()->getMvdL1ZeroFlag() && iRefList==1 && biPDistTemp < bestBiPDist)
+        uiBitsTemp += m_auiMVPIdxCost[aaiMvpIdx[iRefList][iRefIdxTemp]][AMVP_MAX_NUM_CANDS];//总比特数还需加上最优MVP在候选MVP列表中的索引
+
+        if ( m_pcEncCfg->getFastMEForGenBLowDelayEnabled() && iRefList == 1 )    // list 1(可能使用list0中已搜索的参考图像信息)
         {
-          bestBiPDist = biPDistTemp;
-          bestBiPMvpL1 = aaiMvpIdx[iRefList][iRefIdxTemp];
-          bestBiPRefIdxL1 = iRefIdxTemp;
-        }
-
-        uiBitsTemp += m_auiMVPIdxCost[aaiMvpIdx[iRefList][iRefIdxTemp]][AMVP_MAX_NUM_CANDS];
-
-        if ( m_pcEncCfg->getFastMEForGenBLowDelayEnabled() && iRefList == 1 )    // list 1
-        {
-          if ( pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp ) >= 0 )
+          if ( pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp ) >= 0 )//如果list1中该参考图像也存在于list0中 那么可直接使用list0中该参考图像的运动矢量信息 而不用运动估计 但需更正总损耗 
           {
-            cMvTemp[1][iRefIdxTemp] = cMvTemp[0][pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp )];
-            uiCostTemp = uiCostTempL0[pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp )];
+            cMvTemp[1][iRefIdxTemp] = cMvTemp[0][pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp )];//list0中该参考图像的最优运动矢量直接为list1中该参考图像的最优运动矢量
+            uiCostTemp = uiCostTempL0[pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp )];//得到该运动矢量在list0中的损耗(通过在list0中的损耗得到该矢量在list1中的损耗 而不用重新计算总损耗)
             /*first subtract the bit-rate part of the cost of the other list*/
-            uiCostTemp -= m_pcRdCost->getCost( uiBitsTempL0[pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp )] );
+            uiCostTemp -= m_pcRdCost->getCost( uiBitsTempL0[pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp )] );//总损耗减去编码损耗(得到失真损耗)
             /*correct the bit-rate part of the current ref*/
-            m_pcRdCost->setPredictor  ( cMvPred[iRefList][iRefIdxTemp] );
-            uiBitsTemp += m_pcRdCost->getBits( cMvTemp[1][iRefIdxTemp].getHor(), cMvTemp[1][iRefIdxTemp].getVer() );
+            m_pcRdCost->setPredictor  ( cMvPred[iRefList][iRefIdxTemp] );//设置预测MV(用于计算编码最优MVD的编码损耗)
+            uiBitsTemp += m_pcRdCost->getBits( cMvTemp[1][iRefIdxTemp].getHor(), cMvTemp[1][iRefIdxTemp].getVer() );//该运动矢量在该(list2中)参考图像中的总编码损耗
             /*calculate the correct cost*/
-            uiCostTemp += m_pcRdCost->getCost( uiBitsTemp );
+            uiCostTemp += m_pcRdCost->getCost( uiBitsTemp );//计算最终的损耗
           }
-          else
+          else//如果list1中该参考图像不存在于list0中
           {
             xMotionEstimation ( pcCU, pcOrgYuv, iPartIdx, eRefPicList, &cMvPred[iRefList][iRefIdxTemp], iRefIdxTemp, cMvTemp[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp );
-          }
+          }//则需进行运动估计计算
         }
-        else
+        else//list0(第一个进行搜索的列表 ) 
         {
           xMotionEstimation ( pcCU, pcOrgYuv, iPartIdx, eRefPicList, &cMvPred[iRefList][iRefIdxTemp], iRefIdxTemp, cMvTemp[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp );
-        }
-        xCopyAMVPInfo(pcCU->getCUMvField(eRefPicList)->getAMVPInfo(), &aacAMVPInfo[iRefList][iRefIdxTemp]); // must always be done ( also when AMVP_MODE = AM_NONE )
-        xCheckBestMVP(pcCU, eRefPicList, cMvTemp[iRefList][iRefIdxTemp], cMvPred[iRefList][iRefIdxTemp], aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp);
+        }//则需进行运动估计计算 cMvTemp[iRefList][iRefIdxTemp]保存该参考图像下的最优运动矢量
+        xCopyAMVPInfo(pcCU->getCUMvField(eRefPicList)->getAMVPInfo(), &aacAMVPInfo[iRefList][iRefIdxTemp]); // must always be done ( also when AMVP_MODE = AM_NONE )//将该PU在该参考图像列表的该参考图像中的MVP列表信息复制到aacAMVPInfo[iRefList][iRefIdxTemp]中
+        xCheckBestMVP(pcCU, eRefPicList, cMvTemp[iRefList][iRefIdxTemp], cMvPred[iRefList][iRefIdxTemp], aaiMvpIdx[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp);//保证(cMvPred[iRefList][iRefIdxTemp])保存的为最优预测MV 及其索引
 
-        if ( iRefList == 0 )
+        if ( iRefList == 0 )//list0
         {
-          uiCostTempL0[iRefIdxTemp] = uiCostTemp;
+          uiCostTempL0[iRefIdxTemp] = uiCostTemp;//保存list0中该参考图像的总损耗 和编码比特位数 //用于BIP帧
           uiBitsTempL0[iRefIdxTemp] = uiBitsTemp;
         }
-        if ( uiCostTemp < uiCost[iRefList] )
-        {
-          uiCost[iRefList] = uiCostTemp;
-          uiBits[iRefList] = uiBitsTemp; // storing for bi-prediction
+        if ( uiCostTemp < uiCost[iRefList] )//该参考图像中最优MV的总损耗优于该参考列表中之前的参考图像
+        {//更新该参考图像列表的最优搜索信息
+          uiCost[iRefList] = uiCostTemp;//更新最优总损耗
+          uiBits[iRefList] = uiBitsTemp; // storing for bi-prediction//更新最优bit位数 用于Bi帧
 
           // set motion
-          cMv[iRefList]     = cMvTemp[iRefList][iRefIdxTemp];
-          iRefIdx[iRefList] = iRefIdxTemp;
+          cMv[iRefList]     = cMvTemp[iRefList][iRefIdxTemp];//更新最优MV
+          iRefIdx[iRefList] = iRefIdxTemp;//更新最优参考图像
         }
 
-        if ( iRefList == 1 && uiCostTemp < costValidList1 && pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp ) < 0 )
-        {
+        if ( iRefList == 1 && uiCostTemp < costValidList1 && pcCU->getSlice()->getList1IdxToList0Idx( iRefIdxTemp ) < 0 )//list1 双向预测且不为Bip帧
+        {//更新该参考图像列表的最优搜索信息至ValidList1 (ValidList1指list1中的参考图像为有效的参考图像 而不是已存在于list0中的参考图像)
           costValidList1 = uiCostTemp;
           bitsValidList1 = uiBitsTemp;
 
@@ -3131,30 +3109,30 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     }
 
     //  Bi-directional prediction
-    if ( (pcCU->getSlice()->isInterB()) && (pcCU->isBipredRestriction(iPartIdx) == false) )
-    {
+    if ( (pcCU->getSlice()->isInterB()) && (pcCU->isBipredRestriction(iPartIdx) == false) )//双向预测(注意双向预测可以只从list0中参考 也可以只从list1中参考 也可以都参考 但不一定非要两个list都要参考!!!!) 
+    {                                                                                      //而P slice 即所说的单向预测指的是只能前向预测 只能从list0中选取最优的一帧图像做参考
 
       cMvBi[0] = cMv[0];            cMvBi[1] = cMv[1];
-      iRefIdxBi[0] = iRefIdx[0];    iRefIdxBi[1] = iRefIdx[1];
+      iRefIdxBi[0] = iRefIdx[0];    iRefIdxBi[1] = iRefIdx[1];//根据之前得到的最优信息初始化Bi的运动矢量信息
 
-      ::memcpy(cMvPredBi, cMvPred, sizeof(cMvPred));
-      ::memcpy(aaiMvpIdxBi, aaiMvpIdx, sizeof(aaiMvpIdx));
+      ::memcpy(cMvPredBi, cMvPred, sizeof(cMvPred));//复制所有参考图像的最优预测MV到cMvPredBi
+      ::memcpy(aaiMvpIdxBi, aaiMvpIdx, sizeof(aaiMvpIdx));//复制所有参考图像的最优预测MV在MVP列表中的索引到aaiMvpIdxBi
 
       UInt uiMotBits[2];
 
-      if(pcCU->getSlice()->getMvdL1ZeroFlag())
+      if(pcCU->getSlice()->getMvdL1ZeroFlag())//lsit1中MVD为0(BIP帧)
       {
-        xCopyAMVPInfo(&aacAMVPInfo[1][bestBiPRefIdxL1], pcCU->getCUMvField(REF_PIC_LIST_1)->getAMVPInfo());
-        pcCU->setMVPIdxSubParts( bestBiPMvpL1, REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
-        aaiMvpIdxBi[1][bestBiPRefIdxL1] = bestBiPMvpL1;
-        cMvPredBi[1][bestBiPRefIdxL1]   = pcCU->getCUMvField(REF_PIC_LIST_1)->getAMVPInfo()->m_acMvCand[bestBiPMvpL1];
+        xCopyAMVPInfo(&aacAMVPInfo[1][bestBiPRefIdxL1], pcCU->getCUMvField(REF_PIC_LIST_1)->getAMVPInfo());//将list1中最优的BiP帧的MVP列表信息复制到该CU的m_cAMVPInfo
+        pcCU->setMVPIdxSubParts( bestBiPMvpL1, REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));//在该PU中设置最优BiP帧中最优MVP在MVP列表中的索引
+        aaiMvpIdxBi[1][bestBiPRefIdxL1] = bestBiPMvpL1;//该参考图像的最优MVP索引为 该BiP帧下最优MVP在MVP列表中的索引
+        cMvPredBi[1][bestBiPRefIdxL1]   = pcCU->getCUMvField(REF_PIC_LIST_1)->getAMVPInfo()->m_acMvCand[bestBiPMvpL1];//最优的预测MV(BIP下MVD为0 最优的预测MV也就是最优的MV)
 
-        cMvBi[1] = cMvPredBi[1][bestBiPRefIdxL1];
-        iRefIdxBi[1] = bestBiPRefIdxL1;
+        cMvBi[1] = cMvPredBi[1][bestBiPRefIdxL1];//双向预测list1中最优的MV为 BIP帧下的最优MV
+        iRefIdxBi[1] = bestBiPRefIdxL1;//双向预测list1中最优的参考图像为 BIP帧下的最优参考图像
         pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllMv( cMvBi[1], ePartSize, uiPartAddr, 0, iPartIdx );
-        pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllRefIdx( iRefIdxBi[1], ePartSize, uiPartAddr, 0, iPartIdx );
+        pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllRefIdx( iRefIdxBi[1], ePartSize, uiPartAddr, 0, iPartIdx );//将双向预测list1中的最优的运动矢量信息设置到该Pu
         TComYuv* pcYuvPred = &m_acYuvPred[REF_PIC_LIST_1];
-        motionCompensation( pcCU, pcYuvPred, REF_PIC_LIST_1, iPartIdx );
+        motionCompensation( pcCU, pcYuvPred, REF_PIC_LIST_1, iPartIdx );//用得到的BIP下最优运动矢量信息进行运动补偿 将预测像素值保存在m_acYuvPred中
 
         uiMotBits[0] = uiBits[0] - uiMbBits[0];
         uiMotBits[1] = uiMbBits[1];
@@ -3170,31 +3148,31 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 
         uiMotBits[1] += m_auiMVPIdxCost[aaiMvpIdxBi[1][bestBiPRefIdxL1]][AMVP_MAX_NUM_CANDS];
 
-        uiBits[2] = uiMbBits[2] + uiMotBits[0] + uiMotBits[1];
+        uiBits[2] = uiMbBits[2] + uiMotBits[0] + uiMotBits[1];//该双向预测编码的总比特数
 
-        cMvTemp[1][bestBiPRefIdxL1] = cMvBi[1];
+        cMvTemp[1][bestBiPRefIdxL1] = cMvBi[1];//保存双向预测list1中最优运动矢量(及参考图像)(用于运动估计 作为搜索起始点)
       }
-      else
+      else//不为BiP帧 则需单独求得最优MV
       {
-        uiMotBits[0] = uiBits[0] - uiMbBits[0];
-        uiMotBits[1] = uiBits[1] - uiMbBits[1];
-        uiBits[2] = uiMbBits[2] + uiMotBits[0] + uiMotBits[1];
+        uiMotBits[0] = uiBits[0] - uiMbBits[0];//编码list0的最优MV所需的比特数
+        uiMotBits[1] = uiBits[1] - uiMbBits[1];//编码list1的最优MV所需的比特数
+        uiBits[2] = uiMbBits[2] + uiMotBits[0] + uiMotBits[1];//该双向预测编码的总比特数(两个list的MV比特数+预测方向的比特数)
       }
 
       // 4-times iteration (default)
       Int iNumIter = 4;
 
       // fast encoder setting: only one iteration
-      if ( m_pcEncCfg->getUseFastEnc() || pcCU->getSlice()->getMvdL1ZeroFlag())
+      if ( m_pcEncCfg->getUseFastEnc() || pcCU->getSlice()->getMvdL1ZeroFlag())//快速搜索或BiP帧只迭代一次
       {
         iNumIter = 1;
       }
 
       for ( Int iIter = 0; iIter < iNumIter; iIter++ )
       {
-        Int         iRefList    = iIter % 2;
+        Int         iRefList    = iIter % 2;//不为快速搜索 则依次轮流遍历两个列表
 
-        if ( m_pcEncCfg->getUseFastEnc() )
+        if ( m_pcEncCfg->getUseFastEnc() )//如果为快速搜索则 选择两列表中最优总损耗较大的一个(搜索的目的就是得到较小的损耗 所以选择损耗较大的列表遍历)
         {
           if( uiCost[0] <= uiCost[1] )
           {
@@ -3209,17 +3187,17 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
         {
           iRefList = 0;
         }
-        if ( iIter == 0 && !pcCU->getSlice()->getMvdL1ZeroFlag())
+        if ( iIter == 0 && !pcCU->getSlice()->getMvdL1ZeroFlag())//第一次迭代
         {
           pcCU->getCUMvField(RefPicList(1-iRefList))->setAllMv( cMv[1-iRefList], ePartSize, uiPartAddr, 0, iPartIdx );
-          pcCU->getCUMvField(RefPicList(1-iRefList))->setAllRefIdx( iRefIdx[1-iRefList], ePartSize, uiPartAddr, 0, iPartIdx );
+          pcCU->getCUMvField(RefPicList(1-iRefList))->setAllRefIdx( iRefIdx[1-iRefList], ePartSize, uiPartAddr, 0, iPartIdx );//设置该PU在另一列表中的最优MV信息 用于运动补偿
           TComYuv*  pcYuvPred = &m_acYuvPred[1-iRefList];
-          motionCompensation ( pcCU, pcYuvPred, RefPicList(1-iRefList), iPartIdx );
+          motionCompensation ( pcCU, pcYuvPred, RefPicList(1-iRefList), iPartIdx );//运动补偿预测值赋给m_acYuvPred (用于双向预测时的运动补偿)
         }
 
         RefPicList  eRefPicList = ( iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0 );
 
-        if(pcCU->getSlice()->getMvdL1ZeroFlag())
+        if(pcCU->getSlice()->getMvdL1ZeroFlag())//list1中MVD为0 所以在list0中可以找到更优的MV
         {
           iRefList = 0;
           eRefPicList = REF_PIC_LIST_0;
@@ -3230,9 +3208,9 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
         iRefStart = 0;
         iRefEnd   = pcCU->getSlice()->getNumRefIdx(eRefPicList)-1;
 
-        for ( Int iRefIdxTemp = iRefStart; iRefIdxTemp <= iRefEnd; iRefIdxTemp++ )
+        for ( Int iRefIdxTemp = iRefStart; iRefIdxTemp <= iRefEnd; iRefIdxTemp++ )//遍历该参考列表中的所有参考图像
         {
-          uiBitsTemp = uiMbBits[2] + uiMotBits[1-iRefList];
+          uiBitsTemp = uiMbBits[2] + uiMotBits[1-iRefList];//编码预测方向的比特数+编码另一个列表中的最优MV (最终uiBitsTemp还需加上当前列表中参考图像的最优MV比特数)
           if ( pcCU->getSlice()->getNumRefIdx(eRefPicList) > 1 )
           {
             uiBitsTemp += iRefIdxTemp+1;
@@ -3243,38 +3221,38 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
           }
           uiBitsTemp += m_auiMVPIdxCost[aaiMvpIdxBi[iRefList][iRefIdxTemp]][AMVP_MAX_NUM_CANDS];
           // call ME
-          xMotionEstimation ( pcCU, pcOrgYuv, iPartIdx, eRefPicList, &cMvPredBi[iRefList][iRefIdxTemp], iRefIdxTemp, cMvTemp[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, true );
+          xMotionEstimation ( pcCU, pcOrgYuv, iPartIdx, eRefPicList, &cMvPredBi[iRefList][iRefIdxTemp], iRefIdxTemp, cMvTemp[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp, true );//运动估计找到该参考图像的最优MV
 
-          xCopyAMVPInfo(&aacAMVPInfo[iRefList][iRefIdxTemp], pcCU->getCUMvField(eRefPicList)->getAMVPInfo());
-          xCheckBestMVP(pcCU, eRefPicList, cMvTemp[iRefList][iRefIdxTemp], cMvPredBi[iRefList][iRefIdxTemp], aaiMvpIdxBi[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp);
+          xCopyAMVPInfo(&aacAMVPInfo[iRefList][iRefIdxTemp], pcCU->getCUMvField(eRefPicList)->getAMVPInfo());//将PU在该参考图像的MVP列表信息复制到该CU的m_cAMVPInfo
+          xCheckBestMVP(pcCU, eRefPicList, cMvTemp[iRefList][iRefIdxTemp], cMvPredBi[iRefList][iRefIdxTemp], aaiMvpIdxBi[iRefList][iRefIdxTemp], uiBitsTemp, uiCostTemp);//保证最终的预测MV为最优(率失真最小)
 
-          if ( uiCostTemp < uiCostBi )
-          {
+          if ( uiCostTemp < uiCostBi )//优于之前的最优损耗
+          {//更新双向预测最优总损耗
             bChanged = true;
 
-            cMvBi[iRefList]     = cMvTemp[iRefList][iRefIdxTemp];
-            iRefIdxBi[iRefList] = iRefIdxTemp;
+            cMvBi[iRefList]     = cMvTemp[iRefList][iRefIdxTemp];//双向预测时该参考列表下的最优MV
+            iRefIdxBi[iRefList] = iRefIdxTemp;//双向预测时该参考列表下的最优MV
 
-            uiCostBi            = uiCostTemp;
-            uiMotBits[iRefList] = uiBitsTemp - uiMbBits[2] - uiMotBits[1-iRefList];
-            uiBits[2]           = uiBitsTemp;
+            uiCostBi            = uiCostTemp;//双向预测最优损耗
+            uiMotBits[iRefList] = uiBitsTemp - uiMbBits[2] - uiMotBits[1-iRefList];//该参考列表下最优MV的编码比特数
+            uiBits[2]           = uiBitsTemp;//双向预测 编码比特位数
 
-            if(iNumIter!=1)
+            if(iNumIter!=1)//迭代次数不为1
             {
               //  Set motion
               pcCU->getCUMvField( eRefPicList )->setAllMv( cMvBi[iRefList], ePartSize, uiPartAddr, 0, iPartIdx );
-              pcCU->getCUMvField( eRefPicList )->setAllRefIdx( iRefIdxBi[iRefList], ePartSize, uiPartAddr, 0, iPartIdx );
+              pcCU->getCUMvField( eRefPicList )->setAllRefIdx( iRefIdxBi[iRefList], ePartSize, uiPartAddr, 0, iPartIdx );//重新设置最优MV信息 用于运动补偿
 
               TComYuv* pcYuvPred = &m_acYuvPred[iRefList];
-              motionCompensation( pcCU, pcYuvPred, eRefPicList, iPartIdx );
+              motionCompensation( pcCU, pcYuvPred, eRefPicList, iPartIdx );//运动补偿 用于重新计算该列表新的预测像素值 用于下次迭代中计算双向预测的总损耗(需要两个list中得到的预测像素来计算) 
             }
           }
         } // for loop-iRefIdxTemp
 
-        if ( !bChanged )
+        if ( !bChanged )//若迭代中 uiCostBi未更新 则跳出迭代 因为继续迭代也不会更新 参考列表的中的最优MV未更新 下次迭代也是一样的结果
         {
-          if ( uiCostBi <= uiCost[0] && uiCostBi <= uiCost[1] )
-          {
+          if ( uiCostBi <= uiCost[0] && uiCostBi <= uiCost[1] )//双向预测总损耗小于单向预测
+          {//确保最终的预测MV为最优(率失真最小)
             xCopyAMVPInfo(&aacAMVPInfo[0][iRefIdxBi[0]], pcCU->getCUMvField(REF_PIC_LIST_0)->getAMVPInfo());
             xCheckBestMVP(pcCU, REF_PIC_LIST_0, cMvBi[0], cMvPredBi[0][iRefIdxBi[0]], aaiMvpIdxBi[0][iRefIdxBi[0]], uiBits[2], uiCostBi);
             if(!pcCU->getSlice()->getMvdL1ZeroFlag())
@@ -3283,7 +3261,7 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
               xCheckBestMVP(pcCU, REF_PIC_LIST_1, cMvBi[1], cMvPredBi[1][iRefIdxBi[1]], aaiMvpIdxBi[1][iRefIdxBi[1]], uiBits[2], uiCostBi);
             }
           }
-          break;
+          break;//提起跳出迭代
         }
       } // for loop-iter
     } // if (B_SLICE)
@@ -3291,7 +3269,7 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 #if AMP_MRG
     } //end if bTestNormalMC
 #endif
-    //  Clear Motion Field
+    //  Clear Motion Field//初始化需要用到的运动矢量信息
     pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMvField( TComMvField(), ePartSize, uiPartAddr, 0, iPartIdx );
     pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMvField( TComMvField(), ePartSize, uiPartAddr, 0, iPartIdx );
     pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMvd    ( cMvZero,       ePartSize, uiPartAddr, 0, iPartIdx );
@@ -3313,66 +3291,66 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
     if (bTestNormalMC)
     {
 #endif
-    if ( uiCostBi <= uiCost[0] && uiCostBi <= uiCost[1])
+    if ( uiCostBi <= uiCost[0] && uiCostBi <= uiCost[1])//如果双向预测总损耗小于单向预测  则list0 list1均参考
     {
       uiLastMode = 2;
       pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMv( cMvBi[0], ePartSize, uiPartAddr, 0, iPartIdx );
-      pcCU->getCUMvField(REF_PIC_LIST_0)->setAllRefIdx( iRefIdxBi[0], ePartSize, uiPartAddr, 0, iPartIdx );
+      pcCU->getCUMvField(REF_PIC_LIST_0)->setAllRefIdx( iRefIdxBi[0], ePartSize, uiPartAddr, 0, iPartIdx );//设置该PU在list0中最优运动矢量和参考图像索引
       pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMv( cMvBi[1], ePartSize, uiPartAddr, 0, iPartIdx );
-      pcCU->getCUMvField(REF_PIC_LIST_1)->setAllRefIdx( iRefIdxBi[1], ePartSize, uiPartAddr, 0, iPartIdx );
+      pcCU->getCUMvField(REF_PIC_LIST_1)->setAllRefIdx( iRefIdxBi[1], ePartSize, uiPartAddr, 0, iPartIdx );//设置该PU在list1中最优运动矢量和参考图像索引
 
       TempMv = cMvBi[0] - cMvPredBi[0][iRefIdxBi[0]];
-      pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMvd    ( TempMv,                 ePartSize, uiPartAddr, 0, iPartIdx );
+      pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMvd    ( TempMv,                 ePartSize, uiPartAddr, 0, iPartIdx );//设置该PU在list0中最优运动矢量与其预测MV的差值(MVD)
 
       TempMv = cMvBi[1] - cMvPredBi[1][iRefIdxBi[1]];
-      pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMvd    ( TempMv,                 ePartSize, uiPartAddr, 0, iPartIdx );
+      pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMvd    ( TempMv,                 ePartSize, uiPartAddr, 0, iPartIdx );//设置该PU在list1中最优运动矢量的MVD
 
       pcCU->setInterDirSubParts( 3, uiPartAddr, iPartIdx, pcCU->getDepth(0) );
 
-      pcCU->setMVPIdxSubParts( aaiMvpIdxBi[0][iRefIdxBi[0]], REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
-      pcCU->setMVPNumSubParts( aaiMvpNum[0][iRefIdxBi[0]], REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
-      pcCU->setMVPIdxSubParts( aaiMvpIdxBi[1][iRefIdxBi[1]], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
-      pcCU->setMVPNumSubParts( aaiMvpNum[1][iRefIdxBi[1]], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
+      pcCU->setMVPIdxSubParts( aaiMvpIdxBi[0][iRefIdxBi[0]], REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));//设置该PU在list0中最优参考图像的MVP在其MVP列表中的索引
+      pcCU->setMVPNumSubParts( aaiMvpNum[0][iRefIdxBi[0]], REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));//设置该PU在list0中最优参考图像的MVP列表中候选MVP的个数
+      pcCU->setMVPIdxSubParts( aaiMvpIdxBi[1][iRefIdxBi[1]], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));//设置该PU在list1中最优参考图像的MVP在其MVP列表中的索引
+      pcCU->setMVPNumSubParts( aaiMvpNum[1][iRefIdxBi[1]], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));//设置该PU在list1中最优参考图像的MVP列表中候选MVP的个数
 
-      uiMEBits = uiBits[2];
+      uiMEBits = uiBits[2];//该双向预测的总编码比特数
     }
-    else if ( uiCost[0] <= uiCost[1] )
+    else if ( uiCost[0] <= uiCost[1] )//如果单向预测总损耗小于双向预测 且list0中最优MV的损耗较小 则前向预测
     {
       uiLastMode = 0;
       pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMv( cMv[0], ePartSize, uiPartAddr, 0, iPartIdx );
-      pcCU->getCUMvField(REF_PIC_LIST_0)->setAllRefIdx( iRefIdx[0], ePartSize, uiPartAddr, 0, iPartIdx );
+      pcCU->getCUMvField(REF_PIC_LIST_0)->setAllRefIdx( iRefIdx[0], ePartSize, uiPartAddr, 0, iPartIdx );//只设置list0中的最优运动矢量信息
 
       TempMv = cMv[0] - cMvPred[0][iRefIdx[0]];
-      pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMvd    ( TempMv,                 ePartSize, uiPartAddr, 0, iPartIdx );
+      pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMvd    ( TempMv,                 ePartSize, uiPartAddr, 0, iPartIdx );//设置MVD
 
       pcCU->setInterDirSubParts( 1, uiPartAddr, iPartIdx, pcCU->getDepth(0) );
 
       pcCU->setMVPIdxSubParts( aaiMvpIdx[0][iRefIdx[0]], REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
-      pcCU->setMVPNumSubParts( aaiMvpNum[0][iRefIdx[0]], REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
+      pcCU->setMVPNumSubParts( aaiMvpNum[0][iRefIdx[0]], REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));//设置MVP索引及MVP列表中候选MVP的个数
 
-      uiMEBits = uiBits[0];
+      uiMEBits = uiBits[0];//前向预测编码总比特数
     }
-    else
+    else//list1中中最优MV的损耗较小 后向预测
     {
       uiLastMode = 1;
       pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMv( cMv[1], ePartSize, uiPartAddr, 0, iPartIdx );
-      pcCU->getCUMvField(REF_PIC_LIST_1)->setAllRefIdx( iRefIdx[1], ePartSize, uiPartAddr, 0, iPartIdx );
+      pcCU->getCUMvField(REF_PIC_LIST_1)->setAllRefIdx( iRefIdx[1], ePartSize, uiPartAddr, 0, iPartIdx );//只设置list1中的最优运动矢量信息
 
       TempMv = cMv[1] - cMvPred[1][iRefIdx[1]];
-      pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMvd    ( TempMv,                 ePartSize, uiPartAddr, 0, iPartIdx );
+      pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMvd    ( TempMv,                 ePartSize, uiPartAddr, 0, iPartIdx );//设置MVD
 
       pcCU->setInterDirSubParts( 2, uiPartAddr, iPartIdx, pcCU->getDepth(0) );
 
       pcCU->setMVPIdxSubParts( aaiMvpIdx[1][iRefIdx[1]], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
-      pcCU->setMVPNumSubParts( aaiMvpNum[1][iRefIdx[1]], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
+      pcCU->setMVPNumSubParts( aaiMvpNum[1][iRefIdx[1]], REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));//设置MVP索引及MVP列表中候选MVP的个数
 
-      uiMEBits = uiBits[1];
+      uiMEBits = uiBits[1];//后向预测编码比特数
     }
 #if AMP_MRG
     } // end if bTestNormalMC
 #endif
-
-    if ( pcCU->getPartitionSize( uiPartAddr ) != SIZE_2Nx2N )
+    //CU中有多块Pu 则需要判断是否需要merge(融合不同pu的运动参数)
+    if ( pcCU->getPartitionSize( uiPartAddr ) != SIZE_2Nx2N )//Cu分割方式不为2Nx2N
     {
       UInt uiMRGInterDir = 0;
       TComMvField cMRGMvField[2];
@@ -3381,7 +3359,7 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
       UInt uiMEInterDir = 0;
       TComMvField cMEMvField[2];
 
-      m_pcRdCost->getMotionCost( true, 0, pcCU->getCUTransquantBypass(uiPartAddr) );
+      m_pcRdCost->getMotionCost( true, 0, pcCU->getCUTransquantBypass(uiPartAddr) );//得到率失真计算的lamda
 
 #if AMP_MRG
       // calculate ME cost
@@ -3396,8 +3374,8 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 #else
       // calculate ME cost
       Distortion uiMEError = std::numeric_limits<Distortion>::max();
-      xGetInterPredictionError( pcCU, pcOrgYuv, iPartIdx, uiMEError, m_pcEncCfg->getUseHADME() );
-      Distortion uiMECost = uiMEError + m_pcRdCost->getCost( uiMEBits );
+      xGetInterPredictionError( pcCU, pcOrgYuv, iPartIdx, uiMEError, m_pcEncCfg->getUseHADME() );//计算帧间预测误差(即上述过程求得的最优帧间预测信息对应的预测误差)
+      Distortion uiMECost = uiMEError + m_pcRdCost->getCost( uiMEBits );//总损耗 
 #endif
       // save ME result.
       uiMEInterDir = pcCU->getInterDir( uiPartAddr );
@@ -3407,41 +3385,41 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
       // find Merge result
       Distortion uiMRGCost = std::numeric_limits<Distortion>::max();
 
-      xMergeEstimation( pcCU, pcOrgYuv, iPartIdx, uiMRGInterDir, cMRGMvField, uiMRGIndex, uiMRGCost, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand);
+      xMergeEstimation( pcCU, pcOrgYuv, iPartIdx, uiMRGInterDir, cMRGMvField, uiMRGIndex, uiMRGCost, cMvFieldNeighbours, uhInterDirNeighbours, numValidMergeCand);//计算merge列表中最优的损耗
 
-      if ( uiMRGCost < uiMECost )
+      if ( uiMRGCost < uiMECost )//merge方法最优损耗优于帧间预测得到的损耗
       {
         // set Merge result
-        pcCU->setMergeFlagSubParts ( true,          uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
-        pcCU->setMergeIndexSubParts( uiMRGIndex,    uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
-        pcCU->setInterDirSubParts  ( uiMRGInterDir, uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
-        pcCU->getCUMvField( REF_PIC_LIST_0 )->setAllMvField( cMRGMvField[0], ePartSize, uiPartAddr, 0, iPartIdx );
-        pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllMvField( cMRGMvField[1], ePartSize, uiPartAddr, 0, iPartIdx );
+        pcCU->setMergeFlagSubParts ( true,          uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );//设置该PU使用merge
+        pcCU->setMergeIndexSubParts( uiMRGIndex,    uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );//设置该PU merge列表中最优MV在列表中的索引
+        pcCU->setInterDirSubParts  ( uiMRGInterDir, uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );//设置该PU merge列表中该MV帧间预测方向
+        pcCU->getCUMvField( REF_PIC_LIST_0 )->setAllMvField( cMRGMvField[0], ePartSize, uiPartAddr, 0, iPartIdx );//设置该PU merge列表中该最优MV在list0中的MV信息
+        pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllMvField( cMRGMvField[1], ePartSize, uiPartAddr, 0, iPartIdx );//设置该Pu merge列表中该最优MV在list1中的MV信息
 
         pcCU->getCUMvField(REF_PIC_LIST_0)->setAllMvd    ( cMvZero,            ePartSize, uiPartAddr, 0, iPartIdx );
-        pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMvd    ( cMvZero,            ePartSize, uiPartAddr, 0, iPartIdx );
+        pcCU->getCUMvField(REF_PIC_LIST_1)->setAllMvd    ( cMvZero,            ePartSize, uiPartAddr, 0, iPartIdx );//merge方法不存在MVD  设置为0
 
         pcCU->setMVPIdxSubParts( -1, REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
         pcCU->setMVPNumSubParts( -1, REF_PIC_LIST_0, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
         pcCU->setMVPIdxSubParts( -1, REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
-        pcCU->setMVPNumSubParts( -1, REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));
+        pcCU->setMVPNumSubParts( -1, REF_PIC_LIST_1, uiPartAddr, iPartIdx, pcCU->getDepth(uiPartAddr));//AMVP运动矢量方法置为无效
       }
-      else
+      else//帧间预测(AMVP)方法较优
       {
         // set ME result
-        pcCU->setMergeFlagSubParts( false,        uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
+        pcCU->setMergeFlagSubParts( false,        uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );//设置该PU不使用merge
         pcCU->setInterDirSubParts ( uiMEInterDir, uiPartAddr, iPartIdx, pcCU->getDepth( uiPartAddr ) );
         pcCU->getCUMvField( REF_PIC_LIST_0 )->setAllMvField( cMEMvField[0], ePartSize, uiPartAddr, 0, iPartIdx );
-        pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllMvField( cMEMvField[1], ePartSize, uiPartAddr, 0, iPartIdx );
+        pcCU->getCUMvField( REF_PIC_LIST_1 )->setAllMvField( cMEMvField[1], ePartSize, uiPartAddr, 0, iPartIdx );//设置该PU的帧间预测运动矢量信息
       }
     }
 
     //  MC
-    motionCompensation ( pcCU, pcPredYuv, REF_PIC_LIST_X, iPartIdx );
+    motionCompensation ( pcCU, pcPredYuv, REF_PIC_LIST_X, iPartIdx );//运动补偿 由最优的帧间预测运动矢量信息得到最终的预测像素值 并保存在pcPredYuv中
 
   } //  end of for ( Int iPartIdx = 0; iPartIdx < iNumPart; iPartIdx++ )
 
-  setWpScalingDistParam( pcCU, -1, REF_PIC_LIST_X );
+  setWpScalingDistParam( pcCU, -1, REF_PIC_LIST_X );//设置加权预测的权重 (由slice信息得到)
 
   return;
 }
@@ -3449,8 +3427,8 @@ Void TEncSearch::predInterSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* 
 
 // AMVP
 Void TEncSearch::xEstimateMvPredAMVP( TComDataCU* pcCU, TComYuv* pcOrgYuv, UInt uiPartIdx, RefPicList eRefPicList, Int iRefIdx, TComMv& rcMvPred, Bool bFilled, Distortion* puiDistBiP )
-{
-  AMVPInfo*  pcAMVPInfo = pcCU->getCUMvField(eRefPicList)->getAMVPInfo();
+{//得到给定PU的最优预测运动矢量(AMVP)
+  AMVPInfo*  pcAMVPInfo = pcCU->getCUMvField(eRefPicList)->getAMVPInfo();//pcAMVPInfo用于储存候选MVPs信息 将AMVP信息保存在该CU的pcAMVPInfo中
 
   TComMv     cBestMv;
   Int        iBestIdx   = 0;
@@ -3461,82 +3439,82 @@ Void TEncSearch::xEstimateMvPredAMVP( TComDataCU* pcCU, TComYuv* pcOrgYuv, UInt 
   Int        iRoiWidth, iRoiHeight;
   Int        i;
 
-  pcCU->getPartIndexAndSize( uiPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );
+  pcCU->getPartIndexAndSize( uiPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );//得到该pu的宽 高 和位置
   // Fill the MV Candidates
-  if (!bFilled)
+  if (!bFilled)//若该Cu还未设置最优预测mv信息
   {
-    pcCU->fillMvpCand( uiPartIdx, uiPartAddr, eRefPicList, iRefIdx, pcAMVPInfo );
+    pcCU->fillMvpCand( uiPartIdx, uiPartAddr, eRefPicList, iRefIdx, pcAMVPInfo );//将该PU的候选MVPs信息储存到pcAMVPInfo中
   }
 
   // initialize Mvp index & Mvp
   iBestIdx = 0;
-  cBestMv  = pcAMVPInfo->m_acMvCand[0];
-  if (pcAMVPInfo->iN <= 1)
-  {
+  cBestMv  = pcAMVPInfo->m_acMvCand[0];//将候选MVP列表中第一个MV作为初始的最优预测MV
+  if (pcAMVPInfo->iN <= 1)//如果候选MVP列表中候选预测MV个数小于或等于1
+  {//则直接将初始预测MV作为最终最优预测MV
     rcMvPred = cBestMv;
 
-    pcCU->setMVPIdxSubParts( iBestIdx, eRefPicList, uiPartAddr, uiPartIdx, pcCU->getDepth(uiPartAddr));
-    pcCU->setMVPNumSubParts( pcAMVPInfo->iN, eRefPicList, uiPartAddr, uiPartIdx, pcCU->getDepth(uiPartAddr));
+    pcCU->setMVPIdxSubParts( iBestIdx, eRefPicList, uiPartAddr, uiPartIdx, pcCU->getDepth(uiPartAddr));//在该PU处设置最优预测MV在列表中的索引
+    pcCU->setMVPNumSubParts( pcAMVPInfo->iN, eRefPicList, uiPartAddr, uiPartIdx, pcCU->getDepth(uiPartAddr));//在该PU处设置MVP列表中候选预测MV的个数
 
-    if(pcCU->getSlice()->getMvdL1ZeroFlag() && eRefPicList==REF_PIC_LIST_1)
+    if(pcCU->getSlice()->getMvdL1ZeroFlag() && eRefPicList==REF_PIC_LIST_1)//如果参考图像列表为list1且list1中MVD为0 则需要计算总损耗 帧间预测时需要用到
     {
-      (*puiDistBiP) = xGetTemplateCost( pcCU, uiPartAddr, pcOrgYuv, &m_cYuvPredTemp, rcMvPred, 0, AMVP_MAX_NUM_CANDS, eRefPicList, iRefIdx, iRoiWidth, iRoiHeight);
+      (*puiDistBiP) = xGetTemplateCost( pcCU, uiPartAddr, pcOrgYuv, &m_cYuvPredTemp, rcMvPred, 0, AMVP_MAX_NUM_CANDS, eRefPicList, iRefIdx, iRoiWidth, iRoiHeight);//直接计算该矢量的损耗
     }
     return;
   }
 
-  if (bFilled)
+  if (bFilled)//若该Cu已经设置过最优预测mv信息
   {
     assert(pcCU->getMVPIdx(eRefPicList,uiPartAddr) >= 0);
-    rcMvPred = pcAMVPInfo->m_acMvCand[pcCU->getMVPIdx(eRefPicList,uiPartAddr)];
+    rcMvPred = pcAMVPInfo->m_acMvCand[pcCU->getMVPIdx(eRefPicList,uiPartAddr)];//则最优预测运动矢量直接由设置的MVP索引得到
     return;
   }
 
   m_cYuvPredTemp.clear();
   //-- Check Minimum Cost.
-  for ( i = 0 ; i < pcAMVPInfo->iN; i++)
+  for ( i = 0 ; i < pcAMVPInfo->iN; i++)//遍历所有候选预测MV
   {
     Distortion uiTmpCost;
-    uiTmpCost = xGetTemplateCost( pcCU, uiPartAddr, pcOrgYuv, &m_cYuvPredTemp, pcAMVPInfo->m_acMvCand[i], i, AMVP_MAX_NUM_CANDS, eRefPicList, iRefIdx, iRoiWidth, iRoiHeight);
-    if ( uiBestCost > uiTmpCost )
-    {
-      uiBestCost = uiTmpCost;
-      cBestMv   = pcAMVPInfo->m_acMvCand[i];
-      iBestIdx  = i;
-      (*puiDistBiP) = uiTmpCost;
+    uiTmpCost = xGetTemplateCost( pcCU, uiPartAddr, pcOrgYuv, &m_cYuvPredTemp, pcAMVPInfo->m_acMvCand[i], i, AMVP_MAX_NUM_CANDS, eRefPicList, iRefIdx, iRoiWidth, iRoiHeight);//计算该预测MV对应的总损耗(失真+编码MVP索引的损耗)
+    if ( uiBestCost > uiTmpCost )//若该预测MV的损耗小于最优损耗
+    {//更新信息
+      uiBestCost = uiTmpCost;//更新最优损耗
+      cBestMv   = pcAMVPInfo->m_acMvCand[i];//更新最优预测MV
+      iBestIdx  = i;//更新最优预测MV的索引
+      (*puiDistBiP) = uiTmpCost;//将最优损耗写入puiDistBiP
     }
   }
 
   m_cYuvPredTemp.clear();
 
   // Setting Best MVP
-  rcMvPred = cBestMv;
-  pcCU->setMVPIdxSubParts( iBestIdx, eRefPicList, uiPartAddr, uiPartIdx, pcCU->getDepth(uiPartAddr));
-  pcCU->setMVPNumSubParts( pcAMVPInfo->iN, eRefPicList, uiPartAddr, uiPartIdx, pcCU->getDepth(uiPartAddr));
+  rcMvPred = cBestMv;//最终的预测MV为MVP列表中最优的预测MV
+  pcCU->setMVPIdxSubParts( iBestIdx, eRefPicList, uiPartAddr, uiPartIdx, pcCU->getDepth(uiPartAddr));//在该PU处设置最优预测MV在列表中的索引
+  pcCU->setMVPNumSubParts( pcAMVPInfo->iN, eRefPicList, uiPartAddr, uiPartIdx, pcCU->getDepth(uiPartAddr));//在该PU处设置MVP列表中候选预测MV的个数
   return;
 }
 
-UInt TEncSearch::xGetMvpIdxBits(Int iIdx, Int iNum)
+UInt TEncSearch::xGetMvpIdxBits(Int iIdx, Int iNum)//得到编码MVP在候选MVP列表中索引的比特数 同样二元化方法为Truncated Unary!! 只不过Cmax为iNum-1
 {
   assert(iIdx >= 0 && iNum >= 0 && iIdx < iNum);
 
-  if (iNum == 1)
+  if (iNum == 1)//列表中只有一个矢量 即不需要额外的比特数来指明该矢量为列表中的位置
   {
     return 0;
   }
 
   UInt uiLength = 1;
   Int iTemp = iIdx;
-  if ( iTemp == 0 )
+  if ( iTemp == 0 )//Truncated Unary N为0时 二元化比特位数一定为1
   {
     return uiLength;
   }
 
-  Bool bCodeLast = ( iNum-1 > iTemp );
+  Bool bCodeLast = ( iNum-1 > iTemp );//是否为MVP列表中的最后一个预测mv
 
-  uiLength += (iTemp-1);
+  uiLength += (iTemp-1);//若N=Cmax 则需要截断 则二元化比特位数为N(iIdx)
 
-  if( bCodeLast )
+  if( bCodeLast )//不为最后一个索引 不需要截断 则加1
   {
     uiLength++;
   }
@@ -3602,54 +3580,54 @@ Void TEncSearch::xCopyAMVPInfo (AMVPInfo* pSrc, AMVPInfo* pDst)
   }
 }
 
-Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComMv cMv, TComMv& rcMvPred, Int& riMVPIdx, UInt& ruiBits, Distortion& ruiCost )
-{
-  AMVPInfo* pcAMVPInfo = pcCU->getCUMvField(eRefPicList)->getAMVPInfo();
+Void TEncSearch::xCheckBestMVP ( TComDataCU* pcCU, RefPicList eRefPicList, TComMv cMv, TComMv& rcMvPred, Int& riMVPIdx, UInt& ruiBits, Distortion& ruiCost )//从mvp中检测出最优的mv作为预测mv
+{//cMv为当前实际的运动矢量
+  AMVPInfo* pcAMVPInfo = pcCU->getCUMvField(eRefPicList)->getAMVPInfo();//得到MVP信息
 
   assert(pcAMVPInfo->m_acMvCand[riMVPIdx] == rcMvPred);
 
-  if (pcAMVPInfo->iN < 2)
+  if (pcAMVPInfo->iN < 2)//候选预测运动矢量数小于2 
   {
-    return;
+    return;//直接结束方法
   }
 
-  m_pcRdCost->getMotionCost( true, 0, pcCU->getCUTransquantBypass(0) );
+  m_pcRdCost->getMotionCost( true, 0, pcCU->getCUTransquantBypass(0) );//根据失真计算方法及是否TransquantBypass得到m_uiCost(率失真中lamda)
   m_pcRdCost->setCostScale ( 0    );
 
   Int iBestMVPIdx = riMVPIdx;
 
-  m_pcRdCost->setPredictor( rcMvPred );
-  Int iOrgMvBits  = m_pcRdCost->getBits(cMv.getHor(), cMv.getVer());
-  iOrgMvBits += m_auiMVPIdxCost[riMVPIdx][AMVP_MAX_NUM_CANDS];
-  Int iBestMvBits = iOrgMvBits;
+  m_pcRdCost->setPredictor( rcMvPred );//用rcMvPred做预测运动矢量
+  Int iOrgMvBits  = m_pcRdCost->getBits(cMv.getHor(), cMv.getVer());//编码实际运动矢量所需的比特数
+  iOrgMvBits += m_auiMVPIdxCost[riMVPIdx][AMVP_MAX_NUM_CANDS];//加上编码预测运动矢量在MVP列表中位置的bit数
+  Int iBestMvBits = iOrgMvBits;//将给定的预测MV作为默认最优预测MV
 
-  for (Int iMVPIdx = 0; iMVPIdx < pcAMVPInfo->iN; iMVPIdx++)
+  for (Int iMVPIdx = 0; iMVPIdx < pcAMVPInfo->iN; iMVPIdx++)//遍历MVP列表中的所有候选预测MV
   {
-    if (iMVPIdx == riMVPIdx)
+    if (iMVPIdx == riMVPIdx)//如果为给定的预测MV 则计算下一个
     {
       continue;
     }
 
-    m_pcRdCost->setPredictor( pcAMVPInfo->m_acMvCand[iMVPIdx] );
+    m_pcRdCost->setPredictor( pcAMVPInfo->m_acMvCand[iMVPIdx] );//将该候选预测MV作为预测MV
 
     Int iMvBits = m_pcRdCost->getBits(cMv.getHor(), cMv.getVer());
     iMvBits += m_auiMVPIdxCost[iMVPIdx][AMVP_MAX_NUM_CANDS];
 
-    if (iMvBits < iBestMvBits)
-    {
+    if (iMvBits < iBestMvBits)//该候选的预测MV编码的比特数小于最优值
+    {//则更新该候选预测MV为最优预测MV
       iBestMvBits = iMvBits;
       iBestMVPIdx = iMVPIdx;
     }
   }
 
-  if (iBestMVPIdx != riMVPIdx)  //if changed
-  {
-    rcMvPred = pcAMVPInfo->m_acMvCand[iBestMVPIdx];
+  if (iBestMVPIdx != riMVPIdx)  //if changed//如果最优预测MV发生改变
+  {//更新信息
+    rcMvPred = pcAMVPInfo->m_acMvCand[iBestMVPIdx];//将rcMvPred更新为MVP列表中最优预测MV
 
-    riMVPIdx = iBestMVPIdx;
+    riMVPIdx = iBestMVPIdx;//更新最优MVP索引
     UInt uiOrgBits = ruiBits;
-    ruiBits = uiOrgBits - iOrgMvBits + iBestMvBits;
-    ruiCost = (ruiCost - m_pcRdCost->getCost( uiOrgBits ))  + m_pcRdCost->getCost( ruiBits );
+    ruiBits = uiOrgBits - iOrgMvBits + iBestMvBits;//更新编码比特数
+    ruiCost = (ruiCost - m_pcRdCost->getCost( uiOrgBits ))  + m_pcRdCost->getCost( ruiBits );//更新总损耗
   }
 }
 
@@ -3665,72 +3643,72 @@ Distortion TEncSearch::xGetTemplateCost( TComDataCU* pcCU,
                                          Int         iRefIdx,
                                          Int         iSizeX,
                                          Int         iSizeY
-                                         )
+                                         )//计算候选MVP列表中MVP的总损耗(较原像素块失真+编码比特)
 {
-  Distortion uiCost = std::numeric_limits<Distortion>::max();
+  Distortion uiCost = std::numeric_limits<Distortion>::max();//初始损耗为最大值
 
-  TComPicYuv* pcPicYuvRef = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec();
+  TComPicYuv* pcPicYuvRef = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdx )->getPicYuvRec();//重建图像(参考图像)
 
-  pcCU->clipMv( cMvCand );
+  pcCU->clipMv( cMvCand );//限制运动矢量在合理的范围
 
   // prediction pattern
-  if ( pcCU->getSlice()->testWeightPred() && pcCU->getSlice()->getSliceType()==P_SLICE )
+  if ( pcCU->getSlice()->testWeightPred() && pcCU->getSlice()->getSliceType()==P_SLICE )//slice为带权重的单向预测
   {
-    xPredInterBlk( COMPONENT_Y, pcCU, pcPicYuvRef, uiPartAddr, &cMvCand, iSizeX, iSizeY, pcTemplateCand, true, pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) );
+    xPredInterBlk( COMPONENT_Y, pcCU, pcPicYuvRef, uiPartAddr, &cMvCand, iSizeX, iSizeY, pcTemplateCand, true, pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) );//根据运动矢量得到预测像素值(为中间结果 因为还需要进行加权)
   }
   else
   {
-    xPredInterBlk( COMPONENT_Y, pcCU, pcPicYuvRef, uiPartAddr, &cMvCand, iSizeX, iSizeY, pcTemplateCand, false, pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) );
+    xPredInterBlk( COMPONENT_Y, pcCU, pcPicYuvRef, uiPartAddr, &cMvCand, iSizeX, iSizeY, pcTemplateCand, false, pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) );//根据运动矢量得到预测像素值(最终结果)
   }
 
   if ( pcCU->getSlice()->testWeightPred() && pcCU->getSlice()->getSliceType()==P_SLICE )
   {
-    xWeightedPredictionUni( pcCU, pcTemplateCand, uiPartAddr, iSizeX, iSizeY, eRefPicList, pcTemplateCand, iRefIdx );
+    xWeightedPredictionUni( pcCU, pcTemplateCand, uiPartAddr, iSizeX, iSizeY, eRefPicList, pcTemplateCand, iRefIdx );//乘以相应的权重
   }
 
   // calc distortion
-
+  //计算失真
   uiCost = m_pcRdCost->getDistPart( pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA), pcTemplateCand->getAddr(COMPONENT_Y, uiPartAddr), pcTemplateCand->getStride(COMPONENT_Y), pcOrgYuv->getAddr(COMPONENT_Y, uiPartAddr), pcOrgYuv->getStride(COMPONENT_Y), iSizeX, iSizeY, COMPONENT_Y, DF_SAD );
-  uiCost = (UInt) m_pcRdCost->calcRdCost( m_auiMVPIdxCost[iMVPIdx][iMVPNum], uiCost, false, DF_SAD );
+  uiCost = (UInt) m_pcRdCost->calcRdCost( m_auiMVPIdxCost[iMVPIdx][iMVPNum], uiCost, false, DF_SAD );//总损耗
   return uiCost;
 }
 
 
 
 
-Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPartIdx, RefPicList eRefPicList, TComMv* pcMvPred, Int iRefIdxPred, TComMv& rcMv, UInt& ruiBits, Distortion& ruiCost, Bool bBi  )
-{
+Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPartIdx, RefPicList eRefPicList, TComMv* pcMvPred, Int iRefIdxPred, TComMv& rcMv, UInt& ruiBits, Distortion& ruiCost, Bool bBi  )//运动估计
+{//P帧时比较好理解 重点理解Bi双向预测 要注意最终求得的损耗ruiCost不仅为单向预测时的总损耗 双向预测时也是双向预测的总损耗!!!!
   UInt          uiPartAddr;
   Int           iRoiWidth;
   Int           iRoiHeight;
 
-  TComMv        cMvHalf, cMvQter;
+  TComMv        cMvHalf, cMvQter;//用于保存亚像素运动估计时的像素偏移量
   TComMv        cMvSrchRngLT;
   TComMv        cMvSrchRngRB;
 
-  TComYuv*      pcYuv = pcYuvOrg;
+  TComYuv*      pcYuv = pcYuvOrg;//原像素块起始位置
 
   assert(eRefPicList < MAX_NUM_REF_LIST_ADAPT_SR && iRefIdxPred<Int(MAX_IDX_ADAPT_SR));
-  m_iSearchRange = m_aaiAdaptSR[eRefPicList][iRefIdxPred];
+  m_iSearchRange = m_aaiAdaptSR[eRefPicList][iRefIdxPred];//根据当前参考图像列表和参考图像索引得到自适应搜索范围
 
-  Int           iSrchRng      = ( bBi ? m_bipredSearchRange : m_iSearchRange );
+  Int           iSrchRng      = ( bBi ? m_bipredSearchRange : m_iSearchRange );//根据是否为双向预测得到最终的搜索范围
   TComPattern   tmpPattern;
-  TComPattern*  pcPatternKey  = &tmpPattern;
+  TComPattern*  pcPatternKey  = &tmpPattern;//用于保存原图像信息 计算损耗
 
   Double        fWeight       = 1.0;
 
-  pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );
+  pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iRoiWidth, iRoiHeight );//根据该cu中pu块的索引 得到pu的宽 高 在Cu中的位置
 
-  if ( bBi )
+  if ( bBi )//如果为双向预测
   {
-    TComYuv*  pcYuvOther = &m_acYuvPred[1-(Int)eRefPicList];
-    pcYuv                = &m_cYuvPredTemp;
+    TComYuv*  pcYuvOther = &m_acYuvPred[1-(Int)eRefPicList];//从另一参考图像列表中得到的预测像素值
+    pcYuv                = &m_cYuvPredTemp;//64*64
 
-    pcYuvOrg->copyPartToPartYuv( pcYuv, uiPartAddr, iRoiWidth, iRoiHeight );
+    pcYuvOrg->copyPartToPartYuv( pcYuv, uiPartAddr, iRoiWidth, iRoiHeight );//将原像素块给定位置复制到pcYuv对应位置
 
-    pcYuv->removeHighFreq( pcYuvOther, uiPartAddr, iRoiWidth, iRoiHeight, pcCU->getSlice()->getSPS()->getBitDepths().recon, m_pcEncCfg->getClipForBiPredMeEnabled() );
+    pcYuv->removeHighFreq( pcYuvOther, uiPartAddr, iRoiWidth, iRoiHeight, pcCU->getSlice()->getSPS()->getBitDepths().recon, m_pcEncCfg->getClipForBiPredMeEnabled() );//当前图像加上与另一参考图像中已确定的最优预测像素间的预测误差 可以理解为双向预测时已确定一参考图像列表中最优运动矢量后的当前图像
 
-    fWeight = 0.5;
+    fWeight = 0.5;//双向预测权重为0.5 原因是双向预测时 运动补偿最后的失真误差为两个参考参考列表中最优的预测像素块相加减去2倍的当前像素的绝对值 所以最终的误差还需除以2才为实际双向预测时的误差
   }
 
   //  Search key pattern initialization
@@ -3738,63 +3716,63 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
                              iRoiWidth,
                              iRoiHeight,
                              pcYuv->getStride(COMPONENT_Y),
-                             pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) );
+                             pcCU->getSlice()->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA) );//初始化pcPatternKey 得到原像素块信息
 
-  Pel*        piRefY      = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdxPred )->getPicYuvRec()->getAddr( COMPONENT_Y, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiPartAddr );
-  Int         iRefStride  = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdxPred )->getPicYuvRec()->getStride(COMPONENT_Y);
+  Pel*        piRefY      = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdxPred )->getPicYuvRec()->getAddr( COMPONENT_Y, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu() + uiPartAddr );//参考像素的起始位置
+  Int         iRefStride  = pcCU->getSlice()->getRefPic( eRefPicList, iRefIdxPred )->getPicYuvRec()->getStride(COMPONENT_Y);//参考像素块步长
 
   TComMv      cMvPred = *pcMvPred;
 
   if ( bBi )
   {
-    xSetSearchRange   ( pcCU, rcMv   , iSrchRng, cMvSrchRngLT, cMvSrchRngRB );
+    xSetSearchRange   ( pcCU, rcMv   , iSrchRng, cMvSrchRngLT, cMvSrchRngRB );//双向预测用rcMv得到搜索范围
   }
   else
   {
-    xSetSearchRange   ( pcCU, cMvPred, iSrchRng, cMvSrchRngLT, cMvSrchRngRB );
+    xSetSearchRange   ( pcCU, cMvPred, iSrchRng, cMvSrchRngLT, cMvSrchRngRB );//单向预测用pcMvPred得到搜索范围
   }
 
   m_pcRdCost->getMotionCost( true, 0, pcCU->getCUTransquantBypass(uiPartAddr) );
 
   m_pcRdCost->setPredictor  ( *pcMvPred );
-  m_pcRdCost->setCostScale  ( 2 );
+  m_pcRdCost->setCostScale  ( 2 );//整像素精度mv放大倍数1<<2
 
-  setWpScalingDistParam( pcCU, iRefIdxPred, eRefPicList );
+  setWpScalingDistParam( pcCU, iRefIdxPred, eRefPicList );//设置当前参考图像的预测权重
   //  Do integer search
-  if ( !m_iFastSearch || bBi )
+  if ( !m_iFastSearch || bBi )//常规搜索或为双向预测
   {
-    xPatternSearch      ( pcPatternKey, piRefY, iRefStride, &cMvSrchRngLT, &cMvSrchRngRB, rcMv, ruiCost );
+    xPatternSearch      ( pcPatternKey, piRefY, iRefStride, &cMvSrchRngLT, &cMvSrchRngRB, rcMv, ruiCost );//在给定搜索范围内全搜索(起始运动矢量为rcMv)将最优运动矢量赋给rcMv
   }
   else
   {
     rcMv = *pcMvPred;
     const TComMv *pIntegerMv2Nx2NPred=0;
-    if (pcCU->getPartitionSize(0) != SIZE_2Nx2N || pcCU->getDepth(0) != 0)
+    if (pcCU->getPartitionSize(0) != SIZE_2Nx2N || pcCU->getDepth(0) != 0)//如果该PU不为64*64
     {
-      pIntegerMv2Nx2NPred = &(m_integerMv2Nx2N[eRefPicList][iRefIdxPred]);
+      pIntegerMv2Nx2NPred = &(m_integerMv2Nx2N[eRefPicList][iRefIdxPred]);//则还需要检测m_integerMv2Nx2N[eRefPicList][iRefIdxPred]是否为最优起始MV
     }
-    xPatternSearchFast  ( pcCU, pcPatternKey, piRefY, iRefStride, &cMvSrchRngLT, &cMvSrchRngRB, rcMv, ruiCost, pIntegerMv2Nx2NPred );
-    if (pcCU->getPartitionSize(0) == SIZE_2Nx2N)
+    xPatternSearchFast  ( pcCU, pcPatternKey, piRefY, iRefStride, &cMvSrchRngLT, &cMvSrchRngRB, rcMv, ruiCost, pIntegerMv2Nx2NPred );//快速搜索(起始运动矢量为pcMvPred)将最优运动矢量赋给rcMv
+    if (pcCU->getPartitionSize(0) == SIZE_2Nx2N)//如果cu中Pu的分割方式为2Nx2N
     {
-      m_integerMv2Nx2N[eRefPicList][iRefIdxPred] = rcMv;
+      m_integerMv2Nx2N[eRefPicList][iRefIdxPred] = rcMv;//则将最优整像素精度rcMv赋给m_integerMv2Nx2N
     }
   }
 
   m_pcRdCost->getMotionCost( true, 0, pcCU->getCUTransquantBypass(uiPartAddr) );
-  m_pcRdCost->setCostScale ( 1 );
+  m_pcRdCost->setCostScale ( 1 );//1/2像素精度mv放大倍数1<<1
 
   const Bool bIsLosslessCoded = pcCU->getCUTransquantBypass(uiPartAddr) != 0;
-  xPatternSearchFracDIF( bIsLosslessCoded, pcPatternKey, piRefY, iRefStride, &rcMv, cMvHalf, cMvQter, ruiCost );
+  xPatternSearchFracDIF( bIsLosslessCoded, pcPatternKey, piRefY, iRefStride, &rcMv, cMvHalf, cMvQter, ruiCost );//亚像素精度运动矢量估计 1/2最优像素偏移赋给cMvHalf 1/2最优像素偏移赋给cMvQter
 
   m_pcRdCost->setCostScale( 0 );
   rcMv <<= 2;
   rcMv += (cMvHalf <<= 1);
-  rcMv +=  cMvQter;
+  rcMv +=  cMvQter;//最终的运动矢量 (1/4像素精度下)
 
-  UInt uiMvBits = m_pcRdCost->getBits( rcMv.getHor(), rcMv.getVer() );
+  UInt uiMvBits = m_pcRdCost->getBits( rcMv.getHor(), rcMv.getVer() );//运动矢量的编码比特位
 
-  ruiBits      += uiMvBits;
-  ruiCost       = (Distortion)( floor( fWeight * ( (Double)ruiCost - (Double)m_pcRdCost->getCost( uiMvBits ) ) ) + (Double)m_pcRdCost->getCost( ruiBits ) );
+  ruiBits      += uiMvBits;//总的编码比特位
+  ruiCost       = (Distortion)( floor( fWeight * ( (Double)ruiCost - (Double)m_pcRdCost->getCost( uiMvBits ) ) ) + (Double)m_pcRdCost->getCost( ruiBits ) );//总损耗(为失真(总失真误差除以2取平均为双向预测时的误差)加上总的编码比特位) 
 }
 
 
@@ -3821,34 +3799,34 @@ Void TEncSearch::xSetSearchRange ( TComDataCU* pcCU, TComMv& cMvPred, Int iSrchR
 
 
 
-Void TEncSearch::xPatternSearch( TComPattern* pcPatternKey, Pel* piRefY, Int iRefStride, TComMv* pcMvSrchRngLT, TComMv* pcMvSrchRngRB, TComMv& rcMv, Distortion& ruiSAD )
+Void TEncSearch::xPatternSearch( TComPattern* pcPatternKey, Pel* piRefY, Int iRefStride, TComMv* pcMvSrchRngLT, TComMv* pcMvSrchRngRB, TComMv& rcMv, Distortion& ruiSAD )//常规搜索模式(全搜索)
 {
-  Int   iSrchRngHorLeft   = pcMvSrchRngLT->getHor();
+  Int   iSrchRngHorLeft   = pcMvSrchRngLT->getHor();//允许搜索的范围
   Int   iSrchRngHorRight  = pcMvSrchRngRB->getHor();
   Int   iSrchRngVerTop    = pcMvSrchRngLT->getVer();
   Int   iSrchRngVerBottom = pcMvSrchRngRB->getVer();
 
   Distortion  uiSad;
-  Distortion  uiSadBest = std::numeric_limits<Distortion>::max();
+  Distortion  uiSadBest = std::numeric_limits<Distortion>::max();//初始化SADBest为最大值
   Int         iBestX = 0;
   Int         iBestY = 0;
 
   Pel*  piRefSrch;
 
   //-- jclee for using the SAD function pointer
-  m_pcRdCost->setDistParam( pcPatternKey, piRefY, iRefStride,  m_cDistParam );
+  m_pcRdCost->setDistParam( pcPatternKey, piRefY, iRefStride,  m_cDistParam );//设置失真参数 失真函数为SAD
 
   // fast encoder decision: use subsampled SAD for integer ME
-  if ( m_pcEncCfg->getUseFastEnc() )
+  if ( m_pcEncCfg->getUseFastEnc() )//若使用快速编码 
   {
-    if ( m_cDistParam.iRows > 8 )
+    if ( m_cDistParam.iRows > 8 )//像素块的行数大于8
     {
-      m_cDistParam.iSubShift = 1;
+      m_cDistParam.iSubShift = 1;//则子采样 采样率为 1<<iSubShift
     }
   }
 
   piRefY += (iSrchRngVerTop * iRefStride);
-  for ( Int y = iSrchRngVerTop; y <= iSrchRngVerBottom; y++ )
+  for ( Int y = iSrchRngVerTop; y <= iSrchRngVerBottom; y++ )//遍历给定范围内的所有像素位置 作为参考像素的起始位置(全搜索!!)
   {
     for ( Int x = iSrchRngHorLeft; x <= iSrchRngHorRight; x++ )
     {
@@ -3859,24 +3837,24 @@ Void TEncSearch::xPatternSearch( TComPattern* pcPatternKey, Pel* piRefY, Int iRe
       setDistParamComp(COMPONENT_Y);
 
       m_cDistParam.bitDepth = pcPatternKey->getBitDepthY();
-      uiSad = m_cDistParam.DistFunc( &m_cDistParam );
+      uiSad = m_cDistParam.DistFunc( &m_cDistParam );//计算该位置下的Sad
 
       // motion cost
-      uiSad += m_pcRdCost->getCost( x, y );
+      uiSad += m_pcRdCost->getCost( x, y );//加上运动矢量编码损耗
 
-      if ( uiSad < uiSadBest )
+      if ( uiSad < uiSadBest )//小于最优损耗 则更新最优信息
       {
         uiSadBest = uiSad;
         iBestX    = x;
         iBestY    = y;
       }
     }
-    piRefY += iRefStride;
+    piRefY += iRefStride;//下一行像素位置
   }
 
-  rcMv.set( iBestX, iBestY );
+  rcMv.set( iBestX, iBestY );//设置该范围下的最优运动矢量
 
-  ruiSAD = uiSadBest - m_pcRdCost->getCost( iBestX, iBestY );
+  ruiSAD = uiSadBest - m_pcRdCost->getCost( iBestX, iBestY );//设置最优SAD
   return;
 }
 
@@ -3890,23 +3868,23 @@ Void TEncSearch::xPatternSearchFast( TComDataCU*   pcCU,
                                      TComMv*       pcMvSrchRngRB,
                                      TComMv       &rcMv,
                                      Distortion   &ruiSAD,
-                                     const TComMv* pIntegerMv2Nx2NPred )
+                                     const TComMv* pIntegerMv2Nx2NPred )//快速搜索模式(TZsearch)
 {
   assert (MD_LEFT < NUM_MV_PREDICTORS);
-  pcCU->getMvPredLeft       ( m_acMvPredictors[MD_LEFT] );
+  pcCU->getMvPredLeft       ( m_acMvPredictors[MD_LEFT] );//根据当前Cu位置 得到3个的预测运动矢量(用于搜索过程中搜索起始位置的确定) 
   assert (MD_ABOVE < NUM_MV_PREDICTORS);
   pcCU->getMvPredAbove      ( m_acMvPredictors[MD_ABOVE] );
   assert (MD_ABOVE_RIGHT < NUM_MV_PREDICTORS);
   pcCU->getMvPredAboveRight ( m_acMvPredictors[MD_ABOVE_RIGHT] );
 
-  switch ( m_iFastSearch )
+  switch ( m_iFastSearch )//判断快速搜索类型
   {
     case 1:
-      xTZSearch( pcCU, pcPatternKey, piRefY, iRefStride, pcMvSrchRngLT, pcMvSrchRngRB, rcMv, ruiSAD, pIntegerMv2Nx2NPred );
+      xTZSearch( pcCU, pcPatternKey, piRefY, iRefStride, pcMvSrchRngLT, pcMvSrchRngRB, rcMv, ruiSAD, pIntegerMv2Nx2NPred );//xTZSearch
       break;
 
     case 2:
-      xTZSearchSelective( pcCU, pcPatternKey, piRefY, iRefStride, pcMvSrchRngLT, pcMvSrchRngRB, rcMv, ruiSAD, pIntegerMv2Nx2NPred );
+      xTZSearchSelective( pcCU, pcPatternKey, piRefY, iRefStride, pcMvSrchRngLT, pcMvSrchRngRB, rcMv, ruiSAD, pIntegerMv2Nx2NPred );//xTZSearchSelective
       break;
     default:
       break;
@@ -3926,58 +3904,58 @@ Void TEncSearch::xTZSearch( TComDataCU*  pcCU,
                             Distortion  &ruiSAD,
                             const TComMv* pIntegerMv2Nx2NPred )
 {
-  Int   iSrchRngHorLeft   = pcMvSrchRngLT->getHor();
+  Int   iSrchRngHorLeft   = pcMvSrchRngLT->getHor();//允许的搜索范围
   Int   iSrchRngHorRight  = pcMvSrchRngRB->getHor();
   Int   iSrchRngVerTop    = pcMvSrchRngLT->getVer();
   Int   iSrchRngVerBottom = pcMvSrchRngRB->getVer();
-
-  TZ_SEARCH_CONFIGURATION
+ 
+  TZ_SEARCH_CONFIGURATION//宏定义了一系列变量 Tz算法的配置信息
 
   UInt uiSearchRange = m_iSearchRange;
   pcCU->clipMv( rcMv );
-  rcMv >>= 2;
-  // init TZSearchStruct
+  rcMv >>= 2;//亚像素精度运动矢量 转为整像素运动矢量
+  // init TZSearchStruct //用于保存搜索参数和结果
   IntTZSearchStruct cStruct;
   cStruct.iYStride    = iRefStride;
   cStruct.piRefY      = piRefY;
-  cStruct.uiBestSad   = MAX_UINT;
+  cStruct.uiBestSad   = MAX_UINT;//初始化uiBestSad为最大值
 
   // set rcMv (Median predictor) as start point and as best point
-  xTZSearchHelp( pcPatternKey, cStruct, rcMv.getHor(), rcMv.getVer(), 0, 0 );
+  xTZSearchHelp( pcPatternKey, cStruct, rcMv.getHor(), rcMv.getVer(), 0, 0 );// 以起始MV（即MVP）作为初始搜索点
 
   // test whether one of PRED_A, PRED_B, PRED_C MV is better start point than Median predictor
-  if ( bTestOtherPredictedMV )
+  if ( bTestOtherPredictedMV )//如果需要测试其他预测mv
   {
-    for ( UInt index = 0; index < NUM_MV_PREDICTORS; index++ )
+    for ( UInt index = 0; index < NUM_MV_PREDICTORS; index++ )//遍历所有预测mv
     {
       TComMv cMv = m_acMvPredictors[index];
       pcCU->clipMv( cMv );
       cMv >>= 2;
-      xTZSearchHelp( pcPatternKey, cStruct, cMv.getHor(), cMv.getVer(), 0, 0 );
+      xTZSearchHelp( pcPatternKey, cStruct, cMv.getHor(), cMv.getVer(), 0, 0 );//根据SAD更新最优的搜索信息
     }
   }
 
   // test whether zero Mv is better start point than Median predictor
-  if ( bTestZeroVector )
+  if ( bTestZeroVector )//如果需要测试 0 mv是否比给定mv更优
   {
-    xTZSearchHelp( pcPatternKey, cStruct, 0, 0, 0, 0 );
+    xTZSearchHelp( pcPatternKey, cStruct, 0, 0, 0, 0 );//测试 0 mv是否更优
   }
 
   if (pIntegerMv2Nx2NPred != 0)
   {
     TComMv integerMv2Nx2NPred = *pIntegerMv2Nx2NPred;
     integerMv2Nx2NPred <<= 2;
-    pcCU->clipMv( integerMv2Nx2NPred );
+    pcCU->clipMv( integerMv2Nx2NPred );//限制运动矢量可能达到的范围
     integerMv2Nx2NPred >>= 2;
-    xTZSearchHelp(pcPatternKey, cStruct, integerMv2Nx2NPred.getHor(), integerMv2Nx2NPred.getVer(), 0, 0);
+    xTZSearchHelp(pcPatternKey, cStruct, integerMv2Nx2NPred.getHor(), integerMv2Nx2NPred.getVer(), 0, 0);//搜索该运动矢量位置
 
-    // reset search range
+    // reset search range//重置搜索范围
     TComMv cMvSrchRngLT;
     TComMv cMvSrchRngRB;
     Int iSrchRng = m_iSearchRange;
     TComMv currBestMv(cStruct.iBestX, cStruct.iBestY );
     currBestMv <<= 2;
-    xSetSearchRange( pcCU, currBestMv, iSrchRng, cMvSrchRngLT, cMvSrchRngRB );
+    xSetSearchRange( pcCU, currBestMv, iSrchRng, cMvSrchRngLT, cMvSrchRngRB );//根据currBestMv和iSrchRng设置新的搜索范围
     iSrchRngHorLeft   = cMvSrchRngLT.getHor();
     iSrchRngHorRight  = cMvSrchRngRB.getHor();
     iSrchRngVerTop    = cMvSrchRngLT.getVer();
@@ -3990,28 +3968,28 @@ Void TEncSearch::xTZSearch( TComDataCU*  pcCU,
   Int  iStartY = cStruct.iBestY;
 
   // first search
-  for ( iDist = 1; iDist <= (Int)uiSearchRange; iDist*=2 )
+  for ( iDist = 1; iDist <= (Int)uiSearchRange; iDist*=2 )//在允许的搜索范围内 以2的整数次幂递增的步长进行搜索
   {
-    if ( bFirstSearchDiamond == 1 )
+    if ( bFirstSearchDiamond == 1 )//如果先进行菱形搜索
     {
-      xTZ8PointDiamondSearch ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );
+      xTZ8PointDiamondSearch ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );//则菱形搜索
     }
     else
     {
-      xTZ8PointSquareSearch  ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );
+      xTZ8PointSquareSearch  ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );//否则正方形搜索
     }
 
-    if ( bFirstSearchStop && ( cStruct.uiBestRound >= uiFirstSearchRounds ) ) // stop criterion
+    if ( bFirstSearchStop && ( cStruct.uiBestRound >= uiFirstSearchRounds ) ) // stop criterion//如果只搜索一圈 或搜索的圈数大于规定的圈数 则跳出搜索
     {
       break;
     }
   }
 
   // test whether zero Mv is a better start point than Median predictor
-  if ( bTestZeroVectorStart && ((cStruct.iBestX != 0) || (cStruct.iBestY != 0)) )
+  if ( bTestZeroVectorStart && ((cStruct.iBestX != 0) || (cStruct.iBestY != 0)) )//尝试零MV是否更优
   {
     xTZSearchHelp( pcPatternKey, cStruct, 0, 0, 0, 0 );
-    if ( (cStruct.iBestX == 0) && (cStruct.iBestY == 0) )
+    if ( (cStruct.iBestX == 0) && (cStruct.iBestY == 0) )//若0 MV较之前搜索点更优 则继续8点菱形搜索0MV附近的点
     {
       // test its neighborhood
       for ( iDist = 1; iDist <= (Int)uiSearchRange; iDist*=2 )
@@ -4026,97 +4004,97 @@ Void TEncSearch::xTZSearch( TComDataCU*  pcCU,
   }
 
   // calculate only 2 missing points instead 8 points if cStruct.uiBestDistance == 1
-  if ( cStruct.uiBestDistance == 1 )
+  if ( cStruct.uiBestDistance == 1 )//如果最优点对应的步长为1
   {
     cStruct.uiBestDistance = 0;
-    xTZ2PointSearch( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB );
+    xTZ2PointSearch( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB );//则在该点周围做2点搜索
   }
 
   // raster search if distance is too big
   if ( bEnableRasterSearch && ( ((Int)(cStruct.uiBestDistance) > iRaster) || bAlwaysRasterSearch ) )
-  {
-    cStruct.uiBestDistance = iRaster;
-    for ( iStartY = iSrchRngVerTop; iStartY <= iSrchRngVerBottom; iStartY += iRaster )
+  {//如果搜索得到的最优结果对应步长大于某个阈值 改用光栅搜索 步长为iRaster 搜索范围为设定的运动估计范围
+    cStruct.uiBestDistance = iRaster;//步长为iRaster
+    for ( iStartY = iSrchRngVerTop; iStartY <= iSrchRngVerBottom; iStartY += iRaster )//下一行
     {
-      for ( iStartX = iSrchRngHorLeft; iStartX <= iSrchRngHorRight; iStartX += iRaster )
+      for ( iStartX = iSrchRngHorLeft; iStartX <= iSrchRngHorRight; iStartX += iRaster )//搜索行上的点
       {
-        xTZSearchHelp( pcPatternKey, cStruct, iStartX, iStartY, 0, iRaster );
+        xTZSearchHelp( pcPatternKey, cStruct, iStartX, iStartY, 0, iRaster );//依次搜索在该范围内遍历到的点
       }
     }
   }
 
   // raster refinement
-  if ( bRasterRefinementEnable && cStruct.uiBestDistance > 0 )
+  if ( bRasterRefinementEnable && cStruct.uiBestDistance > 0 )//细化光栅搜索的最优位置
   {
     while ( cStruct.uiBestDistance > 0 )
     {
-      iStartX = cStruct.iBestX;
+      iStartX = cStruct.iBestX;//将上一次搜索的最优点更新为本次搜索的起始点
       iStartY = cStruct.iBestY;
       if ( cStruct.uiBestDistance > 1 )
       {
-        iDist = cStruct.uiBestDistance >>= 1;
-        if ( bRasterRefinementDiamond == 1 )
+        iDist = cStruct.uiBestDistance >>= 1;//步长以2的幂逐步减小
+        if ( bRasterRefinementDiamond == 1 )//细化光栅搜索的位置时用菱形搜索
         {
-          xTZ8PointDiamondSearch ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );
+          xTZ8PointDiamondSearch ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );//菱形搜索粗光栅搜索时最优点附近的点
         }
         else
         {
-          xTZ8PointSquareSearch  ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );
+          xTZ8PointSquareSearch  ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );//否则正方形搜索
         }
       }
 
       // calculate only 2 missing points instead 8 points if cStruct.uiBestDistance == 1
-      if ( cStruct.uiBestDistance == 1 )
+      if ( cStruct.uiBestDistance == 1 )////如果最优点对应的步长为1
       {
-        cStruct.uiBestDistance = 0;
+        cStruct.uiBestDistance = 0;//uiBestDistance置0 跳出 while循环
         if ( cStruct.ucPointNr != 0 )
         {
-          xTZ2PointSearch( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB );
+          xTZ2PointSearch( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB );//则2点搜索
         }
       }
     }
   }
 
   // start refinement
-  if ( bStarRefinementEnable && cStruct.uiBestDistance > 0 )
+  if ( bStarRefinementEnable && cStruct.uiBestDistance > 0 )//允许细化初始搜索的最优位置
   {
     while ( cStruct.uiBestDistance > 0 )
     {
-      iStartX = cStruct.iBestX;
+      iStartX = cStruct.iBestX;//将上一次搜索的最优点更新为本次搜索的起始点
       iStartY = cStruct.iBestY;
       cStruct.uiBestDistance = 0;
       cStruct.ucPointNr = 0;
-      for ( iDist = 1; iDist < (Int)uiSearchRange + 1; iDist*=2 )
+      for ( iDist = 1; iDist < (Int)uiSearchRange + 1; iDist*=2 )//在允许的搜索范围内 以2的整数次幂递增的步长进行搜索
       {
         if ( bStarRefinementDiamond == 1 )
         {
-          xTZ8PointDiamondSearch ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );
+          xTZ8PointDiamondSearch ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );//菱形搜索粗光栅搜索时最优点附近的点
         }
         else
         {
-          xTZ8PointSquareSearch  ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );
+          xTZ8PointSquareSearch  ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );//正方形搜索
         }
-        if ( bStarRefinementStop && (cStruct.uiBestRound >= uiStarRefinementRounds) ) // stop criterion
+        if ( bStarRefinementStop && (cStruct.uiBestRound >= uiStarRefinementRounds) ) // stop criterion //bStarRefinementStop标志为1且大于等于允许的搜索圈数 则不再搜索
         {
           break;
         }
       }
 
       // calculate only 2 missing points instead 8 points if cStrukt.uiBestDistance == 1
-      if ( cStruct.uiBestDistance == 1 )
+      if ( cStruct.uiBestDistance == 1 )//如果最优点对应的步长为1
       {
-        cStruct.uiBestDistance = 0;
+        cStruct.uiBestDistance = 0;//uiBestDistance置0 跳出 while循环
         if ( cStruct.ucPointNr != 0 )
         {
-          xTZ2PointSearch( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB );
+          xTZ2PointSearch( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB );//则2点搜索
         }
       }
     }
   }
 
   // write out best match
-  rcMv.set( cStruct.iBestX, cStruct.iBestY );
-  ruiSAD = cStruct.uiBestSad - m_pcRdCost->getCost( cStruct.iBestX, cStruct.iBestY );
+  rcMv.set( cStruct.iBestX, cStruct.iBestY );//将最优搜索位置的运动矢量写入 rcMv
+  ruiSAD = cStruct.uiBestSad - m_pcRdCost->getCost( cStruct.iBestX, cStruct.iBestY );//将最优搜索位置的SAD写入 ruiSAD
 }
 
 
@@ -4135,7 +4113,7 @@ Void TEncSearch::xTZSearchSelective( TComDataCU*   pcCU,
   Int   iSrchRngHorLeft         = pcMvSrchRngLT->getHor();
   Int   iSrchRngHorRight        = pcMvSrchRngRB->getHor();
   Int   iSrchRngVerTop          = pcMvSrchRngLT->getVer();
-  Int   iSrchRngVerBottom       = pcMvSrchRngRB->getVer();
+  Int   iSrchRngVerBottom       = pcMvSrchRngRB->getVer();//允许的搜索范围
   Int   iFirstSrchRngHorLeft    = 0;
   Int   iFirstSrchRngHorRight   = 0;
   Int   iFirstSrchRngVerTop     = 0;
@@ -4146,53 +4124,53 @@ Void TEncSearch::xTZSearchSelective( TComDataCU*   pcCU,
   Int   iBestY                  = 0;
   Int   iDist                   = 0;
 
-  pcCU->clipMv( rcMv );
-  rcMv >>= 2;
+  pcCU->clipMv( rcMv );//根据PU块位置限制MV的大小
+  rcMv >>= 2;//整像素精度MV
   // init TZSearchStruct
   IntTZSearchStruct cStruct;
   cStruct.iYStride    = iRefStride;
-  cStruct.piRefY      = piRefY;
-  cStruct.uiBestSad   = MAX_UINT;
+  cStruct.piRefY      = piRefY;//参考图像起始位置
+  cStruct.uiBestSad   = MAX_UINT;//初始化最优SAD为最大值
   cStruct.iBestX = 0;
   cStruct.iBestY = 0;
 
 
   // set rcMv (Median predictor) as start point and as best point
-  xTZSearchHelp( pcPatternKey, cStruct, rcMv.getHor(), rcMv.getVer(), 0, 0 );
+  xTZSearchHelp( pcPatternKey, cStruct, rcMv.getHor(), rcMv.getVer(), 0, 0 );//设置rcMV为起始搜索点
 
   // test whether one of PRED_A, PRED_B, PRED_C MV is better start point than Median predictor
-  if ( bTestOtherPredictedMV )
+  if ( bTestOtherPredictedMV )//如果需要测试其他预测MV
   {
-    for ( UInt index = 0; index < NUM_MV_PREDICTORS; index++ )
+    for ( UInt index = 0; index < NUM_MV_PREDICTORS; index++ )//遍历所有预测mv
     {
       TComMv cMv = m_acMvPredictors[index];
       pcCU->clipMv( cMv );
       cMv >>= 2;
-      xTZSearchHelp( pcPatternKey, cStruct, cMv.getHor(), cMv.getVer(), 0, 0 );
+      xTZSearchHelp( pcPatternKey, cStruct, cMv.getHor(), cMv.getVer(), 0, 0 );//根据SAD更新最优的搜索信息
     }
   }
 
   // test whether zero Mv is better start point than Median predictor
-  if ( bTestZeroVector )
+  if ( bTestZeroVector )//如果需要测试0MV是否为最优起始搜索点
   {
-    xTZSearchHelp( pcPatternKey, cStruct, 0, 0, 0, 0 );
+    xTZSearchHelp( pcPatternKey, cStruct, 0, 0, 0, 0 );//尝试(0,0)
   }
 
   if ( pIntegerMv2Nx2NPred != 0 )
   {
     TComMv integerMv2Nx2NPred = *pIntegerMv2Nx2NPred;
-    integerMv2Nx2NPred <<= 2;
-    pcCU->clipMv( integerMv2Nx2NPred );
+    integerMv2Nx2NPred <<= 2;//转化为1/4像素精度mv
+    pcCU->clipMv( integerMv2Nx2NPred );//限制运动矢量可能达到的范围
     integerMv2Nx2NPred >>= 2;
-    xTZSearchHelp(pcPatternKey, cStruct, integerMv2Nx2NPred.getHor(), integerMv2Nx2NPred.getVer(), 0, 0);
+    xTZSearchHelp(pcPatternKey, cStruct, integerMv2Nx2NPred.getHor(), integerMv2Nx2NPred.getVer(), 0, 0);//搜索该点
 
     // reset search range
     TComMv cMvSrchRngLT;
     TComMv cMvSrchRngRB;
     Int iSrchRng = m_iSearchRange;
-    TComMv currBestMv(cStruct.iBestX, cStruct.iBestY );
+    TComMv currBestMv(cStruct.iBestX, cStruct.iBestY );//当前最优的运动矢量
     currBestMv <<= 2;
-    xSetSearchRange( pcCU, currBestMv, iSrchRng, cMvSrchRngLT, cMvSrchRngRB );
+    xSetSearchRange( pcCU, currBestMv, iSrchRng, cMvSrchRngLT, cMvSrchRngRB );//根据currBestMv和iSrchRng重新设置允许的搜索范围
     iSrchRngHorLeft   = cMvSrchRngLT.getHor();
     iSrchRngHorRight  = cMvSrchRngRB.getHor();
     iSrchRngVerTop    = cMvSrchRngLT.getVer();
@@ -4205,72 +4183,72 @@ Void TEncSearch::xTZSearchSelective( TComDataCU*   pcCU,
   iFirstSrchRngHorLeft    = ((iBestX - uiSearchRangeInitial) > iSrchRngHorLeft)   ? (iBestX - uiSearchRangeInitial) : iSrchRngHorLeft;
   iFirstSrchRngVerTop     = ((iBestY - uiSearchRangeInitial) > iSrchRngVerTop)    ? (iBestY - uiSearchRangeInitial) : iSrchRngVerTop;
   iFirstSrchRngHorRight   = ((iBestX + uiSearchRangeInitial) < iSrchRngHorRight)  ? (iBestX + uiSearchRangeInitial) : iSrchRngHorRight;  
-  iFirstSrchRngVerBottom  = ((iBestY + uiSearchRangeInitial) < iSrchRngVerBottom) ? (iBestY + uiSearchRangeInitial) : iSrchRngVerBottom;    
-
+  iFirstSrchRngVerBottom  = ((iBestY + uiSearchRangeInitial) < iSrchRngVerBottom) ? (iBestY + uiSearchRangeInitial) : iSrchRngVerBottom;// 根据初始搜索范围设定当前最优mv的第一次搜索的范围 若搜索位置超出新设定范围的边界 则搜索位置为边界值   
+ 
   for ( iStartY = iFirstSrchRngVerTop; iStartY <= iFirstSrchRngVerBottom; iStartY += uiSearchStep )
   {
-    for ( iStartX = iFirstSrchRngHorLeft; iStartX <= iFirstSrchRngHorRight; iStartX += uiSearchStep )
+    for ( iStartX = iFirstSrchRngHorLeft; iStartX <= iFirstSrchRngHorRight; iStartX += uiSearchStep )//在第一搜索的允许的范围内 以搜索步长uiSearchStep遍历范围内的所有搜索点
     {
-      xTZSearchHelp( pcPatternKey, cStruct, iStartX, iStartY, 0, 0 );
-      xTZ8PointDiamondSearch ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, 1 );
-      xTZ8PointDiamondSearch ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, 2 );
+      xTZSearchHelp( pcPatternKey, cStruct, iStartX, iStartY, 0, 0 );//搜索该该点
+      xTZ8PointDiamondSearch ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, 1 );//以搜索步长1搜索该点附近的点
+      xTZ8PointDiamondSearch ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, 2 );//以搜索步长2搜索该点附近的点
     }
-  }
+  } //第一次搜索
 
-  Int iMaxMVDistToPred = (abs(cStruct.iBestX - iBestX) > iMVDistThresh || abs(cStruct.iBestY - iBestY) > iMVDistThresh);
+  Int iMaxMVDistToPred = (abs(cStruct.iBestX - iBestX) > iMVDistThresh || abs(cStruct.iBestY - iBestY) > iMVDistThresh);//第一次搜索后的最优mv与起始最优mv的差值是否大于规定的阈值
 
   //full search with early exit if MV is distant from predictors
-  if ( bEnableRasterSearch && (iMaxMVDistToPred || bAlwaysRasterSearch) )
+  if ( bEnableRasterSearch && (iMaxMVDistToPred || bAlwaysRasterSearch) )//如果第一次搜索后的最优mv离起始(预测)mv较远
   {
     for ( iStartY = iSrchRngVerTop; iStartY <= iSrchRngVerBottom; iStartY += 1 )
     {
       for ( iStartX = iSrchRngHorLeft; iStartX <= iSrchRngHorRight; iStartX += 1 )
       {
-        xTZSearchHelp( pcPatternKey, cStruct, iStartX, iStartY, 0, 1 );
+        xTZSearchHelp( pcPatternKey, cStruct, iStartX, iStartY, 0, 1 );//则在允许的搜索范围内进行全搜索
       }
     }
   }
   //Smaller MV, refine around predictor
-  else if ( bStarRefinementEnable && cStruct.uiBestDistance > 0 )
+  else if ( bStarRefinementEnable && cStruct.uiBestDistance > 0 )//如果第一次搜索后的最优mv离起始(预测)mv较近 且允许细化第一次搜索位置
   {
     // start refinement
     while ( cStruct.uiBestDistance > 0 )
     {
-      iStartX = cStruct.iBestX;
+      iStartX = cStruct.iBestX;//细化的起始搜索位置为第一次搜索后的最优位置
       iStartY = cStruct.iBestY;
       cStruct.uiBestDistance = 0;
       cStruct.ucPointNr = 0;
-      for ( iDist = 1; iDist < (Int)uiSearchRange + 1; iDist*=2 )
+      for ( iDist = 1; iDist < (Int)uiSearchRange + 1; iDist*=2 )//以2的幂递增的步长搜索(细化)起始位置附近的点
       {
         if ( bStarRefinementDiamond == 1 )
         {
-          xTZ8PointDiamondSearch ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );
+          xTZ8PointDiamondSearch ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );//菱形搜索
         }
         else
         {
-          xTZ8PointSquareSearch  ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );
+          xTZ8PointSquareSearch  ( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB, iStartX, iStartY, iDist );//正方形搜索
         }
-        if ( bStarRefinementStop && (cStruct.uiBestRound >= uiStarRefinementRounds) ) // stop criterion
+        if ( bStarRefinementStop && (cStruct.uiBestRound >= uiStarRefinementRounds) ) // stop criterion//bStarRefinementStop标志为1且大于等于允许的搜索圈数 则不再搜索
         {
           break;
         }
       }
 
       // calculate only 2 missing points instead 8 points if cStrukt.uiBestDistance == 1
-      if ( cStruct.uiBestDistance == 1 )
+      if ( cStruct.uiBestDistance == 1 )//如果最优点对应的步长为1
       {
         cStruct.uiBestDistance = 0;
         if ( cStruct.ucPointNr != 0 )
         {
-          xTZ2PointSearch( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB );
+          xTZ2PointSearch( pcPatternKey, cStruct, pcMvSrchRngLT, pcMvSrchRngRB );//在该点处两点搜索
         }
       }
     }
   }
 
   // write out best match
-  rcMv.set( cStruct.iBestX, cStruct.iBestY );
-  ruiSAD = cStruct.uiBestSad - m_pcRdCost->getCost( cStruct.iBestX, cStruct.iBestY );
+  rcMv.set( cStruct.iBestX, cStruct.iBestY );//将最优搜索位置写入 rcMv
+  ruiSAD = cStruct.uiBestSad - m_pcRdCost->getCost( cStruct.iBestX, cStruct.iBestY );//将最优搜索位置写入 ruiSAD
 
 }
 
@@ -4288,29 +4266,29 @@ Void TEncSearch::xPatternSearchFracDIF(
 {
   //  Reference pattern initialization (integer scale)
   TComPattern cPatternRoi;
-  Int         iOffset    = pcMvInt->getHor() + pcMvInt->getVer() * iRefStride;
+  Int         iOffset    = pcMvInt->getHor() + pcMvInt->getVer() * iRefStride;//由整像素运动矢量得到参考像素的起始位置
   cPatternRoi.initPattern(piRefY + iOffset,
                           pcPatternKey->getROIYWidth(),
                           pcPatternKey->getROIYHeight(),
                           iRefStride,
-                          pcPatternKey->getBitDepthY());
+                          pcPatternKey->getBitDepthY());//初始化cPatternRoi  用作参考像素块
 
   //  Half-pel refinement
-  xExtDIFUpSamplingH ( &cPatternRoi );
+  xExtDIFUpSamplingH ( &cPatternRoi );//产生1/2精度的插值像素块
 
-  rcMvHalf = *pcMvInt;   rcMvHalf <<= 1;    // for mv-cost
-  TComMv baseRefMv(0, 0);
-  ruiCost = xPatternRefinement( pcPatternKey, baseRefMv, 2, rcMvHalf, !bIsLosslessCoded );
+  rcMvHalf = *pcMvInt;   rcMvHalf <<= 1;    // for mv-cost //用于计算运动矢量编码损耗
+  TComMv baseRefMv(0, 0);//整像素精度到亚像素精度的基础运动矢量为0
+  ruiCost = xPatternRefinement( pcPatternKey, baseRefMv, 2, rcMvHalf, !bIsLosslessCoded ); // 1/2精度的亚像素运动估计(结果赋给rcMvHalf)  亚像素运动估计在允许使用Hadamard的条件下 只有lossless模式下不使用Hadamard  
 
-  m_pcRdCost->setCostScale( 0 );
+  m_pcRdCost->setCostScale( 0 );//运动矢量放大倍数为零
 
-  xExtDIFUpSamplingQ ( &cPatternRoi, rcMvHalf );
+  xExtDIFUpSamplingQ ( &cPatternRoi, rcMvHalf );//产生1/4精度的插值像素块
   baseRefMv = rcMvHalf;
-  baseRefMv <<= 1;
+  baseRefMv <<= 1;//1/2像素精度到1/4像素精度的基础运动矢量
 
   rcMvQter = *pcMvInt;   rcMvQter <<= 1;    // for mv-cost
-  rcMvQter += rcMvHalf;  rcMvQter <<= 1;
-  ruiCost = xPatternRefinement( pcPatternKey, baseRefMv, 1, rcMvQter, !bIsLosslessCoded );
+  rcMvQter += rcMvHalf;  rcMvQter <<= 1;//得到最终的运动矢量 用于计算运动矢量编码损耗
+  ruiCost = xPatternRefinement( pcPatternKey, baseRefMv, 1, rcMvQter, !bIsLosslessCoded );//1/4精度的亚像素运动估计(结果赋给rcMvQter) 在允许使用Hadamard的条件下 只有lossless模式下不使用Hadamard
 }
 
 
@@ -5373,40 +5351,40 @@ Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
  * \param pattern Reference picture ROI
  * \param biPred    Flag indicating whether block is for biprediction
  */
-Void TEncSearch::xExtDIFUpSamplingH( TComPattern* pattern )
+Void TEncSearch::xExtDIFUpSamplingH( TComPattern* pattern )//产生1/2精度的插值像素块 保存在m_filteredBlock中 产生的1/2亚像素默认为当前像素左上方的亚像素
 {
-  Int width      = pattern->getROIYWidth();
+  Int width      = pattern->getROIYWidth();//参考像素块的宽高
   Int height     = pattern->getROIYHeight();
   Int srcStride  = pattern->getPatternLStride();
-
+  //m_filteredBlock[x][y] x表示所在的行 y表示所在的列
   Int intStride = m_filteredBlockTmp[0].getStride(COMPONENT_Y);
   Int dstStride = m_filteredBlock[0][0].getStride(COMPONENT_Y);
   Pel *intPtr;
   Pel *dstPtr;
-  Int filterSize = NTAPS_LUMA;
+  Int filterSize = NTAPS_LUMA;//亮度块的抽头为8
   Int halfFilterSize = (filterSize>>1);
-  Pel *srcPtr = pattern->getROIY() - halfFilterSize*srcStride - 1;
-
+  Pel *srcPtr = pattern->getROIY() - halfFilterSize*srcStride - 1;//起始像素需左移1像素：因为当前像素左侧的亚像素需用左侧整像素作为滤波起始位置得到    
+                                                                  //上移halfFilterSize像素:因为对于不在整行整列的亚像素 需用整像素行的亚像素得到 而对于当前像素上方不在整行整列的亚像素 需用其上方halfFilterSize行的亚像素值滤波得到
   const ChromaFormat chFmt = m_filteredBlock[0][0].getChromaFormat();
-
-  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, m_filteredBlockTmp[0].getAddr(COMPONENT_Y), intStride, width+1, height+filterSize, 0, false, chFmt, pattern->getBitDepthY());
-  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, m_filteredBlockTmp[2].getAddr(COMPONENT_Y), intStride, width+1, height+filterSize, 2, false, chFmt, pattern->getBitDepthY());
-
-  intPtr = m_filteredBlockTmp[0].getAddr(COMPONENT_Y) + halfFilterSize * intStride + 1;
+  
+  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, m_filteredBlockTmp[0].getAddr(COMPONENT_Y), intStride, width+1, height+filterSize, 0, false, chFmt, pattern->getBitDepthY());//水平方向滤波 0/4处像素 width+1是因为左侧亚像素 所以要多滤波一个像素
+  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, m_filteredBlockTmp[2].getAddr(COMPONENT_Y), intStride, width+1, height+filterSize, 2, false, chFmt, pattern->getBitDepthY());//水平方向滤波 2/4处像素 height+filterSize时因为上方和下方各需要多滤波halfFilterSize个像素
+  //只是保证亚像素为左上亚像素
+  intPtr = m_filteredBlockTmp[0].getAddr(COMPONENT_Y) + halfFilterSize * intStride + 1;//(0 0)处像素块就是进行滤波的像素块 故右一1像素 下移halfFilterSize像素还原至原起始位置
   dstPtr = m_filteredBlock[0][0].getAddr(COMPONENT_Y);
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width+0, height+0, 0, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width+0, height+0, 0, false, true, chFmt, pattern->getBitDepthY());//(0/4 0/4)处亚像素块
 
-  intPtr = m_filteredBlockTmp[0].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride + 1;
+  intPtr = m_filteredBlockTmp[0].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride + 1;//(2/4 0)处像素块  需用原参考像素起始点上方的像素点作滤波起始点(原参考像素起始点指的pattern->getROIY())
   dstPtr = m_filteredBlock[2][0].getAddr(COMPONENT_Y);
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width+0, height+1, 2, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width+0, height+1, 2, false, true, chFmt, pattern->getBitDepthY());//(2/4 0/4)处亚像素块
 
-  intPtr = m_filteredBlockTmp[2].getAddr(COMPONENT_Y) + halfFilterSize * intStride;
+  intPtr = m_filteredBlockTmp[2].getAddr(COMPONENT_Y) + halfFilterSize * intStride;//(0 2/4)处像素块  需用原参考像素起始点左侧的像素点作滤波起始点(原参考像素起始点指的pattern->getROIY())
   dstPtr = m_filteredBlock[0][2].getAddr(COMPONENT_Y);
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width+1, height+0, 0, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width+1, height+0, 0, false, true, chFmt, pattern->getBitDepthY());//(0/4 2/4)处亚像素块
 
-  intPtr = m_filteredBlockTmp[2].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
+  intPtr = m_filteredBlockTmp[2].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;//(2/4 2/4)处像素块  需用原参考像素起始点左上的像素点作滤波起始点(原参考像素起始点指的pattern->getROIY())
   dstPtr = m_filteredBlock[2][2].getAddr(COMPONENT_Y);
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width+1, height+1, 2, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width+1, height+1, 2, false, true, chFmt, pattern->getBitDepthY());//(2/4 2/4)处亚像素块
 }
 
 
@@ -5420,8 +5398,8 @@ Void TEncSearch::xExtDIFUpSamplingH( TComPattern* pattern )
  * \param halfPelRef Half-pel mv
  * \param biPred     Flag indicating whether block is for biprediction
  */
-Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
-{
+Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )//产生1/4精度的插值像素块 保存在m_filteredBlock中 
+{//对照亚像素块的图仔细看 实在是很绕人 不好理清楚~!
   Int width      = pattern->getROIYWidth();
   Int height     = pattern->getROIYHeight();
   Int srcStride  = pattern->getPatternLStride();
@@ -5440,17 +5418,17 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
   const ChromaFormat chFmt = m_filteredBlock[0][0].getChromaFormat();
 
   // Horizontal filter 1/4
-  srcPtr = pattern->getROIY() - halfFilterSize * srcStride - 1;
+  srcPtr = pattern->getROIY() - halfFilterSize * srcStride - 1;//水平滤波的起始位置 (解释同1/2精度亚像素块)
   intPtr = m_filteredBlockTmp[1].getAddr(COMPONENT_Y);
-  if (halfPelRef.getVer() > 0)
+  if (halfPelRef.getVer() > 0)//如果1/2像素精度垂直运动矢量大于0(等于0的情况下具体判断) 说明其亚像素块在当前像素的下方(产生的亚像素默认为左上方亚像素)
   {
-    srcPtr += srcStride;
+    srcPtr += srcStride;//滤波像素的起始位置下移1像素
   }
-  if (halfPelRef.getHor() >= 0)
+  if (halfPelRef.getHor() >= 0)//如果1/2像素精度水平运动矢量大于或等于0 说明其亚像素块在当前像素的右方(产生的亚像素默认为左上方亚像素)
   {
-    srcPtr += 1;
+    srcPtr += 1;//滤波像素的起始位置右移1像素
   }
-  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, intPtr, intStride, width, extHeight, 1, false, chFmt, pattern->getBitDepthY());
+  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, intPtr, intStride, width, extHeight, 1, false, chFmt, pattern->getBitDepthY());//水平滤波 1/4亚像素处
 
   // Horizontal filter 3/4
   srcPtr = pattern->getROIY() - halfFilterSize*srcStride - 1;
@@ -5459,27 +5437,27 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
   {
     srcPtr += srcStride;
   }
-  if (halfPelRef.getHor() > 0)
+  if (halfPelRef.getHor() > 0)//这个为>0 而不是>=0 是因为Hor=0时 靠近当前像素的3/4亚像素在当前像素的左侧
   {
     srcPtr += 1;
   }
-  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, intPtr, intStride, width, extHeight, 3, false, chFmt, pattern->getBitDepthY());
-
+  m_if.filterHor(COMPONENT_Y, srcPtr, srcStride, intPtr, intStride, width, extHeight, 3, false, chFmt, pattern->getBitDepthY());//水平滤波 3/4亚像素处 (处理同上)
+  //水平方向1/4 3/4滤波根据运动矢量进行了参考像素起始位置判断 而0/4 2/4为进行处理 所有当遇到0/4 2/4时需单独判断
   // Generate @ 1,1
-  intPtr = m_filteredBlockTmp[1].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
+  intPtr = m_filteredBlockTmp[1].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;//(1/4 1/4)处像素块  需用原参考像素起始点左上的像素点作滤波起始点
   dstPtr = m_filteredBlock[1][1].getAddr(COMPONENT_Y);
-  if (halfPelRef.getVer() == 0)
+  if (halfPelRef.getVer() == 0)//如果1/2像素精度下的垂直运动矢量为0
   {
-    intPtr += intStride;
+    intPtr += intStride;//则1/4精度下 (1/4 1/4)不可能为上方亚像素 则为当前像素下方亚像素 所以起始滤波像素需下移1像素
   }
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 1, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 1, false, true, chFmt, pattern->getBitDepthY());//生成(1/4 1/4)处亚像素块
 
   // Generate @ 3,1
   intPtr = m_filteredBlockTmp[1].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
   dstPtr = m_filteredBlock[3][1].getAddr(COMPONENT_Y);
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 3, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 3, false, true, chFmt, pattern->getBitDepthY());//生成(3/4 1/4)处亚像素块
 
-  if (halfPelRef.getVer() != 0)
+  if (halfPelRef.getVer() != 0)//1/2像素精度下的垂直运动矢量不为0 才有必要生成(2/4 1/4)和(2/4 3/4) 因为若1/2像素精度下的垂直运动矢量为0 则1/4精度下不可能取到(2/4 1/4)和(2/4 3/4)处
   {
     // Generate @ 2,1
     intPtr = m_filteredBlockTmp[1].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
@@ -5488,7 +5466,7 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
     {
       intPtr += intStride;
     }
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 2, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 2, false, true, chFmt, pattern->getBitDepthY());//生成(2/4 1/4)处亚像素块
 
     // Generate @ 2,3
     intPtr = m_filteredBlockTmp[3].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
@@ -5497,35 +5475,35 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
     {
       intPtr += intStride;
     }
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 2, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 2, false, true, chFmt, pattern->getBitDepthY());//生成(2/4 3/4)处亚像素块
   }
-  else
+  else//1/2像素精度下的垂直运动矢量为0 才有必要生成(0/4 1/4)和(0/4 3/4) 因为若1/2像素精度下的垂直运动矢量不为0 则1/4精度下不可能取到(0/4 1/4)和(0/4 3/4)处
   {
     // Generate @ 0,1
-    intPtr = m_filteredBlockTmp[1].getAddr(COMPONENT_Y) + halfFilterSize * intStride;
+    intPtr = m_filteredBlockTmp[1].getAddr(COMPONENT_Y) + halfFilterSize * intStride;//(0/4 1/4)处像素块  需用原参考像素起始点左侧的像素点作滤波起始点
     dstPtr = m_filteredBlock[0][1].getAddr(COMPONENT_Y);
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 0, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 0, false, true, chFmt, pattern->getBitDepthY());//生成(0/4 1/4)处亚像素块
 
     // Generate @ 0,3
-    intPtr = m_filteredBlockTmp[3].getAddr(COMPONENT_Y) + halfFilterSize * intStride;
+    intPtr = m_filteredBlockTmp[3].getAddr(COMPONENT_Y) + halfFilterSize * intStride;//(0/4 3/4)处像素块  需用原参考像素起始点左侧的像素点作滤波起始点
     dstPtr = m_filteredBlock[0][3].getAddr(COMPONENT_Y);
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 0, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 0, false, true, chFmt, pattern->getBitDepthY());//生成(0/4 3/4)处亚像素块
   }
-
-  if (halfPelRef.getHor() != 0)
+    //因m_filteredBlockTmp[0]和 m_filteredBlockTmp[2]的得到未考虑参考像素偏移方位 所以需单独区分
+  if (halfPelRef.getHor() != 0)//1/2像素精度下的水平运动矢量不为0 才有必要生成(1/4 2/4)和(3/4 2/4) 因为若1/2像素精度下的垂直运动矢量为0 则1/4精度下不可能取到(1/4 2/4)和(3/4 2/4)处
   {
     // Generate @ 1,2
     intPtr = m_filteredBlockTmp[2].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
     dstPtr = m_filteredBlock[1][2].getAddr(COMPONENT_Y);
-    if (halfPelRef.getHor() > 0)
+    if (halfPelRef.getHor() > 0)//如果1/2像素精度垂直运动矢量大于0 说明其亚像素块在当前像素的下方(产生的亚像素默认为左上方亚像素)
     {
       intPtr += 1;
     }
-    if (halfPelRef.getVer() >= 0)
+    if (halfPelRef.getVer() >= 0)//如果1/2像素精度水平运动矢量大于等于0 说明其亚像素块在当前像素的右方(产生的亚像素默认为左上方亚像素)
     {
       intPtr += intStride;
     }
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 1, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 1, false, true, chFmt, pattern->getBitDepthY());//生成(1/4 2/4)处亚像素块
 
     // Generate @ 3,2
     intPtr = m_filteredBlockTmp[2].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
@@ -5538,9 +5516,9 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
     {
       intPtr += intStride;
     }
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 3, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 3, false, true, chFmt, pattern->getBitDepthY());//生成(3/4 2/4)处亚像素块 分析同上
   }
-  else
+  else//1/2像素精度下的水平运动矢量为0 才有必要生成(1/4 2/4)和(3/4 2/4) 
   {
     // Generate @ 1,0
     intPtr = m_filteredBlockTmp[0].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride + 1;
@@ -5549,7 +5527,7 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
     {
       intPtr += intStride;
     }
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 1, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 1, false, true, chFmt, pattern->getBitDepthY());//生成(1/4 0/4)处亚像素块  分析同上
 
     // Generate @ 3,0
     intPtr = m_filteredBlockTmp[0].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride + 1;
@@ -5558,22 +5536,22 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )
     {
       intPtr += intStride;
     }
-    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 3, false, true, chFmt, pattern->getBitDepthY());
+    m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 3, false, true, chFmt, pattern->getBitDepthY());//生成(3/4 0/4)处亚像素块  分析同上
   }
 
   // Generate @ 1,3
   intPtr = m_filteredBlockTmp[3].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
   dstPtr = m_filteredBlock[1][3].getAddr(COMPONENT_Y);
-  if (halfPelRef.getVer() == 0)
+  if (halfPelRef.getVer() == 0)//1/2像素精度下 垂直运动矢量为0
   {
-    intPtr += intStride;
+    intPtr += intStride;//则1/4精度下 (1/4 3/4)不可能为上方亚像素 则为当前像素下方亚像素 所以起始滤波像素需下移1像素
   }
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 1, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 1, false, true, chFmt, pattern->getBitDepthY());//生成(1/4 3/4)处亚像素块
 
   // Generate @ 3,3
   intPtr = m_filteredBlockTmp[3].getAddr(COMPONENT_Y) + (halfFilterSize-1) * intStride;
   dstPtr = m_filteredBlock[3][3].getAddr(COMPONENT_Y);
-  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 3, false, true, chFmt, pattern->getBitDepthY());
+  m_if.filterVer(COMPONENT_Y, intPtr, intStride, dstPtr, dstStride, width, height, 3, false, true, chFmt, pattern->getBitDepthY());//生成(3/4 3/4)处亚像素块
 }
 
 

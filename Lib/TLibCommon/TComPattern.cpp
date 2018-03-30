@@ -141,7 +141,7 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
   const UInt uiPartIdxLB      = g_auiRasterToZscan[ g_auiZscanToRaster[ uiPartIdxLT ] + ((iTUHeightInUnits - 1) * iPartIdxStride)];//Tu中左下4*4小块的位置
 
   Int   iPicStride = pcCU->getPic()->getStride(compID);
-  Bool  bNeighborFlags[4 * MAX_NUM_PART_IDXS_IN_CTU_WIDTH + 1];//Tu中各小块是否存在相邻d的小块
+  Bool  bNeighborFlags[4 * MAX_NUM_PART_IDXS_IN_CTU_WIDTH + 1];//Tu中各小块是否存在相邻的小块
   Int   iNumIntraNeighbor = 0;//相邻小块的个数
 
   bNeighborFlags[iLeftUnits] = isAboveLeftAvailable( pcCU, uiPartIdxLT );//左上参考像素是否可获得

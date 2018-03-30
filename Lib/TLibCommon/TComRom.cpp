@@ -50,7 +50,7 @@
 //! \ingroup TLibCommon
 //! \{
 
-const Char* nalUnitTypeToString(NalUnitType type)
+const Char* nalUnitTypeToString(NalUnitType type)//NalUnit类型的字符说明
 {
   switch (type)
   {
@@ -108,7 +108,7 @@ public:
     {
       //------------------------------------------------
 
-      case SCAN_DIAG:
+      case SCAN_DIAG://右上角对角扫描
         {
           if ((m_column == (m_blockWidth - 1)) || (m_line == 0)) //if we reach the end of a rank, go diagonally down to the next one
           {
@@ -131,7 +131,7 @@ public:
 
       //------------------------------------------------
 
-      case SCAN_HOR:
+      case SCAN_HOR://垂直扫描
         {
           if (m_column == (m_blockWidth - 1))
           {
@@ -147,7 +147,7 @@ public:
 
       //------------------------------------------------
 
-      case SCAN_VER:
+      case SCAN_VER://水平扫描
         {
           if (m_line == (m_blockHeight - 1))
           {
@@ -163,7 +163,7 @@ public:
 
       //------------------------------------------------
 
-      default:
+      default://不知道类型的扫描方式 打印错误信息
         {
           std::cerr << "ERROR: Unknown scan type \"" << m_scanType << "\"in ScanGenerator::GetNextIndex" << std::endl;
           exit(1);
@@ -292,12 +292,12 @@ Void initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpui
 {
   Int iStride = 1 << ( iMaxDepth - 1 );
 
-  if ( iDepth == iMaxDepth )
+  if ( iDepth == iMaxDepth )//达到最深（叶节点）
   {
     rpuiCurrIdx[0] = uiStartVal;
     rpuiCurrIdx++;
   }
-  else
+  else//深度遍历 完成赋值
   {
     Int iStep = iStride >> iDepth;
     initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal,                     rpuiCurrIdx );
@@ -307,7 +307,7 @@ Void initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpui
   }
 }
 
-Void initRasterToZscan ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth )
+Void initRasterToZscan ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth )//初始化Raster索引到Z order索引的映射数组
 {
   UInt  uiMinCUWidth  = uiMaxCUWidth  >> ( uiMaxDepth - 1 );
   UInt  uiMinCUHeight = uiMaxCUHeight >> ( uiMaxDepth - 1 );
@@ -317,11 +317,11 @@ Void initRasterToZscan ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth 
 
   for ( UInt i = 0; i < uiNumPartInWidth*uiNumPartInHeight; i++ )
   {
-    g_auiRasterToZscan[ g_auiZscanToRaster[i] ] = i;
+    g_auiRasterToZscan[ g_auiZscanToRaster[i] ] = i;//利用iZscanToRaster映射和RasterToZscan映射为逆映射这一特点
   }
 }
 
-Void initRasterToPelXY ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth )
+Void initRasterToPelXY ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth )//初始化Raster索引对应的4*4小块（左上角像素）到CTu中的像素位置的映射表
 {
   UInt    i;
 
@@ -351,12 +351,12 @@ Void initRasterToPelXY ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth 
   }
 }
 
-const Int g_quantScales[SCALING_LIST_REM_NUM] =
+const Int g_quantScales[SCALING_LIST_REM_NUM] =//2^(14+floor(QP/6))/Qstep  (不使用量化矩阵时的量化系数)
 {
   26214,23302,20560,18396,16384,14564
 };
 
-const Int g_invQuantScales[SCALING_LIST_REM_NUM] = //2^((qp-4)/6)*64  qp=0,1,2,3,4,5 ���ڼ���Qstep
+const Int g_invQuantScales[SCALING_LIST_REM_NUM] = //2^((qp-4)/6)*64  qp=0,1,2,3,4,5 用于计算Qstep
 {
   40,45,51,57,64,72
 };
@@ -371,7 +371,7 @@ const Int g_invQuantScales[SCALING_LIST_REM_NUM] = //2^((qp-4)/6)*64  qp=0,1,2,3
   {  c,  c,  0, -c }, \
   {  d, -a, -c,  b }, \
   {  b, -d,  c, -a }, \
-}
+}//4*4DST变换矩阵
 
 #define DEFINE_DCT4x4_MATRIX(a,b,c) \
 { \
@@ -379,7 +379,7 @@ const Int g_invQuantScales[SCALING_LIST_REM_NUM] = //2^((qp-4)/6)*64  qp=0,1,2,3
   { b,  c, -c, -b}, \
   { a, -a, -a,  a}, \
   { c, -b,  b, -c}  \
-}
+}//4*4DCT变换矩阵
 
 #define DEFINE_DCT8x8_MATRIX(a,b,c,d,e,f,g) \
 { \
@@ -391,7 +391,7 @@ const Int g_invQuantScales[SCALING_LIST_REM_NUM] = //2^((qp-4)/6)*64  qp=0,1,2,3
   { f, -d,  g,  e, -e, -g,  d, -f}, \
   { c, -b,  b, -c, -c,  b, -b,  c}, \
   { g, -f,  e, -d,  d, -e,  f, -g}  \
-}
+}//8*8DCT变换矩阵
 
 #define DEFINE_DCT16x16_MATRIX(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o) \
 { \
@@ -411,7 +411,7 @@ const Int g_invQuantScales[SCALING_LIST_REM_NUM] = //2^((qp-4)/6)*64  qp=0,1,2,3
   { n, -k,  h, -j,  m,  o, -l,  i, -i,  l, -o, -m,  j, -h,  k, -n}, \
   { g, -f,  e, -d,  d, -e,  f, -g, -g,  f, -e,  d, -d,  e, -f,  g}, \
   { o, -n,  m, -l,  k, -j,  i, -h,  h, -i,  j, -k,  l, -m,  n, -o}  \
-}
+}//16*16DCT变换矩阵
 
 #define DEFINE_DCT32x32_MATRIX(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,A,B,C,D,E) \
 { \
@@ -447,7 +447,7 @@ const Int g_invQuantScales[SCALING_LIST_REM_NUM] = //2^((qp-4)/6)*64  qp=0,1,2,3
   { D, -A,  x, -u,  r, -p,  s, -v,  y, -B,  E,  C, -z,  w, -t,  q, -q,  t, -w,  z, -C, -E,  B, -y,  v, -s,  p, -r,  u, -x,  A, -D}, \
   { o, -n,  m, -l,  k, -j,  i, -h,  h, -i,  j, -k,  l, -m,  n, -o, -o,  n, -m,  l, -k,  j, -i,  h, -h,  i, -j,  k, -l,  m, -n,  o}, \
   { E, -D,  C, -B,  A, -z,  y, -x,  w, -v,  u, -t,  s, -r,  q, -p,  p, -q,  r, -s,  t, -u,  v, -w,  x, -y,  z, -A,  B, -C,  D, -E}  \
-}
+}//32*32DCT变换矩阵
 
 //--------------------------------------------------------------------------------------------------
 
@@ -485,7 +485,7 @@ const TMatrixCoeff g_as_DST_MAT_4[TRANSFORM_NUMBER_OF_DIRECTIONS][4][4] =
 };
 
 #else
-
+//正变换和逆变换所用的变换矩阵
 const TMatrixCoeff g_aiT4 [TRANSFORM_NUMBER_OF_DIRECTIONS][4][4]   =
 {
   DEFINE_DCT4x4_MATRIX  (   64,    83,    36),
@@ -529,7 +529,7 @@ const TMatrixCoeff g_as_DST_MAT_4[TRANSFORM_NUMBER_OF_DIRECTIONS][4][4] =
 //--------------------------------------------------------------------------------------------------
 
 
-const UChar g_aucChromaScale[NUM_CHROMA_FORMAT][chromaQPMappingTableSize]=
+const UChar g_aucChromaScale[NUM_CHROMA_FORMAT][chromaQPMappingTableSize]=//不同色度格式下 亮度分量Qp与色度分量Qp对应关系
 {
   //0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
@@ -561,7 +561,7 @@ const UChar g_aucIntraModeNumFast_NotUseMPM[MAX_CU_DEPTH] =
   5   //  64x64   33
 };
 
-const UChar g_chroma422IntraAngleMappingTable[NUM_INTRA_MODE] =
+const UChar g_chroma422IntraAngleMappingTable[NUM_INTRA_MODE] =//色度分量与亮度分量帧内预测模式对应表
   //0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, DM
   { 0, 1, 2, 2, 2, 2, 3, 5, 7, 8, 10, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 23, 24, 24, 25, 25, 26, 27, 27, 28, 28, 29, 29, 30, 31, DM_CHROMA_IDX};
 
@@ -586,7 +586,7 @@ UInt64 g_nSymbolCounter = 0;
 // scanning order table
 UInt* g_scanOrder[SCAN_NUMBER_OF_GROUP_TYPES][SCAN_NUMBER_OF_TYPES][ MAX_CU_DEPTH ][ MAX_CU_DEPTH ];
 
-const UInt ctxIndMap4x4[4*4] = //4*4 TBs sig_coeff_flag ������������
+const UInt ctxIndMap4x4[4*4] = //4*4 TBs sig_coeff_flag 的上下文索引
 {
   0, 1, 4, 5,
   2, 3, 4, 5,
@@ -595,7 +595,7 @@ const UInt ctxIndMap4x4[4*4] = //4*4 TBs sig_coeff_flag ��������
 };
 
 const UInt g_uiMinInGroup[ LAST_SIGNIFICANT_GROUPS ] = {0,1,2,3,4,6,8,12,16,24};
-const UInt g_uiGroupIdx[ MAX_TU_SIZE ]   = {0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9};
+const UInt g_uiGroupIdx[ MAX_TU_SIZE ]   = {0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9};//用于确定变换系数中最后一个非零系数坐标（X Y）所在区间
 
 const Char *MatrixType[SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM] =
 {//不同量化矩阵的类型说明 用于打印信息
@@ -689,7 +689,7 @@ const Int g_quantInterDefault8x8[8*8] =
   24,25,28,33,41,54,71,91
 };
 
-const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {16,64,256,1024};//��������ϵ������
-const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32};//��������ϵ��ÿ��ϵ������
+const UInt g_scalingListSize   [SCALING_LIST_SIZE_NUM] = {16,64,256,1024};//量化矩阵系数总数
+const UInt g_scalingListSizeX  [SCALING_LIST_SIZE_NUM] = { 4, 8, 16,  32};//量化矩阵系数每行系数个数
 
 //! \}

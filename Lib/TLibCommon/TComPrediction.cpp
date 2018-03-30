@@ -389,7 +389,7 @@ Void TComPrediction::xPredIntraAng(       Int bitDepth,
   }
 }
 
-//所有帧内模式得到最后预测值
+//所有帧内模式中用给定的uiDirMode得到最后预测值
 Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel* piOrg /* Will be null for decoding */, UInt uiOrgStride, Pel* piPred, UInt uiStride, TComTU &rTu, const Bool bUseFilteredPredSamples, const Bool bUseLosslessDPCM )
 {
   const ChannelType    channelType = toChannelType(compID);
@@ -406,11 +406,11 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
   // get starting pixel in block
   const Int sw = (2 * iWidth + 1);
 
-  if ( bUseLosslessDPCM ) 
+  if ( bUseLosslessDPCM ) //若使用DPCM模式 则只有垂直DPCM和水平DPCM两种情况
   {
-    const Pel *ptrSrc = getPredictorPtr( compID, false );
+    const Pel *ptrSrc = getPredictorPtr( compID, false );//得到参考像素值
     // Sample Adaptive intra-Prediction (SAP)
-    if (uiDirMode==HOR_IDX)　//用水平方式进行预测，预测值的列被覆盖为参考块的左列，如果piOrg内其他值可以得到的话则将参考块其他值给预测值
+    if (uiDirMode==HOR_IDX)　//用水平方式进行预测，预测值的第一列用参考像素填充，如果piOrg(原始像素值)可以获得的话则将预测像素块的其他列用piOrg填充
     {
       // left column filled with reference samples
       // remaining columns filled with piOrg data (if available).
@@ -447,7 +447,7 @@ Void TComPrediction::predIntraAng( const ComponentID compID, UInt uiDirMode, Pel
   }
   else
   {
-    const Pel *ptrSrc = getPredictorPtr( compID, bUseFilteredPredSamples );
+    const Pel *ptrSrc = getPredictorPtr( compID, bUseFilteredPredSamples );//得到参考像素值
 
     if ( uiDirMode == PLANAR_IDX )　//计算planar模式预测值
     {
@@ -494,14 +494,14 @@ Bool TComPrediction::xCheckIdenticalMotion ( TComDataCU* pcCU, UInt PartAddr )�
   }
   return false;
 }
-
+//! 运动补偿用到的是Cu中传递的CUMvField信息 m_acCUMvField[e] !!!这点非常重要 帧间预测时 经常用到这点特性
 Void TComPrediction::motionCompensation ( TComDataCU* pcCU, TComYuv* pcYuvPred, RefPicList eRefPicList, Int iPartIdx )//PU块运动补偿　由参考图像和运动矢量计算得到预测值
 {
   Int         iWidth;
   Int         iHeight;
   UInt        uiPartAddr;
 
-  if ( iPartIdx >= 0 )//索引大于零表PU块有效
+  if ( iPartIdx >= 0 )//索引大于等于零表PU块有效
   {
     pcCU->getPartIndexAndSize( iPartIdx, uiPartAddr, iWidth, iHeight );//得到PU块的大小　和　地址
     if ( eRefPicList != REF_PIC_LIST_X )//指明（一个）具体参考列表

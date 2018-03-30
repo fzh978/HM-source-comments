@@ -220,7 +220,7 @@ Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride
 
   for (row = 0; row < height; row++)//遍历参考图像行列　计算滤波后的亚像素值
   {
-    for (col = 0; col < width; col++)
+    for (col = 0; col < width; col++)//计算该行（列）的所有亚像素值
     {
       Int sum;
 
@@ -248,10 +248,10 @@ Void TComInterpolationFilter::filter(Int bitDepth, Pel const *src, Int srcStride
         val = ( val < 0 ) ? 0 : val;
         val = ( val > maxVal ) ? maxVal : val;
       }
-      dst[col] = val;
+      dst[col] = val;//得到滤波值
     }
 
-    src += srcStride;
+    src += srcStride;//块的下一行（列）
     dst += dstStride;
   }
 }

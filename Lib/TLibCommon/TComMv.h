@@ -108,7 +108,7 @@ public:
     return  *this;
   }
 
-  const TComMv& operator>>= (const Int i)
+  const TComMv& operator>>= (const Int i)//移位运算符重载
   {
     m_iHor >>= i;
     m_iVer >>= i;

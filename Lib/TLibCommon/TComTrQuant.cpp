@@ -1461,14 +1461,14 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
                                 const ComponentID     compID,
                                       Pel          *  pcResidual,
                                 const UInt            uiStride,
-                                      TCoeff       *  rpcCoeff,
+                                      TCoeff       *  rpcCoeff,//处理结果值
 #if ADAPTIVE_QP_SELECTION
                                       TCoeff       *  pcArlCoeff,
 #endif
                                       TCoeff        & uiAbsSum,
                                 const QpParam       & cQP
                               )
-{//N*N Tu块对残差值进行变换量化得到最终量化值
+{//N*N Tu块对残差值进行变换量化得到最终量化值 并设置该TU的cbf!!!(cbf信息保存在该Cu中)
   const TComRectangle &rect = rTu.getRect(compID);
   const UInt uiWidth        = rect.width;
   const UInt uiHeight       = rect.height;
@@ -1512,7 +1512,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
 
       if(pcCU->getTransformSkip(uiAbsPartIdx, compID) != 0)///为TransformSkip模式　（不需要变换）　
       {
-        xTransformSkip( pcResidual, uiStride, m_plTempCoeff, rTu, compID );//执行TransformSkip模式
+        xTransformSkip( pcResidual, uiStride, m_plTempCoeff, rTu, compID );//执行TransformSkip模式(不需要变换)
       }
       else//否则对残差值变换
       {
@@ -1540,7 +1540,7 @@ Void TComTrQuant::transformNxN(       TComTU        & rTu,
   }
 
     //set the CBF
-  pcCU->setCbfPartRange((((uiAbsSum > 0) ? 1 : 0) << uiOrgTrDepth), compID, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(compID));//设置cbf 表明该Tu块是否存在非零系数
+  pcCU->setCbfPartRange((((uiAbsSum > 0) ? 1 : 0) << uiOrgTrDepth), compID, uiAbsPartIdx, rTu.GetAbsPartIdxNumParts(compID));//设置该TU的cbf 表明该Tu块是否存在非零系数
 }
 
 
@@ -1746,7 +1746,7 @@ Void TComTrQuant::invRecurTransformNxN( const ComponentID compID,//通道类型
 }
 
 Void TComTrQuant::applyForwardRDPCM( TComTU& rTu, const ComponentID compID, Pel* pcResidual, const UInt uiStride, const QpParam& cQP, TCoeff* pcCoeff, TCoeff &uiAbsSum, const RDPCMMode mode )
-{
+{//DPCM中的D指的为残差 这样可以减少编码比特数
   TComDataCU *pcCU=rTu.getCU();//TU块所在CU块的信息
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();//Tu的位置
 
@@ -1862,7 +1862,7 @@ Void TComTrQuant::rdpcmNxN   ( TComTU& rTu, const ComponentID compID, Pel* pcRes
 
     if (rdpcmMode != RDPCM_OFF) //the TU is re-transformed and quantised if DPCM_OFF is returned, so there is no need to preserve it here
     {
-      memcpy(pcCoeff, bestCoefficients, (uiWidth * uiHeight * sizeof(TCoeff)));//若使用PCM模式 则需要保存系数 若不适用PCM模式 后续还会进行transform 则不需要保存系数
+      memcpy(pcCoeff, bestCoefficients, (uiWidth * uiHeight * sizeof(TCoeff)));//若使用PCM模式 则需要保存系数 若不使用PCM模式 后续还会进行transform 则不需要保存系数
     }
   }
 
@@ -3526,7 +3526,7 @@ Void TComTrQuant::crossComponentPrediction(       TComTU      & rTu,
       }
 #endif
     }
-    else//正向预测
+    else//正向预测(得到需要编码的残差)
     {
       // Forward does not need clipping. Pel type should always be big enough.
       for( Int x = 0; x < width; x++ )

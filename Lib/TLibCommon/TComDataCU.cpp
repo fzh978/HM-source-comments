@@ -493,7 +493,7 @@ Void TComDataCU::initCtu( TComPic* pcPic, UInt ctuRsAddr )//初始化CTU信息
 
   for(UInt i=0; i<NUM_REF_PIC_LIST_01; i++)//初始化每个帧间预测参考图像列表的运动矢量信息
   {
-    m_acCUMvField[i].clearMvField();
+    m_acCUMvField[i].clearMvField();//初始化该Cu中的MV信息为0 参考图像无效
   }
 
   // Setting neighbor CU

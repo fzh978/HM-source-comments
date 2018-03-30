@@ -32,10 +32,10 @@
  */
 
 /*
-*ÖØÔØ¶àÖÖ²»Í¬µÄTcomTU¹¹Ôì·½·¨
-*TComTURecurse¼Ì³Ð×ÔTcomTU
-Ò»¸ö¸¸TU¿é¸ù¾Ý²»Í¬µÄ·Ö¸î·½·¨Æä×ÓTU¿éÐÅÏ¢²»Í¬
-mRect±íÊ¾Í¬Ò»¸¸Tu¿éÖÐ×ÓTu¿éµÄÎ»ÖÃÐÅÏ¢
+*ï¿½ï¿½ï¿½Ø¶ï¿½ï¿½Ö²ï¿½Í¬ï¿½ï¿½TcomTUï¿½ï¿½ï¿½ì·½ï¿½ï¿½
+*TComTURecurseï¿½Ì³ï¿½ï¿½ï¿½TcomTU
+Ò»ï¿½ï¿½ï¿½ï¿½TUï¿½ï¿½ï¿½ï¿½Ý²ï¿½Í¬ï¿½Ä·Ö¸î·½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½TUï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½Í¬
+mRectï¿½ï¿½Ê¾Í¬Ò»ï¿½ï¿½Tuï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Tuï¿½ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½Ï¢
 */
 
 #include "TComTU.h"
@@ -45,38 +45,38 @@ mRect±íÊ¾Í¬Ò»¸¸Tu¿éÖÐ×ÓTu¿éµÄÎ»ÖÃÐÅÏ¢
 
 //----------------------------------------------------------------------------------------------------------------------
 
-/*static*/ const UInt TComTU::NUMBER_OF_SECTIONS[TComTU::NUMBER_OF_SPLIT_MODES] = { 1, 2, 4 };//ÈýÖÖ·Ö¸î·½·¨¶ÔÓ¦×Ó¿é¸öÊý
+/*static*/ const UInt TComTU::NUMBER_OF_SECTIONS[TComTU::NUMBER_OF_SPLIT_MODES] = { 1, 2, 4 };//ï¿½ï¿½ï¿½Ö·Ö¸î·½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½Ó¿ï¿½ï¿½ï¿½ï¿½
 
-static     const UInt         partIdxStepShift  [TComTU::NUMBER_OF_SPLIT_MODES] = { 0, 1, 2 };//log2(×Ó¿éÊý)
+static     const UInt         partIdxStepShift  [TComTU::NUMBER_OF_SPLIT_MODES] = { 0, 1, 2 };//log2(ï¿½Ó¿ï¿½ï¿½ï¿½)
 
 //----------------------------------------------------------------------------------------------------------------------
 
-TComTU::TComTU(TComDataCU *pcCU, const UInt absPartIdxCU, const UInt cuDepth, const UInt initTrDepthRelCU)//µ±Ç°CU×÷ÎªTUÊ÷µÄ¸ù½Úµã initTrDepthRelCU TUÏà¶ÔCUÉî¶È
+TComTU::TComTU(TComDataCU *pcCU, const UInt absPartIdxCU, const UInt cuDepth, const UInt initTrDepthRelCU)//ï¿½ï¿½Ç°CUï¿½ï¿½ÎªTUï¿½ï¿½ï¿½Ä¸ï¿½ï¿½Úµï¿½ initTrDepthRelCU TUï¿½ï¿½ï¿½CUï¿½ï¿½ï¿½
   : mChromaFormat(pcCU->getSlice()->getSPS()->getChromaFormatIdc()),
     mbProcessLastOfLevel(true), // does not matter. the top level is not 4 quadrants.
     mCuDepth(cuDepth),
     mSection(0),
     mSplitMode(DONT_SPLIT),
-    mAbsPartIdxCU(absPartIdxCU),
-    mAbsPartIdxTURelCU(0),//TU¿éÏà¶ÔÆäËùÔÚCU¿éµÄÎ»ÖÃË÷Òý
-    mAbsPartIdxStep(pcCU->getPic()->getNumPartitionsInCtu() >> (pcCU->getDepth(absPartIdxCU)<<1)),//µØÖ·ÎªabsPartIdxCUµÄCU¿éº¬ÓÐ×îÐ¡¿é¸öÊý
+    mAbsPartIdxCU(absPartIdxCU),//å½“å‰Tuæ‰€åœ¨Cuï¼ˆå·¦ä¸Šè§’4*4å°å—ï¼‰åœ¨Ctuä¸­çš„ä½ç½®
+    mAbsPartIdxTURelCU(0),//TUï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½CUï¿½ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    mAbsPartIdxStep(pcCU->getPic()->getNumPartitionsInCtu() >> (pcCU->getDepth(absPartIdxCU)<<1)),//ï¿½ï¿½Ö·ÎªabsPartIdxCUï¿½ï¿½CUï¿½éº¬ï¿½ï¿½ï¿½ï¿½Ð¡ï¿½ï¿½ï¿½ï¿½ï¿½
     mpcCU(pcCU),
     mLog2TrLumaSize(0),
     mpParent(NULL)
-{//¸Ã¹¹Ôìº¯ÊýÉùÃ÷Ïà¶ÔCUÉî¶ÈÎªinitTrDepthRelCUµÄTU¿é
+{//ï¿½Ã¹ï¿½ï¿½ìº¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½CUï¿½ï¿½ï¿½ÎªinitTrDepthRelCUï¿½ï¿½TUï¿½ï¿½
   const TComSPS *pSPS=pcCU->getSlice()->getSPS();
   mLog2TrLumaSize = g_aucConvertToBit[pSPS->getMaxCUWidth() >> (mCuDepth+initTrDepthRelCU)]+2;//g_aucConvertToBit[ x ]: log2(x/4), if x=4 -> 0, x=8 -> 1, x=16 -> 2, ...
 
-  const UInt baseOffset444=pcCU->getPic()->getMinCUWidth()*pcCU->getPic()->getMinCUHeight()*absPartIdxCU;//¸ÃCU×ÜÏñËØÆ«ÒÆÁ¿£¨CUµÄÎ»ÖÃ£©
+  const UInt baseOffset444=pcCU->getPic()->getMinCUWidth()*pcCU->getPic()->getMinCUHeight()*absPartIdxCU;//ï¿½ï¿½CUï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½CUï¿½ï¿½Î»ï¿½Ã£ï¿½
 
-  for(UInt i=0; i<MAX_NUM_COMPONENT; i++)//ÎªY Cr Cb¸³Öµ
+  for(UInt i=0; i<MAX_NUM_COMPONENT; i++)//ÎªY Cr Cbï¿½ï¿½Öµ
   {
     mTrDepthRelCU[i] = initTrDepthRelCU;
     const UInt csx=getComponentScaleX(ComponentID(i), mChromaFormat);//return (isLuma(id) || (fmt==CHROMA_444)) ? 0 : 1;
     const UInt csy=getComponentScaleY(ComponentID(i), mChromaFormat);//return (isLuma(id) || (fmt!=CHROMA_420)) ? 0 : 1; 
-    mOrigWidth[i]=mRect[i].width = (i < getNumberValidComponents(mChromaFormat)) ? (pcCU->getWidth( absPartIdxCU) >> csx) : 0;//¸ÃTU¿éµÄ¿í
-    mRect[i].height              = (i < getNumberValidComponents(mChromaFormat)) ? (pcCU->getHeight(absPartIdxCU) >> csy) : 0;//¸ÃTU¿éµÄ¸ß
-    mRect[i].x0=0;//¶¨ÒåTU¿é×óÉÏÏñËØ×ø±êÎª£¨0£¬0£©
+    mOrigWidth[i]=mRect[i].width = (i < getNumberValidComponents(mChromaFormat)) ? (pcCU->getWidth( absPartIdxCU) >> csx) : 0;//ï¿½ï¿½TUï¿½ï¿½Ä¿ï¿½
+    mRect[i].height              = (i < getNumberValidComponents(mChromaFormat)) ? (pcCU->getHeight(absPartIdxCU) >> csy) : 0;//ï¿½ï¿½TUï¿½ï¿½Ä¸ï¿½
+    mRect[i].x0=0;//ï¿½ï¿½ï¿½ï¿½TUï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½0ï¿½ï¿½0ï¿½ï¿½
     mRect[i].y0=0;
     mCodeAll[i]=true;
     mOffsets[i]=baseOffset444>>(csx+csy);
@@ -87,13 +87,13 @@ TComTU::TComTU(TComDataCU *pcCU, const UInt absPartIdxCU, const UInt cuDepth, co
 
 TComTURecurse::TComTURecurse(      TComDataCU *pcCU,
                              const UInt        absPartIdxCU)
-  : TComTU(pcCU, absPartIdxCU, pcCU->getDepth(absPartIdxCU), 0)////µ±Ç°CU×îÉÏ²ãTU¿é£¨¼´ÓëCUµÈ´óÐ¡TU¿é£©
+  : TComTU(pcCU, absPartIdxCU, pcCU->getDepth(absPartIdxCU), 0)////ï¿½ï¿½Ç°CUï¿½ï¿½ï¿½Ï²ï¿½TUï¿½é£¨ï¿½ï¿½ï¿½ï¿½CUï¿½È´ï¿½Ð¡TUï¿½é£©
 { }
 
 
 
-TComTU::TComTU(TComTU &parent, const Bool bProcessLastOfLevel, const TU_SPLIT_MODE splitMode, const Bool splitAtCurrentDepth, const ComponentID absPartIdxSourceComponent)//ÒÔ¸¸TUÉùÃ÷×ÓTUÐÅÏ¢
-  : mChromaFormat(parent.mChromaFormat),//³õÊ¼»¯¸³Öµ
+TComTU::TComTU(TComTU &parent, const Bool bProcessLastOfLevel, const TU_SPLIT_MODE splitMode, const Bool splitAtCurrentDepth, const ComponentID absPartIdxSourceComponent)//ï¿½Ô¸ï¿½TUï¿½ï¿½ï¿½ï¿½ï¿½ï¿½TUï¿½ï¿½Ï¢
+  : mChromaFormat(parent.mChromaFormat),//ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½Öµ
     mbProcessLastOfLevel(bProcessLastOfLevel),
     mCuDepth(parent.mCuDepth),
     mSection(0),
@@ -105,13 +105,13 @@ TComTU::TComTU(TComTU &parent, const Bool bProcessLastOfLevel, const TU_SPLIT_MO
     mLog2TrLumaSize(parent.mLog2TrLumaSize - ((splitMode != QUAD_SPLIT) ? 0 : 1)), //no change in width for vertical split
     mpParent(&parent)
 {
-  for(UInt i=0; i<MAX_NUM_COMPONENT; i++)//±éÀúY Cr Cb ËùÓÐ×é³É³É·Ö
+  for(UInt i=0; i<MAX_NUM_COMPONENT; i++)//ï¿½ï¿½ï¿½ï¿½Y Cr Cb ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É³É·ï¿½
   {
-    mTrDepthRelCU[i] = parent.mTrDepthRelCU[i] + ((splitAtCurrentDepth || (splitMode == DONT_SPLIT)) ? 0 : 1);//Èô(¸¸)Tu·Ö¸îÔò(×Ó)TuÏà¶ÔÉî¶È¼ÓÒ»
+    mTrDepthRelCU[i] = parent.mTrDepthRelCU[i] + ((splitAtCurrentDepth || (splitMode == DONT_SPLIT)) ? 0 : 1);//ï¿½ï¿½(ï¿½ï¿½)Tuï¿½Ö¸ï¿½ï¿½ï¿½(ï¿½ï¿½)Tuï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½Ò»
   }
 
   if (mSplitMode==DONT_SPLIT)
-  {//²»·Ö¸î ×ÓTuÍ¬¸¸Tu
+  {//ï¿½ï¿½ï¿½Ö¸ï¿½ ï¿½ï¿½TuÍ¬ï¿½ï¿½Tu
     for(UInt i=0; i<MAX_NUM_COMPONENT; i++)
     {
       mRect[i] = (parent.mRect[i]);
@@ -119,16 +119,16 @@ TComTU::TComTU(TComTU &parent, const Bool bProcessLastOfLevel, const TU_SPLIT_MO
       mCodeAll[i]=true; // The 1 TU at this level is coded.
       mOrigWidth[i]=mRect[i].width;
     }
-    return;//·½·¨½áÊø
+    return;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   }
-  else if (mSplitMode==VERTICAL_SPLIT)//·Ö¸î³ÉÉÏÏÂ°ë²¿·Ö
+  else if (mSplitMode==VERTICAL_SPLIT)//ï¿½Ö¸ï¿½ï¿½ï¿½ï¿½ï¿½Â°ë²¿ï¿½ï¿½
   {
     for(UInt i=0; i<MAX_NUM_COMPONENT; i++)
     {
-      mRect[i].x0 = (parent.mRect[i].x0);//µÚÒ»¿é×ÓTUÆðÊ¼Î»ÖÃÍ¬¸¸TuÆðÊ¼Î»ÖÃ
+      mRect[i].x0 = (parent.mRect[i].x0);//ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½TUï¿½ï¿½Ê¼Î»ï¿½ï¿½Í¬ï¿½ï¿½Tuï¿½ï¿½Ê¼Î»ï¿½ï¿½
       mRect[i].y0 = (parent.mRect[i].y0);
-      mRect[i].width  = (parent.mRect[i].width);//¿í¶È²»±ä
-      mRect[i].height = (parent.mRect[i].height)>>1;//¸ß¶È¼õ°ë
+      mRect[i].width  = (parent.mRect[i].width);//ï¿½ï¿½È²ï¿½ï¿½ï¿½
+      mRect[i].height = (parent.mRect[i].height)>>1;//ï¿½ß¶È¼ï¿½ï¿½ï¿½
       mOffsets[i]=parent.mOffsets[i];
       mCodeAll[i]=true; // The 2 TUs at this level is coded.
       mOrigWidth[i]=mRect[i].width;
@@ -137,18 +137,18 @@ TComTU::TComTU(TComTU &parent, const Bool bProcessLastOfLevel, const TU_SPLIT_MO
   }
 
   for(UInt i=0; i<MAX_NUM_COMPONENT; i++)
-  {//·Ö¸î³ÉµÈ´óËÄ¿é
-    mRect[i].width = (parent.mRect[i].width >> 1);//×ÓTu¿í¼õ°ë
-    mRect[i].height= (parent.mRect[i].height>> 1);////×ÓTu¸ß¼õ°ë
-    mRect[i].x0=parent.mRect[i].x0;//µÚÒ»¿é×ÓTUÆðÊ¼Î»ÖÃÍ¬¸¸TuÆðÊ¼Î»ÖÃ
+  {//ï¿½Ö¸ï¿½ÉµÈ´ï¿½ï¿½Ä¿ï¿½
+    mRect[i].width = (parent.mRect[i].width >> 1);//ï¿½ï¿½Tuï¿½ï¿½ï¿½ï¿½ï¿½
+    mRect[i].height= (parent.mRect[i].height>> 1);////ï¿½ï¿½Tuï¿½ß¼ï¿½ï¿½ï¿½
+    mRect[i].x0=parent.mRect[i].x0;//ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½TUï¿½ï¿½Ê¼Î»ï¿½ï¿½Í¬ï¿½ï¿½Tuï¿½ï¿½Ê¼Î»ï¿½ï¿½
     mRect[i].y0=parent.mRect[i].y0;
     mOffsets[i]=parent.mOffsets[i];
 
-    if ((mRect[i].width < MIN_TU_SIZE || mRect[i].height < MIN_TU_SIZE) && mRect[i].width!=0)//×ÓTUÐ¡ÓÚ×îÐ¡TU¿é
+    if ((mRect[i].width < MIN_TU_SIZE || mRect[i].height < MIN_TU_SIZE) && mRect[i].width!=0)//ï¿½ï¿½TUÐ¡ï¿½ï¿½ï¿½ï¿½Ð¡TUï¿½ï¿½
     {
-      const UInt numPels=mRect[i].width * mRect[i].height;//×ÓTU¿éÏñËØÊý
+      const UInt numPels=mRect[i].width * mRect[i].height;//ï¿½ï¿½TUï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
       if (numPels < (MIN_TU_SIZE*MIN_TU_SIZE))
-      {//¿íºÍ¸ßÎÞ·¨Í¬Ê±²»Ð¡ÓÚ4 ÔòÎÞ·¨ÍùÏÂ·Ö¸î ·µ»ØÉÏÒ»²ã¼´¸¸Tu
+      {//ï¿½ï¿½Í¸ï¿½ï¿½Þ·ï¿½Í¬Ê±ï¿½ï¿½Ð¡ï¿½ï¿½4 ï¿½ï¿½ï¿½Þ·ï¿½ï¿½ï¿½ï¿½Â·Ö¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ã¼´ï¿½ï¿½Tu
         // this level doesn't have enough pixels to have 4 blocks of any relative dimension
         mRect[i].width = parent.mRect[i].width;
         mRect[i].height= parent.mRect[i].height;
@@ -156,13 +156,13 @@ TComTU::TComTU(TComTU &parent, const Bool bProcessLastOfLevel, const TU_SPLIT_MO
         mTrDepthRelCU[i]--;
       }
       else if (mRect[i].width < mRect[i].height)
-      {//×ª»¯³ÉËùÄÜ´¦ÀíµÄ¿é´óÐ¡
+      {//×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü´ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½Ð¡
         mRect[i].width=MIN_TU_SIZE;
         mRect[i].height=numPels/MIN_TU_SIZE;
         mCodeAll[i]=true;
       }
       else
-      {//×ª»¯³ÉËùÄÜ´¦ÀíµÄ¿é´óÐ¡
+      {//×ªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü´ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½Ð¡
         mRect[i].height=MIN_TU_SIZE;
         mRect[i].width=numPels/MIN_TU_SIZE;
         mCodeAll[i]=true;
@@ -174,35 +174,35 @@ TComTU::TComTU(TComTU &parent, const Bool bProcessLastOfLevel, const TU_SPLIT_MO
     }
 
     mOrigWidth[i]=mRect[i].width;
-    if (!mCodeAll[i] && mbProcessLastOfLevel)//²»ÐèÒªÍùÏÂ·Ö¸î
+    if (!mCodeAll[i] && mbProcessLastOfLevel)//ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½Â·Ö¸ï¿½
     {
       mRect[i].width=0;
     }
   }
 }
 
-Bool TComTURecurse::nextSection(const TComTU &parent)//ÒÔµ±Ç°TU¿éµÃµ½×ÓTU¿éÐÅÏ¢ Èô´æÔÚÏÂÒ»×Ó¿éÔò·µ»ØÕæ 
+Bool TComTURecurse::nextSection(const TComTU &parent)//ï¿½Ôµï¿½Ç°TUï¿½ï¿½Ãµï¿½ï¿½ï¿½TUï¿½ï¿½ï¿½ï¿½Ï¢ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Ó¿ï¿½ï¿½ò·µ»ï¿½ï¿½ï¿½ 
 {
   if (mSplitMode==DONT_SPLIT)
-  {//²»´æÔÚ×ÓTU¿é ·µ»Øfalse
+  {//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½TUï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½false
     mSection++;
     return false;
   }
-  else//´æÔÚ×Ó¿é
+  else//ï¿½ï¿½ï¿½ï¿½ï¿½Ó¿ï¿½
   {
-    for(UInt i=0; i<MAX_NUM_COMPONENT; i++)//±éÀúY Cr Cb·ÖÁ¿                    
+    for(UInt i=0; i<MAX_NUM_COMPONENT; i++)//ï¿½ï¿½ï¿½ï¿½Y Cr Cbï¿½ï¿½ï¿½ï¿½                    
     {																		
       mOffsets[i]+=mRect[i].width*mRect[i].height;
-      if (mbProcessLastOfLevel)//µ±Ç°²ã×÷Îª×îºó²Ù×÷²ã
+      if (mbProcessLastOfLevel)//ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
       {
-        mRect[i].width=mOrigWidth[i];//×Ó¿é¿í¶ÈµÈÓÚ¸¸¿é
+        mRect[i].width=mOrigWidth[i];//ï¿½Ó¿ï¿½ï¿½Èµï¿½ï¿½Ú¸ï¿½ï¿½ï¿½
       }
-      mRect[i].x0+=mRect[i].width;//ÏÂÒ»×ÓTU¿é ÆðÊ¼Î»ÖÃ
+      mRect[i].x0+=mRect[i].width;//ï¿½ï¿½Ò»ï¿½ï¿½TUï¿½ï¿½ ï¿½ï¿½Ê¼Î»ï¿½ï¿½
       const TComRectangle &parentRect=parent.getRect(ComponentID(i));
-      if (mRect[i].x0 >= parentRect.x0+parentRect.width)//ÈôÏÂÒ»×ÓTUÎ»ÖÃ³¬³ö¸¸TUËùÔÚµÚÒ»ÐÐ×ÓTU¿éÎ»ÖÃ Ôò×ªµ½ÏÂÒ»ÐÐ £¨ÀýÈçsection=2Ê±£©
+      if (mRect[i].x0 >= parentRect.x0+parentRect.width)//ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½TUÎ»ï¿½Ã³ï¿½ï¿½ï¿½ï¿½ï¿½TUï¿½ï¿½ï¿½Úµï¿½Ò»ï¿½ï¿½ï¿½ï¿½TUï¿½ï¿½Î»ï¿½ï¿½ ï¿½ï¿½×ªï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½section=2Ê±ï¿½ï¿½
       {
         mRect[i].x0=parentRect.x0;
-        mRect[i].y0+=mRect[i].height;//×ªµ½ÏÂÒ»ÐÐ
+        mRect[i].y0+=mRect[i].height;//×ªï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½
       }
       if (!mCodeAll[i])//
       {
@@ -212,14 +212,14 @@ Bool TComTURecurse::nextSection(const TComTU &parent)//ÒÔµ±Ç°TU¿éµÃµ½×ÓTU¿éÐÅÏ¢ 
         }
       }
     }
-    assert(mRect[COMPONENT_Cb].x0==mRect[COMPONENT_Cr].x0);//¶ÏÑÔCr Cb Î»ÖÃ´óÐ¡ÏàÍ¬
+    assert(mRect[COMPONENT_Cb].x0==mRect[COMPONENT_Cr].x0);//ï¿½ï¿½ï¿½ï¿½Cr Cb Î»ï¿½Ã´ï¿½Ð¡ï¿½ï¿½Í¬
     assert(mRect[COMPONENT_Cb].y0==mRect[COMPONENT_Cr].y0);
     assert(mRect[COMPONENT_Cb].width==mRect[COMPONENT_Cr].width);
     assert(mRect[COMPONENT_Cb].height==mRect[COMPONENT_Cr].height);
 
-    mAbsPartIdxTURelCU+=mAbsPartIdxStep;//¸Ã×ÓTU¿éÏà¶ÔCU¿éÎ»ÖÃË÷Òý
+    mAbsPartIdxTURelCU+=mAbsPartIdxStep;//ï¿½ï¿½ï¿½ï¿½TUï¿½ï¿½ï¿½ï¿½ï¿½CUï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     mSection++;
-    return mSection< (1<<mSplitMode);//ÊÇ·ñÐ¡ÓÚ×ÜsectionÊý ¼´sectionÊÇ·ñ±éÀúÍê
+    return mSection< (1<<mSplitMode);//ï¿½Ç·ï¿½Ð¡ï¿½ï¿½ï¿½ï¿½sectionï¿½ï¿½ ï¿½ï¿½sectionï¿½Ç·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   }
 }
 
@@ -231,7 +231,7 @@ UInt TComTU::GetEquivalentLog2TrSize(const ComponentID compID)     const
 
 
 Bool TComTU::useDST(const ComponentID compID)
-{//TUÊÇ·ñÊ¹ÓÃDST±ä»»
+{//TUï¿½Ç·ï¿½Ê¹ï¿½ï¿½DSTï¿½ä»»
         TComDataCU *const pcCU       = getCU();
   const UInt              absPartIdx = GetAbsPartIdxTU(compID);
 

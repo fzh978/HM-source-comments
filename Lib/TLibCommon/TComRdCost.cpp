@@ -290,7 +290,7 @@ UInt TComRdCost::xGetExpGolombNumberOfBits( Int iVal )//对于给定的符号数
 
   return uiLength;
 }
-//设置与失真计算相关的参数
+//设置与失真计算相关的参数 根据不同的设置参数 多次重载
 Void TComRdCost::setDistParam( UInt uiBlkWidth, UInt uiBlkHeight, DFunc eDFunc, DistParam& rcDistParam )
 {
   // set Block Width / Height
@@ -306,8 +306,8 @@ Void TComRdCost::setDistParam( UInt uiBlkWidth, UInt uiBlkHeight, DFunc eDFunc, 
 Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefStride, DistParam& rcDistParam )
 {
   // set Original & Curr Pointer / Stride
-  rcDistParam.pOrg = pcPatternKey->getROIY();//原像素
-  rcDistParam.pCur = piRefY;//重建像素
+  rcDistParam.pOrg = pcPatternKey->getROIY();//原像素（当前像素）
+  rcDistParam.pCur = piRefY;//参考像素（参考像素块指的是当前像素块用该块做参考来预测 计算预测残差）
 
   rcDistParam.iStrideOrg = pcPatternKey->getPatternLStride();
   rcDistParam.iStrideCur = iRefStride;
@@ -317,7 +317,7 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
   rcDistParam.iRows    = pcPatternKey->getROIYHeight();
   rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD + g_aucConvertToBit[ rcDistParam.iCols ] + 1 ];//失真度量函数选择对应宽度的SAD
 
-  if (rcDistParam.iCols == 12)//失真度量函数选择对应宽度的SAD
+  if (rcDistParam.iCols == 12)//失真度量函数 选择对应宽度的SAD
   {
     rcDistParam.DistFunc = m_afpDistortFunc[DF_SAD12];
   }
@@ -379,8 +379,8 @@ Void TComRdCost::setDistParam( TComPattern* pcPatternKey, Pel* piRefY, Int iRefS
 
 Void TComRdCost::setDistParam( DistParam& rcDP, Int bitDepth, Pel* p1, Int iStride1, Pel* p2, Int iStride2, Int iWidth, Int iHeight, Bool bHadamard )//重载失真参数设置
 {
-  rcDP.pOrg       = p1;
-  rcDP.pCur       = p2;
+  rcDP.pOrg       = p1;//原像素（当前像素）
+  rcDP.pCur       = p2;//参考像素（参考像素块指的是当前像素块用该块做参考来预测 计算预测残差）
   rcDP.iStrideOrg = iStride1;
   rcDP.iStrideCur = iStride2;
   rcDP.iCols      = iWidth;
@@ -485,7 +485,7 @@ Distortion TComRdCost::xGetSAD( DistParam* pcDtParam )//计算整个像素块的
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8) );//返回SAD计算结果
 }
 
-Distortion TComRdCost::xGetSAD4( DistParam* pcDtParam )//只计算４＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+Distortion TComRdCost::xGetSAD4( DistParam* pcDtParam )//计算４＊M内的SAD(M为像素块的高 iSubStep类似采样比 用采样值估计整个像素块的SAD)可以有效的减少计算量
 {
   if ( pcDtParam->bApplyWeight )
   {
@@ -512,11 +512,11 @@ Distortion TComRdCost::xGetSAD4( DistParam* pcDtParam )//只计算４＊M内的S
     piCur += iStrideCur;
   }
 
-  uiSum <<= iSubShift;
+  uiSum <<= iSubShift;//用采样点的SAD来估计整个区域的SAD!!!!!
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8) );
 }
 
-Distortion TComRdCost::xGetSAD8( DistParam* pcDtParam )//只计算8＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+Distortion TComRdCost::xGetSAD8( DistParam* pcDtParam )//只计算8＊M内的SAD(M为像素块的高 iSubStep类似采样比 用采样值估计整个像素块的SAD)
 {
   if ( pcDtParam->bApplyWeight )
   {
@@ -547,11 +547,11 @@ Distortion TComRdCost::xGetSAD8( DistParam* pcDtParam )//只计算8＊M内的SAD
     piCur += iStrideCur;
   }
 
-  uiSum <<= iSubShift;
+  uiSum <<= iSubShift;//用采样点的SAD来估计整个区域的SAD!!!!!
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8) );
 }
 
-Distortion TComRdCost::xGetSAD16( DistParam* pcDtParam )////只计算16＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+Distortion TComRdCost::xGetSAD16( DistParam* pcDtParam )////只计算16＊M内的SAD(M为像素块的高 iSubStep类似采样比 用采样值估计整个像素块的SAD)
 {
   if ( pcDtParam->bApplyWeight )
   {
@@ -594,7 +594,7 @@ Distortion TComRdCost::xGetSAD16( DistParam* pcDtParam )////只计算16＊M内�
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8) );
 }
 
-Distortion TComRdCost::xGetSAD12( DistParam* pcDtParam )//只计算12＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+Distortion TComRdCost::xGetSAD12( DistParam* pcDtParam )//只计算12＊M内的SAD(M为像素块的高 iSubStep类似采样比 用采样值估计整个像素块的SAD)
 {
   if ( pcDtParam->bApplyWeight )
   {
@@ -633,7 +633,7 @@ Distortion TComRdCost::xGetSAD12( DistParam* pcDtParam )//只计算12＊M内的S
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8) );
 }
 
-Distortion TComRdCost::xGetSAD16N( DistParam* pcDtParam )//只计算16N＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)N由像素块的宽决定
+Distortion TComRdCost::xGetSAD16N( DistParam* pcDtParam )//只计算16N＊M内的SAD(M为像素块的高 iSubStep类似采样比 用采样值估计整个像素块的SAD)N由像素块的宽决定
 {
   const Pel* piOrg   = pcDtParam->pOrg;
   const Pel* piCur   = pcDtParam->pCur;
@@ -675,7 +675,7 @@ Distortion TComRdCost::xGetSAD16N( DistParam* pcDtParam )//只计算16N＊M内�
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8) );
 }
 
-Distortion TComRdCost::xGetSAD32( DistParam* pcDtParam )//只计算32＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+Distortion TComRdCost::xGetSAD32( DistParam* pcDtParam )//只计算32＊M内的SAD(M为像素块的高 iSubStep类似采样比 用采样值估计整个像素块的SAD)
 {
   if ( pcDtParam->bApplyWeight )
   {
@@ -734,7 +734,7 @@ Distortion TComRdCost::xGetSAD32( DistParam* pcDtParam )//只计算32＊M内的S
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8) );
 }
 
-Distortion TComRdCost::xGetSAD24( DistParam* pcDtParam )//只计算24＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+Distortion TComRdCost::xGetSAD24( DistParam* pcDtParam )//只计算24＊M内的SAD(M为像素块的高 iSubStep类似采样比 用采样值估计整个像素块的SAD)
 {
   if ( pcDtParam->bApplyWeight )
   {
@@ -785,7 +785,7 @@ Distortion TComRdCost::xGetSAD24( DistParam* pcDtParam )//只计算24＊M内的S
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8) );
 }
 
-Distortion TComRdCost::xGetSAD64( DistParam* pcDtParam )//只计算64＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+Distortion TComRdCost::xGetSAD64( DistParam* pcDtParam )//只计算64＊M内的SAD(M为像素块的高 iSubStep类似采样比 用采样值估计整个像素块的SAD)
 {
   if ( pcDtParam->bApplyWeight )
   {
@@ -876,7 +876,7 @@ Distortion TComRdCost::xGetSAD64( DistParam* pcDtParam )//只计算64＊M内的S
   return ( uiSum >> DISTORTION_PRECISION_ADJUSTMENT(pcDtParam->bitDepth-8) );
 }
 
-Distortion TComRdCost::xGetSAD48( DistParam* pcDtParam )//只计算48＊M内的SAD(M取决于iSubStep　iSubStep＝１时　M为像素块的高)
+Distortion TComRdCost::xGetSAD48( DistParam* pcDtParam )//只计算48＊M内的SAD(M为像素块的高 iSubStep类似采样比 用采样值估计整个像素块的SAD)
 {
   if ( pcDtParam->bApplyWeight )
   {

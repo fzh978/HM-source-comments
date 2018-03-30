@@ -124,8 +124,8 @@ Void getTUEntropyCodingParameters(      TUEntropyCodingParameters &result,
   const UInt log2WidthInGroups  = g_aucConvertToBit[result.widthInGroups  * 4];
   const UInt log2HeightInGroups = g_aucConvertToBit[result.heightInGroups * 4];
 
-  result.scan   = g_scanOrder[ SCAN_GROUPED_4x4 ][ result.scanType ][ log2BlockWidth    ][ log2BlockHeight    ];
-  result.scanCG = g_scanOrder[ SCAN_UNGROUPED   ][ result.scanType ][ log2WidthInGroups ][ log2HeightInGroups ];
+  result.scan   = g_scanOrder[ SCAN_GROUPED_4x4 ][ result.scanType ][ log2BlockWidth    ][ log2BlockHeight    ];//扫描Tu块中系数的顺序
+  result.scanCG = g_scanOrder[ SCAN_UNGROUPED   ][ result.scanType ][ log2WidthInGroups ][ log2HeightInGroups ];//扫描CG的顺序
 
   //------------------------------------------------
 
