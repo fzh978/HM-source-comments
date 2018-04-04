@@ -542,7 +542,7 @@ const UChar g_aucChromaScale[NUM_CHROMA_FORMAT][chromaQPMappingTableSize]=//不�
 // Intra prediction
 // ====================================================================================================================
 
-const UChar g_aucIntraModeNumFast_UseMPM[MAX_CU_DEPTH] =
+const UChar g_aucIntraModeNumFast_UseMPM[MAX_CU_DEPTH] =//不同大小的Cu快速判断后需要常规判断的帧内预测模式数(后续还会使用MPM)
 {
   3,  //   2x2
   8,  //   4x4
@@ -551,7 +551,7 @@ const UChar g_aucIntraModeNumFast_UseMPM[MAX_CU_DEPTH] =
   3,  //  32x32
   3   //  64x64
 };
-const UChar g_aucIntraModeNumFast_NotUseMPM[MAX_CU_DEPTH] =
+const UChar g_aucIntraModeNumFast_NotUseMPM[MAX_CU_DEPTH] =//不同大小的Cu快速判断后需要常规判断的帧内预测模式数(不使用使用MPM 为最终需要常规判断的模式数)
 {
   3,  //   2x2
   9,  //   4x4

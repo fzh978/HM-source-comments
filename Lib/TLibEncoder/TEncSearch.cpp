@@ -81,12 +81,12 @@ static const UInt s_auiDFilter[9] =
   0, 1, 0
 };
 
-static Void offsetSubTUCBFs(TComTU &rTu, const ComponentID compID)//根据子Tu的cbfs设置父Tu的cbf？？？
+static Void offsetSubTUCBFs(TComTU &rTu, const ComponentID compID)//根据子Tu的cbfs设置父Tu的cbf (针对色度分量)
 {
         TComDataCU *pcCU              = rTu.getCU();//该Tu所在Cu
   const UInt        uiTrDepth         = rTu.GetTransformDepthRel();//该Tu相对CU的深度
   const UInt        uiAbsPartIdx      = rTu.GetAbsPartIdxTU(compID);//该Tu（左上角4*4小块）在CTU中的位置
-  const UInt        partIdxesPerSubTU = rTu.GetAbsPartIdxNumParts(compID) >> 1;//每个子Tu的小块个数 水平分割？？
+  const UInt        partIdxesPerSubTU = rTu.GetAbsPartIdxNumParts(compID) >> 1;//每个子Tu的小块个数 水平分割 (色度Tu下存在水平分割)
 
   //move the CBFs down a level and set the parent CBF
 
@@ -1027,7 +1027,7 @@ TEncSearch::xEncIntraHeader( TComDataCU*  pcCU,
 
       if (pcCU->isIntra(0) && pcCU->getPartitionSize(0) == SIZE_2Nx2N )
       {
-        m_pcEntropyCoder->encodeIPCMInfo( pcCU, 0, true );//编码PCM信息
+        m_pcEntropyCoder->encodeIPCMInfo( pcCU, 0, true );//编码PCM相关信息(详见该方法 该方法会判断该Cu是否使用PCM 若使用则还会编码PCM下的像素值)
 
         if ( pcCU->getIPCMFlag (0))//如果使用PCM模式 则方法结束 无需在编码其他信息
         {
@@ -1257,9 +1257,9 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,//原始像素�
       {
         return;
       }
-      TComTrQuant::crossComponentPrediction ( rTu, compID, reconstructedLumaResidual, piResi, piResi, uiWidth, uiHeight, MAX_CU_SIZE, uiStride, uiStride, false );//CCP计算色度残差
+      TComTrQuant::crossComponentPrediction ( rTu, compID, reconstructedLumaResidual, piResi, piResi, uiWidth, uiHeight, MAX_CU_SIZE, uiStride, uiStride, false );//原始色度残差CCP计算后得到色度预测残差并保存至piResi
     }
-    else if (isLuma(compID) && !bUseReconstructedResidualForEstimate)//不使用CCp 亮度分量
+    else if (isLuma(compID) && !bUseReconstructedResidualForEstimate)//不使用CCp    亮度分量
     {
       xStoreCrossComponentPredictionResult( encoderLumaResidual, piResi, rTu, 0, 0, MAX_CU_SIZE, uiStride );//直接存储正变换前原始亮度残差至encoderLumaResidual
     }
@@ -1326,11 +1326,11 @@ Void TEncSearch::xIntraCodingTUBlock(       TComYuv*    pcOrgYuv,//原始像素�
     {
       if (bUseCrossCPrediction)
       {
-        TComTrQuant::crossComponentPrediction( rTu, compID, reconstructedLumaResidual, piResi, piResi, uiWidth, uiHeight, MAX_CU_SIZE, uiStride, uiStride, true );
+        TComTrQuant::crossComponentPrediction( rTu, compID, reconstructedLumaResidual, piResi, piResi, uiWidth, uiHeight, MAX_CU_SIZE, uiStride, uiStride, true );//用色度预测残差CCP计算后得到原始色度残差并保存至piResi
       }
-      else if (isLuma(compID))
+      else if (isLuma(compID))//亮度分量
       {
-        xStoreCrossComponentPredictionResult( reconstructedLumaResidual, piResi, rTu, 0, 0, MAX_CU_SIZE, uiStride );//直接存储反变换后的亮度残差至encoderLumaResidual
+        xStoreCrossComponentPredictionResult( reconstructedLumaResidual, piResi, rTu, 0, 0, MAX_CU_SIZE, uiStride );//直接存储反变换后的亮度残差保存至reconstructedLumaResidual 用于CCp计算色度预测残差
       }
     }
 
@@ -1424,7 +1424,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 #endif
                                     Double&     dRDCost,//该Tu最优分割时的总损耗
                                     TComTU&     rTu
-                                    DEBUG_STRING_FN_DECLARE(sDebug))//以该TU作为根节点四叉树深度遍历直到允许的最小子Tu 通过率失真找出该Tu最优的子Tu划分
+                                    DEBUG_STRING_FN_DECLARE(sDebug))//以该TU作为根节点四叉树深度遍历直到允许的最小子Tu 通过率失真找出该Tu最优的子Tu划分  及子Tu是否TransformSkip
 {
   TComDataCU   *pcCU          = rTu.getCU();
   const UInt    uiAbsPartIdx  = rTu.GetAbsPartIdxTU();//该Tu在Ctu中的位置
@@ -1501,7 +1501,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
       Distortion singleDistTmpLuma                    = 0;
       UInt       singleCbfTmpLuma                     = 0;
       Double     singleCostTmp                        = 0;
-      Int        firstCheckId                         = 0;//首先判断使用TransformSkip模式
+      Int        firstCheckId                         = 0;//首先判断该Tu使用TransformSkip模式
 
       for(Int modeId = firstCheckId; modeId < 2; modeId ++)//遍历使用和不使用TransformSkip模式两种情况
       {
@@ -1544,7 +1544,7 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
           bestModeId[COMPONENT_Y] = modeId;
           if(bestModeId[COMPONENT_Y] == firstCheckId)//当前最优mode为第一次判断
           {
-            xStoreIntraResultQT(COMPONENT_Y, rTu );
+            xStoreIntraResultQT(COMPONENT_Y, rTu );//将第一判断的变化系数保存和重建值起来
             m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiFullDepth ][ CI_TEMP_BEST ] );
           }
 
@@ -1569,8 +1569,8 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 
       pcCU ->setTransformSkipSubParts ( bestModeId[COMPONENT_Y], COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );//根据最优mode设置是否使用TransformSkip
 
-      if(bestModeId[COMPONENT_Y] == firstCheckId)//最终的最优mode为不使用TransformSkip
-      {
+      if(bestModeId[COMPONENT_Y] == firstCheckId)//最终的最优mode为第一次判断
+      {//则需要提取第一次的变换系数和重建值作为最终的变换系数和重建值(因为第二次判断后 最终的系数和重建值保存的为第二次计算的值 而最优结果为第一次 所以需要第一次计算后将值保存起来)
         xLoadIntraResultQT(COMPONENT_Y, rTu );
         pcCU->setCbfSubParts  ( uiSingleCbfLuma << uiTrDepth, COMPONENT_Y, uiAbsPartIdx, rTu.GetTransformDepthTotalAdj(COMPONENT_Y) );//设置cbf标志
 
@@ -1697,12 +1697,12 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
     m_pcRDGoOnSbacCoder->load ( m_pppcRDSbacCoder[ uiFullDepth ][ CI_QT_TRAFO_TEST ] );
     //若该Tu不继续分割时总损耗较小
     //--- set transform index and Cbf values ---//设置TrIdx和cbf 表明该Tu的最优分割方式
-    pcCU->setTrIdxSubParts( uiTrDepth, uiAbsPartIdx, uiFullDepth );//
+    pcCU->setTrIdxSubParts( uiTrDepth, uiAbsPartIdx, uiFullDepth );//设置最优分割时 TrIdx(表明Tu分割时最优分割深度)
     const TComRectangle &tuRect=rTu.getRect(COMPONENT_Y);
-    pcCU->setCbfSubParts  ( uiSingleCbfLuma << uiTrDepth, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
-    pcCU ->setTransformSkipSubParts  ( bestModeId[COMPONENT_Y], COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );
+    pcCU->setCbfSubParts  ( uiSingleCbfLuma << uiTrDepth, COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );//设置该(子)Tu的cbf(指最优分割时所有子Tu)
+    pcCU ->setTransformSkipSubParts  ( bestModeId[COMPONENT_Y], COMPONENT_Y, uiAbsPartIdx, totalAdjustedDepthChan );////设置该(子)Tu的是否使用TransformSkip
 
-    //--- set reconstruction for next intra prediction blocks ---//设置帧内预测需要用到的重建像素
+    //--- set reconstruction for next intra prediction blocks ---//设置帧内预测需要用到的重建像素(作为参考像素)
     const UInt  uiQTLayer   = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2TrSize;
     const UInt  uiZOrder    = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
     const UInt  uiWidth     = tuRect.width;
@@ -1726,13 +1726,13 @@ TEncSearch::xRecurIntraCodingLumaQT(TComYuv*    pcOrgYuv,
 
 
 Void
-TEncSearch::xSetIntraResultLumaQT(TComYuv* pcRecoYuv, TComTU &rTu)
+TEncSearch::xSetIntraResultLumaQT(TComYuv* pcRecoYuv, TComTU &rTu)//设置rTu变换后的系数及重建像素 
 {
   TComDataCU *pcCU        = rTu.getCU();
-  const UInt uiTrDepth    = rTu.GetTransformDepthRel();
-  const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
-  UInt uiTrMode     = pcCU->getTransformIdx( uiAbsPartIdx );
-  if(  uiTrMode == uiTrDepth )
+  const UInt uiTrDepth    = rTu.GetTransformDepthRel();//Tu相对Cu的深度
+  const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();//TU在Ctu中的位置
+  UInt uiTrMode     = pcCU->getTransformIdx( uiAbsPartIdx );//TrIdx表明该Tu是否继续分割
+  if(  uiTrMode == uiTrDepth )//该Tu没有子Tu
   {
     UInt uiLog2TrSize = rTu.GetLog2LumaTrSize();
     UInt uiQTLayer    = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2TrSize;
@@ -1740,27 +1740,27 @@ TEncSearch::xSetIntraResultLumaQT(TComYuv* pcRecoYuv, TComTU &rTu)
     //===== copy transform coefficients =====
 
     const TComRectangle &tuRect=rTu.getRect(COMPONENT_Y);
-    const UInt coeffOffset = rTu.getCoefficientOffset(COMPONENT_Y);
-    const UInt numCoeffInBlock = tuRect.width * tuRect.height;
+    const UInt coeffOffset = rTu.getCoefficientOffset(COMPONENT_Y);//该Tu的变换系数在整个Ctu变换系数中位置的偏移量
+    const UInt numCoeffInBlock = tuRect.width * tuRect.height;//该TU块的系数个数
 
     if (numCoeffInBlock!=0)
     {
       const TCoeff* srcCoeff = m_ppcQTTempCoeff[COMPONENT_Y][uiQTLayer] + coeffOffset;
-      TCoeff* destCoeff      = pcCU->getCoeff(COMPONENT_Y) + coeffOffset;
-      ::memcpy( destCoeff, srcCoeff, sizeof(TCoeff)*numCoeffInBlock );
+      TCoeff* destCoeff      = pcCU->getCoeff(COMPONENT_Y) + coeffOffset;//该Tu变换系数在Cu中保存的起始位置
+      ::memcpy( destCoeff, srcCoeff, sizeof(TCoeff)*numCoeffInBlock );//将变换系数复制保存到该Tu所在Cu的m_pcTrCoeff数组中 
 #if ADAPTIVE_QP_SELECTION
       const TCoeff* srcArlCoeff = m_ppcQTTempArlCoeff[COMPONENT_Y][ uiQTLayer ] + coeffOffset;
       TCoeff* destArlCoeff      = pcCU->getArlCoeff (COMPONENT_Y)               + coeffOffset;
       ::memcpy( destArlCoeff, srcArlCoeff, sizeof( TCoeff ) * numCoeffInBlock );
 #endif
-      m_pcQTTempTComYuv[ uiQTLayer ].copyPartToPartComponent( COMPONENT_Y, pcRecoYuv, uiAbsPartIdx, tuRect.width, tuRect.height );
+      m_pcQTTempTComYuv[ uiQTLayer ].copyPartToPartComponent( COMPONENT_Y, pcRecoYuv, uiAbsPartIdx, tuRect.width, tuRect.height );//该层Tu的变换后重建像素复制到pcRecoYuv对应位置
     }
 
   }
-  else
+  else//该Tu有四个子Tu
   {
     TComTURecurse tuRecurseChild(rTu, false);
-    do
+    do//则递归同上处理子Tu
     {
       xSetIntraResultLumaQT( pcRecoYuv, tuRecurseChild );
     } while (tuRecurseChild.nextSection(rTu));
@@ -1769,15 +1769,15 @@ TEncSearch::xSetIntraResultLumaQT(TComYuv* pcRecoYuv, TComTU &rTu)
 
 
 Void
-TEncSearch::xStoreIntraResultQT(const ComponentID compID, TComTU &rTu )
-{
+TEncSearch::xStoreIntraResultQT(const ComponentID compID, TComTU &rTu )//m_ppcQTTempCoeff[compID][uiQTLayer]保存了uiQTLayer层所有Tu(整个Ctu)的变换系数
+{                                                                      //m_pcQTTempTComYuv[ uiQTLayer ]保存了uiQTLayer层所有Tu(整个Ctu)的重建像素值
   TComDataCU *pcCU=rTu.getCU();
   const UInt uiTrDepth = rTu.GetTransformDepthRel();
   const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
   const UInt uiTrMode     = pcCU->getTransformIdx( uiAbsPartIdx );
   if ( compID==COMPONENT_Y || uiTrMode == uiTrDepth )
   {
-    assert(uiTrMode == uiTrDepth);
+    assert(uiTrMode == uiTrDepth);//Store时 该Tu一定不能继续分割
     const UInt uiLog2TrSize = rTu.GetLog2LumaTrSize();
     const UInt uiQTLayer    = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2TrSize;
 
@@ -1788,7 +1788,7 @@ TEncSearch::xStoreIntraResultQT(const ComponentID compID, TComTU &rTu )
       //===== copy transform coefficients =====
       const UInt uiNumCoeff    = tuRect.width * tuRect.height;
       TCoeff* pcCoeffSrc = m_ppcQTTempCoeff[compID] [ uiQTLayer ] + rTu.getCoefficientOffset(compID);
-      TCoeff* pcCoeffDst = m_pcQTTempTUCoeff[compID];
+      TCoeff* pcCoeffDst = m_pcQTTempTUCoeff[compID];//将该层Tu的变换系数保存在m_pcQTTempTUCoeff中(用于Load)
 
       ::memcpy( pcCoeffDst, pcCoeffSrc, sizeof( TCoeff ) * uiNumCoeff );
 #if ADAPTIVE_QP_SELECTION
@@ -1797,14 +1797,14 @@ TEncSearch::xStoreIntraResultQT(const ComponentID compID, TComTU &rTu )
       ::memcpy( pcArlCoeffDst, pcArlCoeffSrc, sizeof( TCoeff ) * uiNumCoeff );
 #endif
       //===== copy reconstruction =====
-      m_pcQTTempTComYuv[ uiQTLayer ].copyPartToPartComponent( compID, &m_pcQTTempTransformSkipTComYuv, uiAbsPartIdx, tuRect.width, tuRect.height );
+      m_pcQTTempTComYuv[ uiQTLayer ].copyPartToPartComponent( compID, &m_pcQTTempTransformSkipTComYuv, uiAbsPartIdx, tuRect.width, tuRect.height );//将该Tu的重建像素值复制保存到m_pcQTTempTransformSkipTComYuv对应位置
     }
   }
 }
 
 
 Void
-TEncSearch::xLoadIntraResultQT(const ComponentID compID, TComTU &rTu)
+TEncSearch::xLoadIntraResultQT(const ComponentID compID, TComTU &rTu)//和Store相反 将Store好的系数值和重建值Load出来
 {
   TComDataCU *pcCU=rTu.getCU();
   const UInt uiTrDepth = rTu.GetTransformDepthRel();
@@ -1812,7 +1812,7 @@ TEncSearch::xLoadIntraResultQT(const ComponentID compID, TComTU &rTu)
   const UInt uiTrMode     = pcCU->getTransformIdx( uiAbsPartIdx );
   if ( compID==COMPONENT_Y || uiTrMode == uiTrDepth )
   {
-    assert(uiTrMode == uiTrDepth);
+    assert(uiTrMode == uiTrDepth);//Load时 该Tu一定不能继续分割
     const UInt uiLog2TrSize = rTu.GetLog2LumaTrSize();
     const UInt uiQTLayer    = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2TrSize;
     const UInt uiZOrder     = pcCU->getZorderIdxInCtu() + uiAbsPartIdx;
@@ -1826,14 +1826,14 @@ TEncSearch::xLoadIntraResultQT(const ComponentID compID, TComTU &rTu)
       TCoeff* pcCoeffDst = m_ppcQTTempCoeff[compID] [ uiQTLayer ] + rTu.getCoefficientOffset(compID);
       TCoeff* pcCoeffSrc = m_pcQTTempTUCoeff[compID];
 
-      ::memcpy( pcCoeffDst, pcCoeffSrc, sizeof( TCoeff ) * uiNumCoeff );
+      ::memcpy( pcCoeffDst, pcCoeffSrc, sizeof( TCoeff ) * uiNumCoeff );//将保存到m_pcQTTempTUCoeff的系数值复制(提取)到m_ppcQTTempCoeff对应位置
 #if ADAPTIVE_QP_SELECTION
       TCoeff* pcArlCoeffDst = m_ppcQTTempArlCoeff[compID] [ uiQTLayer ] + rTu.getCoefficientOffset(compID);
       TCoeff* pcArlCoeffSrc = m_ppcQTTempTUArlCoeff[compID];
       ::memcpy( pcArlCoeffDst, pcArlCoeffSrc, sizeof( TCoeff ) * uiNumCoeff );
 #endif
       //===== copy reconstruction =====
-      m_pcQTTempTransformSkipTComYuv.copyPartToPartComponent( compID, &m_pcQTTempTComYuv[ uiQTLayer ], uiAbsPartIdx, tuRect.width, tuRect.height );
+      m_pcQTTempTransformSkipTComYuv.copyPartToPartComponent( compID, &m_pcQTTempTComYuv[ uiQTLayer ], uiAbsPartIdx, tuRect.width, tuRect.height );//将保存好的重建值复制(提取)到m_pcQTTempTComYuv对应位置
 
       Pel*    piRecIPred        = pcCU->getPic()->getPicYuvRec()->getAddr( compID, pcCU->getCtuRsAddr(), uiZOrder );
       UInt    uiRecIPredStride  = pcCU->getPic()->getPicYuvRec()->getStride (compID);
@@ -1843,11 +1843,11 @@ TEncSearch::xLoadIntraResultQT(const ComponentID compID, TComTU &rTu)
       UInt    uiHeight          = tuRect.height;
       Pel* pRecQt               = piRecQt;
       Pel* pRecIPred            = piRecIPred;
-      for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+      for( UInt uiY = 0; uiY < uiHeight; uiY++ )//遍历该Tu的所有像素值
       {
         for( UInt uiX = 0; uiX < uiWidth; uiX++ )
         {
-          pRecIPred[ uiX ] = pRecQt   [ uiX ];
+          pRecIPred[ uiX ] = pRecQt   [ uiX ];//将m_pcQTTempTComYuv中的重建值复制到重建图像PicYuvRec的对应位置(用于帧内预测得到参考像素)
         }
         pRecQt    += uiRecQtStride;
         pRecIPred += uiRecIPredStride;
@@ -1863,12 +1863,12 @@ TEncSearch::xStoreCrossComponentPredictionResult(       Pel    *pResiDst,
                                                   const Int     xOffset,
                                                   const Int     yOffset,
                                                   const Int     strideDst,
-                                                  const Int     strideSrc )
+                                                  const Int     strideSrc )//直接存储(亮度)残差至pResiDst(用于色度分量的预测)
 {
   const Pel *pSrc = pResiSrc + yOffset * strideSrc + xOffset;
         Pel *pDst = pResiDst + yOffset * strideDst + xOffset;
 
-  for( Int y = 0; y < rTu.getRect( COMPONENT_Y ).height; y++ )
+  for( Int y = 0; y < rTu.getRect( COMPONENT_Y ).height; y++ )//储(亮度)残差所有值至pResiDst
   {
     ::memcpy( pDst, pSrc, sizeof(Pel) * rTu.getRect( COMPONENT_Y ).width );
     pDst += strideDst;
@@ -1933,7 +1933,7 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
                                       Distortion& ruiDist,
                                       TComTU&     rTu
                                       DEBUG_STRING_FN_DECLARE(sDebug))
-{
+{//得到色度分量Tu块的最优分割 注:色度Tu的QT划分同亮度分量即亮度Tu的划分也决定了色度Tu的划分 所以色度分量无需再深度遍历找出最优的划分方式 只需要RDO判断子Tu是否使用TransformSkip和CrossComponentPrediction
   TComDataCU         *pcCU                  = rTu.getCU();
   const UInt          uiTrDepth             = rTu.GetTransformDepthRel();
   const UInt          uiAbsPartIdx          = rTu.GetAbsPartIdxTU();
@@ -1941,11 +1941,11 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
   UInt                uiTrMode              = pcCU->getTransformIdx( uiAbsPartIdx );
   const UInt          numberValidComponents = getNumberValidComponents(format);
 
-  if(  uiTrMode == uiTrDepth )
+  if(  uiTrMode == uiTrDepth )//该Tu不进行四叉树分割
   {
     if (!rTu.ProcessChannelSection(CHANNEL_TYPE_CHROMA))
     {
-      return;
+      return;//若不需要处理该分量则结束
     }
 
     const UInt uiFullDepth = rTu.GetTransformDepthTotal();
@@ -1953,7 +1953,7 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
     Bool checkTransformSkip = pcCU->getSlice()->getPPS()->getUseTransformSkip();
     checkTransformSkip &= TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(COMPONENT_Cb), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize());
 
-    if ( m_pcEncCfg->getUseTransformSkipFast() )
+    if ( m_pcEncCfg->getUseTransformSkipFast() )//若使用TransformSkip快速判断方法
     {
       checkTransformSkip &= TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(COMPONENT_Y), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize());
 
@@ -1966,11 +1966,11 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
           nbLumaSkip += pcCU->getTransformSkip(absPartIdxSub, COMPONENT_Y);
         }
         checkTransformSkip &= (nbLumaSkip > 0);
-      }
+      }//如果该色度Tu对应的亮度Tu使用TS 则该色度Tu需要判断是否使用TS 否则该色度Tu不使用TS
     }
 
 
-    for (UInt ch=COMPONENT_Cb; ch<numberValidComponents; ch++)
+    for (UInt ch=COMPONENT_Cb; ch<numberValidComponents; ch++)//遍历Cb Cr
     {
       const ComponentID compID = ComponentID(ch);
       DEBUG_STRING_NEW(sDebugBestMode)
@@ -1978,11 +1978,11 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
       //use RDO to decide whether Cr/Cb takes TS
       m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[uiFullDepth][CI_QT_TRAFO_ROOT] );
 
-      const Bool splitIntoSubTUs = rTu.getRect(compID).width != rTu.getRect(compID).height;
+      const Bool splitIntoSubTUs = rTu.getRect(compID).width != rTu.getRect(compID).height;//该Tu是否水平分割
 
-      TComTURecurse TUIterator(rTu, false, (splitIntoSubTUs ? TComTU::VERTICAL_SPLIT : TComTU::DONT_SPLIT), true, compID);
+      TComTURecurse TUIterator(rTu, false, (splitIntoSubTUs ? TComTU::VERTICAL_SPLIT : TComTU::DONT_SPLIT), true, compID);//根据是否水平分割得到递归的子Tu
 
-      const UInt partIdxesPerSubTU = TUIterator.GetAbsPartIdxNumParts(compID);
+      const UInt partIdxesPerSubTU = TUIterator.GetAbsPartIdxNumParts(compID);//该子Tu中4*4小块数
 
       do
       {
@@ -2008,10 +2008,10 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
               Int  currModeId                  = 0;
               Int  default0Save1Load2          = 0;
 
-        for(Int transformSkipModeId = 0; transformSkipModeId < transformSkipModesToTest; transformSkipModeId++)
+        for(Int transformSkipModeId = 0; transformSkipModeId < transformSkipModesToTest; transformSkipModeId++)//遍历是否使用TS两种情况
         {
-          for(Int crossCPredictionModeId = 0; crossCPredictionModeId < crossCPredictionModesToTest; crossCPredictionModeId++)
-          {
+          for(Int crossCPredictionModeId = 0; crossCPredictionModeId < crossCPredictionModesToTest; crossCPredictionModeId++)//遍历是否使用CCP两种情况
+          {//该过程通过遍历所有可能的组合 计算率失真 找出率失真最小的情况最为最终该色度Tu的设置  具体过程同亮度分量Tu判断是否TS的处理 只不过这里最多的情况下需要判断4种组合  不在叙述
             pcCU->setCrossComponentPredictionAlphaPartRange(0, compID, subTUAbsPartIdx, partIdxesPerSubTU);
             DEBUG_STRING_NEW(sDebugMode)
             pcCU->setTransformSkipPartRange( transformSkipModeId, compID, subTUAbsPartIdx, partIdxesPerSubTU );
@@ -2085,19 +2085,19 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
         pcCU ->setTransformSkipPartRange                ( bestTransformSkipMode,     compID, subTUAbsPartIdx, partIdxesPerSubTU );
         pcCU ->setCrossComponentPredictionAlphaPartRange( bestCrossCPredictionAlpha, compID, subTUAbsPartIdx, partIdxesPerSubTU );
         ruiDist += singleDistC;
-      } while (TUIterator.nextSection(rTu));
+      } while (TUIterator.nextSection(rTu));//处理每个子Tu
 
       if (splitIntoSubTUs)
       {
-        offsetSubTUCBFs(rTu, compID);
+        offsetSubTUCBFs(rTu, compID);//得到该Tu的cbf
       }
     }
   }
-  else
+  else//该Tu进行四叉树分割
   {
     UInt    uiSplitCbf[MAX_NUM_COMPONENT] = {0,0,0};
 
-    TComTURecurse tuRecurseChild(rTu, false);
+    TComTURecurse tuRecurseChild(rTu, false);//该Tu的递归子Tu
     const UInt uiTrDepthChild   = tuRecurseChild.GetTransformDepthRel();
     do
     {
@@ -2112,7 +2112,7 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
       {
         uiSplitCbf[ch] |= pcCU->getCbf( uiAbsPartIdxSub, ComponentID(ch), uiTrDepthChild );
       }
-    } while ( tuRecurseChild.nextSection(rTu) );
+    } while ( tuRecurseChild.nextSection(rTu) );////则递归处理所有子Tu
 
 
     UInt uiPartsDiv = rTu.GetAbsPartIdxNumParts();
@@ -2127,8 +2127,8 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
         {
           pBase[ uiAbsPartIdx + uiOffs ] |= flag;
         }
-      }
-    }
+      }//设置cbf
+    }//Cb Cr
   }
 }
 
@@ -2136,7 +2136,7 @@ TEncSearch::xRecurIntraChromaCodingQT(TComYuv*    pcOrgYuv,
 
 
 Void
-TEncSearch::xSetIntraResultChromaQT(TComYuv*    pcRecoYuv, TComTU &rTu)
+TEncSearch::xSetIntraResultChromaQT(TComYuv*    pcRecoYuv, TComTU &rTu)//基本同亮度分量 不再叙述
 {
   if (!rTu.ProcessChannelSection(CHANNEL_TYPE_CHROMA))
   {
@@ -2192,19 +2192,19 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
                                TComYuv*    pcOrgYuv,
                                TComYuv*    pcPredYuv,
                                TComYuv*    pcResiYuv,
-                               TComYuv*    pcRecoYuv,
+                               TComYuv*    pcRecoYuv,//保存重建像素值
                                Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
-                               DEBUG_STRING_FN_DECLARE(sDebug))
+                               DEBUG_STRING_FN_DECLARE(sDebug))//得到亮度分量Cu块内Pu块的最优帧内预测模式 及对应的Tu最优分割 失真 重建像素值 变换系数等
 {
-  const UInt         uiDepth               = pcCU->getDepth(0);
-  const UInt         uiInitTrDepth         = pcCU->getPartitionSize(0) == SIZE_2Nx2N ? 0 : 1;
-  const UInt         uiNumPU               = 1<<(2*uiInitTrDepth);
-  const UInt         uiQNumParts           = pcCU->getTotalNumPart() >> 2;
-  const UInt         uiWidthBit            = pcCU->getIntraSizeIdx(0);
-  const ChromaFormat chFmt                 = pcCU->getPic()->getChromaFormat();
-  const UInt         numberValidComponents = getNumberValidComponents(chFmt);
-  const TComSPS     &sps                   = *(pcCU->getSlice()->getSPS());
-  const TComPPS     &pps                   = *(pcCU->getSlice()->getPPS());
+  const UInt         uiDepth               = pcCU->getDepth(0);//该Cu的深度
+  const UInt         uiInitTrDepth         = pcCU->getPartitionSize(0) == SIZE_2Nx2N ? 0 : 1;//Pu相对Cu的深度 也代表QT根节点相对Cu的起始深度 (帧内预测只存在2Nx2N NxN两种Pu分割模式)
+  const UInt         uiNumPU               = 1<<(2*uiInitTrDepth);//该Cu中PU的个数
+  const UInt         uiQNumParts           = pcCU->getTotalNumPart() >> 2;//N*N时 每个Pu块中4*4小块数
+  const UInt         uiWidthBit            = pcCU->getIntraSizeIdx(0);//该Cu的大小
+  const ChromaFormat chFmt                 = pcCU->getPic()->getChromaFormat();//该Cu的色度格式
+  const UInt         numberValidComponents = getNumberValidComponents(chFmt);//有效分量数
+  const TComSPS     &sps                   = *(pcCU->getSlice()->getSPS());//SPS信息
+  const TComPPS     &pps                   = *(pcCU->getSlice()->getPPS());//PPS信息
         Distortion   uiOverallDistY        = 0;
         UInt         CandNum;
         Double       CandCostList[ FAST_UDI_MAX_RDMODE_NUM ];
@@ -2213,10 +2213,10 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         Bool    bMaintainResidual[NUMBER_OF_STORED_RESIDUAL_TYPES];
         for (UInt residualTypeIndex = 0; residualTypeIndex < NUMBER_OF_STORED_RESIDUAL_TYPES; residualTypeIndex++)
         {
-          bMaintainResidual[residualTypeIndex] = true; //assume true unless specified otherwise
+          bMaintainResidual[residualTypeIndex] = true; //assume true unless specified otherwise//默认为真
         }
 
-        bMaintainResidual[RESIDUAL_ENCODER_SIDE] = !(m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate());
+        bMaintainResidual[RESIDUAL_ENCODER_SIDE] = !(m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate());//如果使用重建残差(变换后)做CCP预测 则不用保存RESIDUAL_ENCODER 编码残差(变换后)
 
   // Lambda calculation at equivalent Qp of 4 is recommended because at that Qp, the quantisation divisor is 1.
 #if FULL_NBIT
@@ -2226,11 +2226,11 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #else
   const Double sqrtLambdaForFirstPass= (m_pcEncCfg->getCostMode()==COST_MIXED_LOSSLESS_LOSSY_CODING && pcCU->getCUTransquantBypass(0)) ?
                 sqrt(0.57 * pow(2.0, ((LOSSLESS_AND_MIXED_LOSSLESS_RD_COST_TEST_QP_PRIME - 12 - 6 * (sps.getBitDepth(CHANNEL_TYPE_LUMA) - 8)) / 3.0)))
-              : m_pcRdCost->getSqrtLambda();
+              : m_pcRdCost->getSqrtLambda();//率失真计算中的lamda值
 #endif
 
   //===== set QP and clear Cbf =====
-  if ( pps.getUseDQP() == true)
+  if ( pps.getUseDQP() == true)//设置该Cu的QP值
   {
     pcCU->setQPSubParts( pcCU->getQP(0), 0, uiDepth );
   }
@@ -2240,32 +2240,32 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   }
 
   //===== loop over partitions =====
-  TComTURecurse tuRecurseCU(pcCU, 0);
-  TComTURecurse tuRecurseWithPU(tuRecurseCU, false, (uiInitTrDepth==0)?TComTU::DONT_SPLIT : TComTU::QUAD_SPLIT);
+  TComTURecurse tuRecurseCU(pcCU, 0);//以该Cu作为Tu
+  TComTURecurse tuRecurseWithPU(tuRecurseCU, false, (uiInitTrDepth==0)?TComTU::DONT_SPLIT : TComTU::QUAD_SPLIT);//以该Cu的Pu块作为Tu(Quadtree的根节点)依次处理
 
   do
   {
-    const UInt uiPartOffset=tuRecurseWithPU.GetAbsPartIdxTU();
+    const UInt uiPartOffset=tuRecurseWithPU.GetAbsPartIdxTU();//该Tu在Ctu中的位置
 //  for( UInt uiPU = 0, uiPartOffset=0; uiPU < uiNumPU; uiPU++, uiPartOffset += uiQNumParts )
   //{
     //===== init pattern for luma prediction =====
     DEBUG_STRING_NEW(sTemp2)
 
     //===== determine set of modes to be tested (using prediction signal only) =====
-    Int numModesAvailable     = 35; //total number of Intra modes
+    Int numModesAvailable     = 35; //total number of Intra modes//总的帧内预测模式
     UInt uiRdModeList[FAST_UDI_MAX_RDMODE_NUM];
-    Int numModesForFullRD = m_pcEncCfg->getFastUDIUseMPMEnabled()?g_aucIntraModeNumFast_UseMPM[ uiWidthBit ] : g_aucIntraModeNumFast_NotUseMPM[ uiWidthBit ];
+    Int numModesForFullRD = m_pcEncCfg->getFastUDIUseMPMEnabled()?g_aucIntraModeNumFast_UseMPM[ uiWidthBit ] : g_aucIntraModeNumFast_NotUseMPM[ uiWidthBit ];//根据Tu块的大小及是否使用MPM得到快速判断后的帧内预测模式数
 
     // this should always be true
     assert (tuRecurseWithPU.ProcessComponentSection(COMPONENT_Y));
-    initIntraPatternChType( tuRecurseWithPU, COMPONENT_Y, true DEBUG_STRING_PASS_INTO(sTemp2) );
+    initIntraPatternChType( tuRecurseWithPU, COMPONENT_Y, true DEBUG_STRING_PASS_INTO(sTemp2) );////得到当前Tu帧内预测的参考像素值(需要计算滤波后的参考像素 因为需要遍历所有帧内模式 )
 
-    Bool doFastSearch = (numModesForFullRD != numModesAvailable);
-    if (doFastSearch)
+    Bool doFastSearch = (numModesForFullRD != numModesAvailable);//当快速搜索模式不等于总模式数时 快速搜索
+    if (doFastSearch)//快速搜索(快速判断可能的帧间预测模式)使用HAD
     {
       assert(numModesForFullRD < numModesAvailable);
 
-      for( Int i=0; i < numModesForFullRD; i++ )
+      for( Int i=0; i < numModesForFullRD; i++ )//初始化帧内预测的损耗
       {
         CandCostList[ i ] = MAX_DOUBLE;
       }
@@ -2274,54 +2274,54 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       const TComRectangle &puRect=tuRecurseWithPU.getRect(COMPONENT_Y);
       const UInt uiAbsPartIdx=tuRecurseWithPU.GetAbsPartIdxTU();
 
-      Pel* piOrg         = pcOrgYuv ->getAddr( COMPONENT_Y, uiAbsPartIdx );
-      Pel* piPred        = pcPredYuv->getAddr( COMPONENT_Y, uiAbsPartIdx );
+      Pel* piOrg         = pcOrgYuv ->getAddr( COMPONENT_Y, uiAbsPartIdx );//得到该Tu的原始像素值
+      Pel* piPred        = pcPredYuv->getAddr( COMPONENT_Y, uiAbsPartIdx );//用于保存预测像素值
       UInt uiStride      = pcPredYuv->getStride( COMPONENT_Y );
       DistParam distParam;
-      const Bool bUseHadamard=pcCU->getCUTransquantBypass(0) == 0;
-      m_pcRdCost->setDistParam(distParam, sps.getBitDepth(CHANNEL_TYPE_LUMA), piOrg, uiStride, piPred, uiStride, puRect.width, puRect.height, bUseHadamard);
+      const Bool bUseHadamard=pcCU->getCUTransquantBypass(0) == 0;//lossless模式时不使用Had
+      m_pcRdCost->setDistParam(distParam, sps.getBitDepth(CHANNEL_TYPE_LUMA), piOrg, uiStride, piPred, uiStride, puRect.width, puRect.height, bUseHadamard);//设置失真参数 用于计算失真
       distParam.bApplyWeight = false;
-      for( Int modeIdx = 0; modeIdx < numModesAvailable; modeIdx++ )
+      for( Int modeIdx = 0; modeIdx < numModesAvailable; modeIdx++ )//遍历所有的帧内预测模式 找出最可能的若干模式
       {
-        UInt       uiMode = modeIdx;
+        UInt       uiMode = modeIdx;//该帧内模式
         Distortion uiSad  = 0;
 
-        const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());
+        const Bool bUseFilter=TComPrediction::filteringIntraReferenceSamples(COMPONENT_Y, uiMode, puRect.width, puRect.height, chFmt, sps.getSpsRangeExtension().getIntraSmoothingDisabledFlag());//该帧内模式该Tu是否使用滤波后的参考像素
 
-        predIntraAng( COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU, bUseFilter, TComPrediction::UseDPCMForFirstPassIntraEstimation(tuRecurseWithPU, uiMode) );
+        predIntraAng( COMPONENT_Y, uiMode, piOrg, uiStride, piPred, uiStride, tuRecurseWithPU, bUseFilter, TComPrediction::UseDPCMForFirstPassIntraEstimation(tuRecurseWithPU, uiMode) );//帧内预测得到预测像素值 保存至piPred
 
         // use hadamard transform here
-        uiSad+=distParam.DistFunc(&distParam);
+        uiSad+=distParam.DistFunc(&distParam);//计算该模式下的失真
 
         UInt   iModeBits = 0;
 
         // NB xModeBitsIntra will not affect the mode for chroma that may have already been pre-estimated.
-        iModeBits+=xModeBitsIntra( pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA );
+        iModeBits+=xModeBitsIntra( pcCU, uiMode, uiPartOffset, uiDepth, CHANNEL_TYPE_LUMA );//该帧内模式编码所需的比特数
 
-        Double cost      = (Double)uiSad + (Double)iModeBits * sqrtLambdaForFirstPass;
+        Double cost      = (Double)uiSad + (Double)iModeBits * sqrtLambdaForFirstPass;//该模式帧的总损耗(该损耗为快速计算下的总损耗 而不是严格意义上的总损耗)
 
 #if DEBUG_INTRA_SEARCH_COSTS
         std::cout << "1st pass mode " << uiMode << " SAD = " << uiSad << ", mode bits = " << iModeBits << ", cost = " << cost << "\n";
 #endif
 
-        CandNum += xUpdateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );
+        CandNum += xUpdateCandList( uiMode, cost, numModesForFullRD, uiRdModeList, CandCostList );//根据总损耗更新最可能的模式列表
       }
 
-      if (m_pcEncCfg->getFastUDIUseMPMEnabled())
+      if (m_pcEncCfg->getFastUDIUseMPMEnabled())//如果使用MPM
       {
         Int uiPreds[NUM_MOST_PROBABLE_MODES] = {-1, -1, -1};
 
         Int iMode = -1;
-        pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y, &iMode );
+        pcCU->getIntraDirPredictor( uiPartOffset, uiPreds, COMPONENT_Y, &iMode );//得到MPM 将模式索引保存至uiPreds
 
-        const Int numCand = ( iMode >= 0 ) ? iMode : Int(NUM_MOST_PROBABLE_MODES);
+        const Int numCand = ( iMode >= 0 ) ? iMode : Int(NUM_MOST_PROBABLE_MODES);//需要判断的MPM模式数
 
-        for( Int j=0; j < numCand; j++)
+        for( Int j=0; j < numCand; j++)//遍历可能的MPM
         {
           Bool mostProbableModeIncluded = false;
           Int mostProbableMode = uiPreds[j];
 
-          for( Int i=0; i < numModesForFullRD; i++)
+          for( Int i=0; i < numModesForFullRD; i++)//如果该MPM模式不在 uiRdModeList中 则将该MPM模式加入uiRdModeList中 得到最终可能的模式列表
           {
             mostProbableModeIncluded |= (mostProbableMode == uiRdModeList[i]);
           }
@@ -2332,7 +2332,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
         }
       }
     }
-    else
+    else//若不使用快速判断方法 则将所有的帧内模式作为可能的模式
     {
       for( Int i=0; i < numModesForFullRD; i++)
       {
@@ -2359,13 +2359,13 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     }
     for ( UInt uiMode = 0; uiMode < max; uiMode++)
 #else
-    for( UInt uiMode = 0; uiMode < numModesForFullRD; uiMode++ )
+    for( UInt uiMode = 0; uiMode < numModesForFullRD; uiMode++ )//遍历列表中所有可能的帧内模式
 #endif
     {
       // set luma prediction mode
       UInt uiOrgMode = uiRdModeList[uiMode];
 
-      pcCU->setIntraDirSubParts ( CHANNEL_TYPE_LUMA, uiOrgMode, uiPartOffset, uiDepth + uiInitTrDepth );
+      pcCU->setIntraDirSubParts ( CHANNEL_TYPE_LUMA, uiOrgMode, uiPartOffset, uiDepth + uiInitTrDepth );//将该帧内模式设置为该Tu所使用的帧内模式
 
       DEBUG_STRING_NEW(sMode)
       // set context models
@@ -2377,7 +2377,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #if HHI_RQT_INTRA_SPEEDUP
       xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, true, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
 #else
-      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );
+      xRecurIntraCodingLumaQT( pcOrgYuv, pcPredYuv, pcResiYuv, resiLumaPU, uiPUDistY, dPUCost, tuRecurseWithPU DEBUG_STRING_PASS_INTO(sMode) );//计算该帧内模式下最优Tu分割及损耗
 #endif
 
 #if DEBUG_INTRA_SEARCH_COSTS
@@ -2385,20 +2385,20 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 #endif
 
       // check r-d cost
-      if( dPUCost < dBestPUCost )
+      if( dPUCost < dBestPUCost )//该模式下损耗优于最优损耗
       {
         DEBUG_STRING_SWAP(sPU, sMode)
 #if HHI_RQT_INTRA_SPEEDUP_MOD
         uiSecondBestMode  = uiBestPUMode;
         dSecondBestPUCost = dBestPUCost;
 #endif
-        uiBestPUMode  = uiOrgMode;
-        uiBestPUDistY = uiPUDistY;
-        dBestPUCost   = dPUCost;
+        uiBestPUMode  = uiOrgMode;//将该模式最为最优模式
+        uiBestPUDistY = uiPUDistY;//更新最优失真
+        dBestPUCost   = dPUCost;//更新最优损耗
 
-        xSetIntraResultLumaQT( pcRecoYuv, tuRecurseWithPU );
+        xSetIntraResultLumaQT( pcRecoYuv, tuRecurseWithPU );//设置(保存)该Tu该模式变换后的系数及重建像素 
 
-        if (pps.getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())
+        if (pps.getPpsRangeExtension().getCrossComponentPredictionEnabledFlag())//如果使用CCp
         {
           const Int xOffset = tuRecurseWithPU.getRect( COMPONENT_Y ).x0;
           const Int yOffset = tuRecurseWithPU.getRect( COMPONENT_Y ).y0;
@@ -2406,21 +2406,21 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
           {
             if (bMaintainResidual[storedResidualIndex])
             {
-              xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaPU[storedResidualIndex], tuRecurseWithPU, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE );
+              xStoreCrossComponentPredictionResult(resiLuma[storedResidualIndex], resiLumaPU[storedResidualIndex], tuRecurseWithPU, xOffset, yOffset, MAX_CU_SIZE, MAX_CU_SIZE );//将残差像素值存储在resiLuma[storedResidualIndex] 色度分量CCP时需要使用
             }
           }
         }
 
-        UInt uiQPartNum = tuRecurseWithPU.GetAbsPartIdxNumParts();
+        UInt uiQPartNum = tuRecurseWithPU.GetAbsPartIdxNumParts();//该Tu中4*4小块数
 
-        ::memcpy( m_puhQTTempTrIdx,  pcCU->getTransformIdx()       + uiPartOffset, uiQPartNum * sizeof( UChar ) );
-        for (UInt component = 0; component < numberValidComponents; component++)
+        ::memcpy( m_puhQTTempTrIdx,  pcCU->getTransformIdx()       + uiPartOffset, uiQPartNum * sizeof( UChar ) );//保存该模式下该Tu的最优分割信息(QT的结构)
+        for (UInt component = 0; component < numberValidComponents; component++)//保存该Tu块的每个分量最优损耗下的cbf标志 TransformSkip标志
         {
           const ComponentID compID = ComponentID(component);
           ::memcpy( m_puhQTTempCbf[compID], pcCU->getCbf( compID  ) + uiPartOffset, uiQPartNum * sizeof( UChar ) );
           ::memcpy( m_puhQTTempTransformSkipFlag[compID],  pcCU->getTransformSkip(compID)  + uiPartOffset, uiQPartNum * sizeof( UChar ) );
         }
-      }
+      }//end if( dPUCost < dBestPUCost )
 #if HHI_RQT_INTRA_SPEEDUP_MOD
       else if( dPUCost < dSecondBestPUCost )
       {
@@ -2503,19 +2503,19 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
     DEBUG_STRING_APPEND(sDebug, sPU)
 
     //--- update overall distortion ---
-    uiOverallDistY += uiBestPUDistY;
+    uiOverallDistY += uiBestPUDistY;//该CU的总失真加上该Tu的最优失真
 
-    //--- update transform index and cbf ---
+    //--- update transform index and cbf ---//更新该Tu的最优分割信息和cbf (因为遍历完所有模式后 该Tu的最优分割信息和cbf信息为遍历的最后一个模式下的信息 但最后一个模式可能不为最优模式)
     const UInt uiQPartNum = tuRecurseWithPU.GetAbsPartIdxNumParts();
-    ::memcpy( pcCU->getTransformIdx()       + uiPartOffset, m_puhQTTempTrIdx,  uiQPartNum * sizeof( UChar ) );
+    ::memcpy( pcCU->getTransformIdx()       + uiPartOffset, m_puhQTTempTrIdx,  uiQPartNum * sizeof( UChar ) );//更新该Tu在最优帧内模式下的最优分割信息
     for (UInt component = 0; component < numberValidComponents; component++)
     {
       const ComponentID compID = ComponentID(component);
       ::memcpy( pcCU->getCbf( compID  ) + uiPartOffset, m_puhQTTempCbf[compID], uiQPartNum * sizeof( UChar ) );
-      ::memcpy( pcCU->getTransformSkip( compID  ) + uiPartOffset, m_puhQTTempTransformSkipFlag[compID ], uiQPartNum * sizeof( UChar ) );
+      ::memcpy( pcCU->getTransformSkip( compID  ) + uiPartOffset, m_puhQTTempTransformSkipFlag[compID ], uiQPartNum * sizeof( UChar ) );//更新该Tu在最优帧内模式下的cbf
     }
 
-    //--- set reconstruction for next intra prediction blocks ---
+    //--- set reconstruction for next intra prediction blocks ---//设置帧内预测需要用到的重建像素
     if( !tuRecurseWithPU.IsLastSection() )
     {
       const TComRectangle &puRect=tuRecurseWithPU.getRect(COMPONENT_Y);
@@ -2523,42 +2523,42 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       const UInt  uiCompHeight  = puRect.height;
 
       const UInt  uiZOrder      = pcCU->getZorderIdxInCtu() + uiPartOffset;
-            Pel*  piDes         = pcCU->getPic()->getPicYuvRec()->getAddr( COMPONENT_Y, pcCU->getCtuRsAddr(), uiZOrder );
+            Pel*  piDes         = pcCU->getPic()->getPicYuvRec()->getAddr( COMPONENT_Y, pcCU->getCtuRsAddr(), uiZOrder );//帧内预测所用到的参考像素的起始位置
       const UInt  uiDesStride   = pcCU->getPic()->getPicYuvRec()->getStride( COMPONENT_Y);
-      const Pel*  piSrc         = pcRecoYuv->getAddr( COMPONENT_Y, uiPartOffset );
+      const Pel*  piSrc         = pcRecoYuv->getAddr( COMPONENT_Y, uiPartOffset );//该Tu的重建像素值
       const UInt  uiSrcStride   = pcRecoYuv->getStride( COMPONENT_Y);
 
       for( UInt uiY = 0; uiY < uiCompHeight; uiY++, piSrc += uiSrcStride, piDes += uiDesStride )
       {
         for( UInt uiX = 0; uiX < uiCompWidth; uiX++ )
         {
-          piDes[ uiX ] = piSrc[ uiX ];
+          piDes[ uiX ] = piSrc[ uiX ];//设置帧内预测需要用到的重建像素
         }
       }
     }
 
     //=== update PU data ====
-    pcCU->setIntraDirSubParts     ( CHANNEL_TYPE_LUMA, uiBestPUMode, uiPartOffset, uiDepth + uiInitTrDepth );
-  } while (tuRecurseWithPU.nextSection(tuRecurseCU));
+    pcCU->setIntraDirSubParts     ( CHANNEL_TYPE_LUMA, uiBestPUMode, uiPartOffset, uiDepth + uiInitTrDepth );//设置该Pu的帧内预测模式
+  } while (tuRecurseWithPU.nextSection(tuRecurseCU));//遍历Cu中的每个Pu
 
 
-  if( uiNumPU > 1 )
+  if( uiNumPU > 1 )//该Cu的pU数大于1
   { // set Cbf for all blocks
     UInt uiCombCbfY = 0;
     UInt uiCombCbfU = 0;
     UInt uiCombCbfV = 0;
     UInt uiPartIdx  = 0;
-    for( UInt uiPart = 0; uiPart < 4; uiPart++, uiPartIdx += uiQNumParts )
+    for( UInt uiPart = 0; uiPart < 4; uiPart++, uiPartIdx += uiQNumParts )//为所有Pu块设置cbf
     {
       uiCombCbfY |= pcCU->getCbf( uiPartIdx, COMPONENT_Y,  1 );
       uiCombCbfU |= pcCU->getCbf( uiPartIdx, COMPONENT_Cb, 1 );
-      uiCombCbfV |= pcCU->getCbf( uiPartIdx, COMPONENT_Cr, 1 );
+      uiCombCbfV |= pcCU->getCbf( uiPartIdx, COMPONENT_Cr, 1 );//每个Pu的Cbf相或得到该Cu的Cbf
     }
     for( UInt uiOffs = 0; uiOffs < 4 * uiQNumParts; uiOffs++ )
     {
       pcCU->getCbf( COMPONENT_Y  )[ uiOffs ] |= uiCombCbfY;
       pcCU->getCbf( COMPONENT_Cb )[ uiOffs ] |= uiCombCbfU;
-      pcCU->getCbf( COMPONENT_Cr )[ uiOffs ] |= uiCombCbfV;
+      pcCU->getCbf( COMPONENT_Cr )[ uiOffs ] |= uiCombCbfV;//设置该Cu新的cbf
     }
   }
 
@@ -2566,7 +2566,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   m_pcRDGoOnSbacCoder->load(m_pppcRDSbacCoder[uiDepth][CI_CURR_BEST]);
 
   //===== set distortion (rate and r-d costs are determined later) =====
-  pcCU->getTotalDistortion() = uiOverallDistY;
+  pcCU->getTotalDistortion() = uiOverallDistY;//该Cu的总失真
 }
 
 
@@ -2579,8 +2579,8 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
                                  TComYuv*    pcResiYuv,
                                  TComYuv*    pcRecoYuv,
                                  Pel         resiLuma[NUMBER_OF_STORED_RESIDUAL_TYPES][MAX_CU_SIZE * MAX_CU_SIZE]
-                                 DEBUG_STRING_FN_DECLARE(sDebug))
-{
+                                 DEBUG_STRING_FN_DECLARE(sDebug))// 处理基本亮度分量 不在叙述
+{//得到色度分量Cu块内Pu块的最优帧内预测模式 及对应的Tu最优分割 失真 重建像素值 变换系数等
   const UInt    uiInitTrDepth  = pcCU->getPartitionSize(0) != SIZE_2Nx2N && enable4ChromaPUsInIntraNxNCU(pcOrgYuv->getChromaFormat()) ? 1 : 0;
 
   TComTURecurse tuRecurseCU(pcCU, 0);
@@ -2741,17 +2741,17 @@ TEncSearch::estIntraPredChromaQT(TComDataCU* pcCU,
  * \param compID texture component type
  */
 Void TEncSearch::xEncPCM (TComDataCU* pcCU, UInt uiAbsPartIdx, Pel* pOrg, Pel* pPCM, Pel* pPred, Pel* pResi, Pel* pReco, UInt uiStride, UInt uiWidth, UInt uiHeight, const ComponentID compID )
-{
+{//PCM模式下没有预测 变换和量化过程 直接传输Cu中PCM下对应位深的像素值 故为无损
   const UInt uiReconStride   = pcCU->getPic()->getPicYuvRec()->getStride(compID);
-  const UInt uiPCMBitDepth   = pcCU->getSlice()->getSPS()->getPCMBitDepth(toChannelType(compID));
+  const UInt uiPCMBitDepth   = pcCU->getSlice()->getSPS()->getPCMBitDepth(toChannelType(compID));//PCM模式下像素位深
   const Int  channelBitDepth = pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
-  Pel* pRecoPic = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu()+uiAbsPartIdx);
+  Pel* pRecoPic = pcCU->getPic()->getPicYuvRec()->getAddr(compID, pcCU->getCtuRsAddr(), pcCU->getZorderIdxInCtu()+uiAbsPartIdx);//该Cu在重建图像上对应起始位置
 
   const Int pcmShiftRight=(channelBitDepth - Int(uiPCMBitDepth));
 
   assert(pcmShiftRight >= 0);
 
-  for( UInt uiY = 0; uiY < uiHeight; uiY++ )
+  for( UInt uiY = 0; uiY < uiHeight; uiY++ )//遍历所有像素
   {
     for( UInt uiX = 0; uiX < uiWidth; uiX++ )
     {
@@ -2759,9 +2759,9 @@ Void TEncSearch::xEncPCM (TComDataCU* pcCU, UInt uiAbsPartIdx, Pel* pOrg, Pel* p
       pPred[uiX] = 0;
       pResi[uiX] = 0;
       // Encode
-      pPCM[uiX] = (pOrg[uiX]>>pcmShiftRight);
+      pPCM[uiX] = (pOrg[uiX]>>pcmShiftRight);//编码像素值
       // Reconstruction
-      pReco   [uiX] = (pPCM[uiX]<<(pcmShiftRight));
+      pReco   [uiX] = (pPCM[uiX]<<(pcmShiftRight));//重建像素
       pRecoPic[uiX] = pReco[uiX];
     }
     pPred += uiStride;
@@ -2775,7 +2775,7 @@ Void TEncSearch::xEncPCM (TComDataCU* pcCU, UInt uiAbsPartIdx, Pel* pOrg, Pel* p
 
 
 //!  Function for PCM mode estimation.
-Void TEncSearch::IPCMSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, TComYuv* pcRecoYuv )
+Void TEncSearch::IPCMSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, TComYuv* pcRecoYuv )//计算PCM模式下的编码比特位 总损耗及失真
 {
   UInt        uiDepth      = pcCU->getDepth(0);
   const UInt  uiDistortion = 0;
@@ -2783,7 +2783,7 @@ Void TEncSearch::IPCMSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPre
 
   Double dCost;
 
-  for (UInt ch=0; ch < pcCU->getPic()->getNumberValidComponents(); ch++)
+  for (UInt ch=0; ch < pcCU->getPic()->getNumberValidComponents(); ch++)//处理所有分量
   {
     const ComponentID compID  = ComponentID(ch);
     const UInt width  = pcCU->getWidth(0)  >> pcCU->getPic()->getComponentScaleX(compID);
@@ -2796,21 +2796,21 @@ Void TEncSearch::IPCMSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPre
     Pel * pReco    = pcRecoYuv->getAddr(compID, 0, width);
     Pel * pPCM     = pcCU->getPCMSample (compID);
 
-    xEncPCM ( pcCU, 0, pOrig, pPCM, pPred, pResi, pReco, stride, width, height, compID );
+    xEncPCM ( pcCU, 0, pOrig, pPCM, pPred, pResi, pReco, stride, width, height, compID );//PCM处理
 
   }
 
   m_pcEntropyCoder->resetBits();
   xEncIntraHeader ( pcCU, uiDepth, 0, true, false);
-  uiBits = m_pcEntropyCoder->getNumberOfWrittenBits();
+  uiBits = m_pcEntropyCoder->getNumberOfWrittenBits();//PCM模式下中的编码比特数
 
-  dCost = m_pcRdCost->calcRdCost( uiBits, uiDistortion );
+  dCost = m_pcRdCost->calcRdCost( uiBits, uiDistortion );//率失真公式计算总损耗
 
   m_pcRDGoOnSbacCoder->load(m_pppcRDSbacCoder[uiDepth][CI_CURR_BEST]);
 
-  pcCU->getTotalBits()       = uiBits;
-  pcCU->getTotalCost()       = dCost;
-  pcCU->getTotalDistortion() = uiDistortion;
+  pcCU->getTotalBits()       = uiBits;//保存编码比特
+  pcCU->getTotalCost()       = dCost;//保存总损耗
+  pcCU->getTotalDistortion() = uiDistortion;//保存失真(PCM模式下为0)
 
   pcCU->copyToPic(uiDepth);
 }
@@ -3778,22 +3778,22 @@ Void TEncSearch::xMotionEstimation( TComDataCU* pcCU, TComYuv* pcYuvOrg, Int iPa
 
 
 
-Void TEncSearch::xSetSearchRange ( TComDataCU* pcCU, TComMv& cMvPred, Int iSrchRng, TComMv& rcMvSrchRngLT, TComMv& rcMvSrchRngRB )
+Void TEncSearch::xSetSearchRange ( TComDataCU* pcCU, TComMv& cMvPred, Int iSrchRng, TComMv& rcMvSrchRngLT, TComMv& rcMvSrchRngRB )//根据给定的iSrchRng设置运动矢量的范围
 {
   Int  iMvShift = 2;
   TComMv cTmpMvPred = cMvPred;
-  pcCU->clipMv( cTmpMvPred );
+  pcCU->clipMv( cTmpMvPred );//根据CU在图像中的位置限制搜索范围
 
-  rcMvSrchRngLT.setHor( cTmpMvPred.getHor() - (iSrchRng << iMvShift) );
-  rcMvSrchRngLT.setVer( cTmpMvPred.getVer() - (iSrchRng << iMvShift) );
+  rcMvSrchRngLT.setHor( cTmpMvPred.getHor() - (iSrchRng << iMvShift) );//运动矢量水平分量不能超出的左边界
+  rcMvSrchRngLT.setVer( cTmpMvPred.getVer() - (iSrchRng << iMvShift) );//运动矢量垂直分量不能超出的上边界
 
-  rcMvSrchRngRB.setHor( cTmpMvPred.getHor() + (iSrchRng << iMvShift) );
-  rcMvSrchRngRB.setVer( cTmpMvPred.getVer() + (iSrchRng << iMvShift) );
+  rcMvSrchRngRB.setHor( cTmpMvPred.getHor() + (iSrchRng << iMvShift) );//运动矢量水平方向不能超出的下边界
+  rcMvSrchRngRB.setVer( cTmpMvPred.getVer() + (iSrchRng << iMvShift) );//运动矢量水平方向不能超出的由边界
   pcCU->clipMv        ( rcMvSrchRngLT );
   pcCU->clipMv        ( rcMvSrchRngRB );
 
   rcMvSrchRngLT >>= iMvShift;
-  rcMvSrchRngRB >>= iMvShift;
+  rcMvSrchRngRB >>= iMvShift;//整像素精度
 }
 
 
@@ -4295,7 +4295,7 @@ Void TEncSearch::xPatternSearchFracDIF(
 //! encode residual and calculate rate-distortion for a CU block
 Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg, TComYuv* pcYuvPred,
                                             TComYuv* pcYuvResi, TComYuv* pcYuvResiBest, TComYuv* pcYuvRec,
-                                            Bool bSkipResidual DEBUG_STRING_FN_DECLARE(sDebug) )
+                                            Bool bSkipResidual DEBUG_STRING_FN_DECLARE(sDebug) )//计算Cu块的残差和率失真
 {
   assert ( !pcCU->isIntra(0) );
 
@@ -4307,16 +4307,16 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
   // The pcCU is not marked as skip-mode at this point, and its m_pcTrCoeff, m_pcArlCoeff, m_puhCbf, m_puhTrIdx will all be 0.
   // due to prior calls to TComDataCU::initEstData(  );
 
-  if ( bSkipResidual ) //  No residual coding : SKIP mode
+  if ( bSkipResidual ) //  No residual coding : SKIP mode//SKIP模式下不需要残差编码
   {
-    pcCU->setSkipFlagSubParts( true, 0, pcCU->getDepth(0) );
+    pcCU->setSkipFlagSubParts( true, 0, pcCU->getDepth(0) );//设置Pu的SKIP标志为真
 
-    pcYuvResi->clear();
+    pcYuvResi->clear();//SKIP模式下残差等于0
 
-    pcYuvPred->copyToPartYuv( pcYuvRec, 0 );
+    pcYuvPred->copyToPartYuv( pcYuvRec, 0 );//重建图像直接复制预测图像(因为重建残差为0)
     Distortion distortion = 0;
 
-    for (Int comp=0; comp < numValidComponents; comp++)
+    for (Int comp=0; comp < numValidComponents; comp++)//计算重建图像与原始图像之间的失真
     {
       const ComponentID compID=ComponentID(comp);
       const UInt csx=pcYuvOrg->getComponentScaleX(compID);
@@ -4330,16 +4330,16 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
 
     if (pcCU->getSlice()->getPPS()->getTransquantBypassEnableFlag())
     {
-      m_pcEntropyCoder->encodeCUTransquantBypassFlag(pcCU, 0, true);
+      m_pcEntropyCoder->encodeCUTransquantBypassFlag(pcCU, 0, true);//编码该Cu的TransquantBypass标志
     }
 
-    m_pcEntropyCoder->encodeSkipFlag(pcCU, 0, true);
-    m_pcEntropyCoder->encodeMergeIndex( pcCU, 0, true );
+    m_pcEntropyCoder->encodeSkipFlag(pcCU, 0, true);//编码skip标志
+    m_pcEntropyCoder->encodeMergeIndex( pcCU, 0, true );//编码merge索引
 
-    UInt uiBits = m_pcEntropyCoder->getNumberOfWrittenBits();
+    UInt uiBits = m_pcEntropyCoder->getNumberOfWrittenBits();//编码的总比特数(因为skip模式下残差为0 也就不需要编码残差)
     pcCU->getTotalBits()       = uiBits;
-    pcCU->getTotalDistortion() = distortion;
-    pcCU->getTotalCost()       = m_pcRdCost->calcRdCost( uiBits, distortion );
+    pcCU->getTotalDistortion() = distortion;//总失真
+    pcCU->getTotalCost()       = m_pcRdCost->calcRdCost( uiBits, distortion );//总损耗
 
     m_pcRDGoOnSbacCoder->store(m_pppcRDSbacCoder[pcCU->getDepth(0)][CI_TEMP_BEST]);
 
@@ -4356,9 +4356,9 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
 
   //  Residual coding.
 
-   pcYuvResi->subtract( pcYuvOrg, pcYuvPred, 0, cuWidthPixels );
+   pcYuvResi->subtract( pcYuvOrg, pcYuvPred, 0, cuWidthPixels );//原始图像与预测图像相减 得到残差图像
 
-  TComTURecurse tuLevel0(pcCU, 0);
+  TComTURecurse tuLevel0(pcCU, 0);//以该Cu作为(QT的根节点)Tu
 
   Double     nonZeroCost       = 0;
   UInt       nonZeroBits       = 0;
@@ -4367,30 +4367,30 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
 
   m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ pcCU->getDepth( 0 ) ][ CI_CURR_BEST ] );
 
-  xEstimateInterResidualQT( pcYuvResi,  nonZeroCost, nonZeroBits, nonZeroDistortion, &zeroDistortion, tuLevel0 DEBUG_STRING_PASS_INTO(sDebug) );
+  xEstimateInterResidualQT( pcYuvResi,  nonZeroCost, nonZeroBits, nonZeroDistortion, &zeroDistortion, tuLevel0 DEBUG_STRING_PASS_INTO(sDebug) );//计算该Tu的最优分割 最优损耗及最优损耗下的编码总比特数及失真 设置cbf Ts等信息
 
   // -------------------------------------------------------
   // set the coefficients in the pcCU, and also calculates the residual data.
   // If a block full of 0's is efficient, then just use 0's.
   // The costs at this point do not include header bits.
 
-  m_pcEntropyCoder->resetBits();
-  m_pcEntropyCoder->encodeQtRootCbfZero( );
-  const UInt   zeroResiBits = m_pcEntropyCoder->getNumberOfWrittenBits();
-  const Double zeroCost     = (pcCU->isLosslessCoded( 0 )) ? (nonZeroCost+1) : (m_pcRdCost->calcRdCost( zeroResiBits, zeroDistortion ));
+  m_pcEntropyCoder->resetBits();//编码比特数置零
+  m_pcEntropyCoder->encodeQtRootCbfZero( );//编码cbf为0情况(不存在非零系数)
+  const UInt   zeroResiBits = m_pcEntropyCoder->getNumberOfWrittenBits();//cbf为0时编码所需的比特数
+  const Double zeroCost     = (pcCU->isLosslessCoded( 0 )) ? (nonZeroCost+1) : (m_pcRdCost->calcRdCost( zeroResiBits, zeroDistortion ));//计算变换系数为0时的总损耗
 
-  if ( zeroCost < nonZeroCost || !pcCU->getQtRootCbf(0) )
+  if ( zeroCost < nonZeroCost || !pcCU->getQtRootCbf(0) )//若该Cu不存在非零系数或变换系数全为0时率失真更小  
   {
     const UInt uiQPartNum = tuLevel0.GetAbsPartIdxNumParts();
-    ::memset( pcCU->getTransformIdx()     , 0, uiQPartNum * sizeof(UChar) );
+    ::memset( pcCU->getTransformIdx()     , 0, uiQPartNum * sizeof(UChar) );//该Cu的变换系数全为0 自然也就不存在Tu的分割这一说 故该Tu不需要分割
     for (Int comp=0; comp < numValidComponents; comp++)
     {
       const ComponentID component = ComponentID(comp);
-      ::memset( pcCU->getCbf( component ) , 0, uiQPartNum * sizeof(UChar) );
-      ::memset( pcCU->getCrossComponentPredictionAlpha(component), 0, ( uiQPartNum * sizeof(Char) ) );
+      ::memset( pcCU->getCbf( component ) , 0, uiQPartNum * sizeof(UChar) );//将Cbf置0(变换系数置零)
+      ::memset( pcCU->getCrossComponentPredictionAlpha(component), 0, ( uiQPartNum * sizeof(Char) ) );//变换系数全为0 也就说明残差像素为0 故CCp的alpha值为0
     }
     static const UInt useTS[MAX_NUM_COMPONENT]={0,0,0};
-    pcCU->setTransformSkipSubParts ( useTS, 0, pcCU->getDepth(0) );
+    pcCU->setTransformSkipSubParts ( useTS, 0, pcCU->getDepth(0) );//不使用TS
 #if DEBUG_STRING
     sDebug.clear();
     for(UInt i=0; i<MAX_NUM_COMPONENT+1; i++)
@@ -4399,29 +4399,29 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
     }
 #endif
   }
-  else
+  else//存在非零的变换系数
   {
-    xSetInterResidualQTData( NULL, false, tuLevel0); // Call first time to set coefficients.
+    xSetInterResidualQTData( NULL, false, tuLevel0); // Call first time to set coefficients.//设置变换系数(将最优的情况下的变换系数保存起来)
   }
 
   // all decisions now made. Fully encode the CU, including the headers:
   m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[pcCU->getDepth(0)][CI_CURR_BEST] );
 
   UInt finalBits = 0;
-  xAddSymbolBitsInter( pcCU, finalBits );
+  xAddSymbolBitsInter( pcCU, finalBits );//该Cu编码的总比特数
   // we've now encoded the pcCU, and so have a valid bit cost
 
-  if ( !pcCU->getQtRootCbf( 0 ) )
+  if ( !pcCU->getQtRootCbf( 0 ) )//CBF为0 不存在非零变换系数 也就不需要编码残差像素值
   {
-    pcYuvResiBest->clear(); // Clear the residual image, if we didn't code it.
+    pcYuvResiBest->clear(); // Clear the residual image, if we didn't code it.//故清零
   }
   else
   {
-    xSetInterResidualQTData( pcYuvResiBest, true, tuLevel0 ); // else set the residual image data pcYUVResiBest from the various temp images.
+    xSetInterResidualQTData( pcYuvResiBest, true, tuLevel0 ); // else set the residual image data pcYUVResiBest from the various temp images.//设置(保存)重建残差像素值(重建像素与原像素间的差值)
   }
   m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ pcCU->getDepth( 0 ) ][ CI_TEMP_BEST ] );
 
-  pcYuvRec->addClip ( pcYuvPred, pcYuvResiBest, 0, cuWidthPixels, sps.getBitDepths() );
+  pcYuvRec->addClip ( pcYuvPred, pcYuvResiBest, 0, cuWidthPixels, sps.getBitDepths() );//得到重建像素值
 
   // update with clipped distortion and cost (previously unclipped reconstruction values were used)
 
@@ -4430,11 +4430,11 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
   {
     const ComponentID compID=ComponentID(comp);
     finalDistortion += m_pcRdCost->getDistPart( sps.getBitDepth(toChannelType(compID)), pcYuvRec->getAddr(compID ), pcYuvRec->getStride(compID ), pcYuvOrg->getAddr(compID ), pcYuvOrg->getStride(compID), cuWidthPixels >> pcYuvOrg->getComponentScaleX(compID), cuHeightPixels >> pcYuvOrg->getComponentScaleY(compID), compID);
-  }
+  }//重建像素与原像素间的失真
 
-  pcCU->getTotalBits()       = finalBits;
-  pcCU->getTotalDistortion() = finalDistortion;
-  pcCU->getTotalCost()       = m_pcRdCost->calcRdCost( finalBits, finalDistortion );
+  pcCU->getTotalBits()       = finalBits;//编码的总比特数
+  pcCU->getTotalDistortion() = finalDistortion;//总失真
+  pcCU->getTotalCost()       = m_pcRdCost->calcRdCost( finalBits, finalDistortion );//总损耗
 }
 
 
@@ -4445,12 +4445,12 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                            Distortion &ruiDist,
                                            Distortion *puiZeroDist,
                                            TComTU     &rTu
-                                           DEBUG_STRING_FN_DECLARE(sDebug) )
+                                           DEBUG_STRING_FN_DECLARE(sDebug) )//计算该Tu的最优分割 最优损耗及最优损耗下的编码总比特数及失真 并设置cbf Ts等信息
 {
   TComDataCU *pcCU        = rTu.getCU();
   const UInt uiAbsPartIdx = rTu.GetAbsPartIdxTU();
-  const UInt uiDepth      = rTu.GetTransformDepthTotal();
-  const UInt uiTrMode     = rTu.GetTransformDepthRel();
+  const UInt uiDepth      = rTu.GetTransformDepthTotal();//该Tu的总深度
+  const UInt uiTrMode     = rTu.GetTransformDepthRel();//该Tu相对Cu的深度
   const UInt subTUDepth   = uiTrMode + 1;
   const UInt numValidComp = pcCU->getPic()->getNumberValidComponents();
   DEBUG_STRING_NEW(sSingleStringComp[MAX_NUM_COMPONENT])
@@ -4458,23 +4458,23 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
   assert( pcCU->getDepth( 0 ) == pcCU->getDepth( uiAbsPartIdx ) );
   const UInt uiLog2TrSize = rTu.GetLog2LumaTrSize();
 
-  UInt SplitFlag = ((pcCU->getSlice()->getSPS()->getQuadtreeTUMaxDepthInter() == 1) && pcCU->isInter(uiAbsPartIdx) && ( pcCU->getPartitionSize(uiAbsPartIdx) != SIZE_2Nx2N ));
+  UInt SplitFlag = ((pcCU->getSlice()->getSPS()->getQuadtreeTUMaxDepthInter() == 1) && pcCU->isInter(uiAbsPartIdx) && ( pcCU->getPartitionSize(uiAbsPartIdx) != SIZE_2Nx2N ));//该Cu为帧间预测并且Pu分割方式不为2Nx2N TUMaxDepthInter为1 则分割标志SplitFlag为真
 #if DEBUG_STRING
   const Int debugPredModeMask = DebugStringGetPredModeMask(pcCU->getPredictionMode(uiAbsPartIdx));
 #endif
 
   Bool bCheckFull;
 
-  if ( SplitFlag && uiDepth == pcCU->getDepth(uiAbsPartIdx) && ( uiLog2TrSize >  pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) ) )
+  if ( SplitFlag && uiDepth == pcCU->getDepth(uiAbsPartIdx) && ( uiLog2TrSize >  pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) ) )//该Tu的大小大于最小Tu并等于其所在的Cu(trafoDepth is equal to 0)且分割标志为真
   {
-    bCheckFull = false;
+    bCheckFull = false;//则该Tu一定分割 故不用检查是否不分割
   }
   else
   {
-    bCheckFull =  ( uiLog2TrSize <= pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() );
+    bCheckFull =  ( uiLog2TrSize <= pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() );//否则 若Tu大小小于或等于最大Tu 则需要判断是否不分割
   }
 
-  const Bool bCheckSplit  = ( uiLog2TrSize >  pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) );
+  const Bool bCheckSplit  = ( uiLog2TrSize >  pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) );//Tu大小大于最小TU 则需要判断是否分割
 
   assert( bCheckFull || bCheckSplit );
 
@@ -4487,19 +4487,19 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
   UInt       uiBestTransformMode         [MAX_NUM_COMPONENT][2/*0 = top (or whole TU for non-4:2:2) sub-TU, 1 = bottom sub-TU*/] = {{0,0},{0,0},{0,0}};
   //  Stores the best explicit RDPCM mode for a TU encoded without split
   UInt       bestExplicitRdpcmModeUnSplit[MAX_NUM_COMPONENT][2/*0 = top (or whole TU for non-4:2:2) sub-TU, 1 = bottom sub-TU*/] = {{3,3}, {3,3}, {3,3}};
-  Char       bestCrossCPredictionAlpha   [MAX_NUM_COMPONENT][2/*0 = top (or whole TU for non-4:2:2) sub-TU, 1 = bottom sub-TU*/] = {{0,0},{0,0},{0,0}};
+  Char       bestCrossCPredictionAlpha   [MAX_NUM_COMPONENT][2/*0 = top (or whole TU for non-4:2:2) sub-TU, 1 = bottom sub-TU*/] = {{0,0},{0,0},{0,0}};//初始化变量 Tu水平分割有上下两个子Tu
 
   m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[ uiDepth ][ CI_QT_TRAFO_ROOT ] );
 
-  if( bCheckFull )
+  if( bCheckFull )//需要判断是否不分割
   {
     Double minCost[MAX_NUM_COMPONENT][2/*0 = top (or whole TU for non-4:2:2) sub-TU, 1 = bottom sub-TU*/];
     Bool checkTransformSkip[MAX_NUM_COMPONENT];
-    pcCU->setTrIdxSubParts( uiTrMode, uiAbsPartIdx, uiDepth );
+    pcCU->setTrIdxSubParts( uiTrMode, uiAbsPartIdx, uiDepth );//设置该Tu的TrIdx为uiTrMode即表明不分割
 
-    m_pcEntropyCoder->resetBits();
+    m_pcEntropyCoder->resetBits();//重置编码比特数为0
 
-    memset( m_pTempPel, 0, sizeof( Pel ) * rTu.getRect(COMPONENT_Y).width * rTu.getRect(COMPONENT_Y).height ); // not necessary needed for inside of recursion (only at the beginning)
+    memset( m_pTempPel, 0, sizeof( Pel ) * rTu.getRect(COMPONENT_Y).width * rTu.getRect(COMPONENT_Y).height ); // not necessary needed for inside of recursion (only at the beginning)//初始化m_pTempPel残差像素值为0
 
     const UInt uiQTTempAccessLayer = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2TrSize;
     TCoeff *pcCoeffCurr[MAX_NUM_COMPONENT];
@@ -4515,52 +4515,52 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
 
     Pel crossCPredictedResidualBuffer[ MAX_TU_SIZE * MAX_TU_SIZE ];
 
-    for(UInt i=0; i<numValidComp; i++)
+    for(UInt i=0; i<numValidComp; i++)//遍历所有分量
     {
-      checkTransformSkip[i]=false;
+      checkTransformSkip[i]=false;//初始化为不需要检查是否TransformSkip
       const ComponentID compID=ComponentID(i);
       const Int channelBitDepth=pcCU->getSlice()->getSPS()->getBitDepth(toChannelType(compID));
-      pcCoeffCurr[compID]    = m_ppcQTTempCoeff[compID][uiQTTempAccessLayer] + rTu.getCoefficientOffset(compID);
+      pcCoeffCurr[compID]    = m_ppcQTTempCoeff[compID][uiQTTempAccessLayer] + rTu.getCoefficientOffset(compID);//该Tu在Ctu中变换系数的起始位置
 #if ADAPTIVE_QP_SELECTION
       pcArlCoeffCurr[compID] = m_ppcQTTempArlCoeff[compID ][uiQTTempAccessLayer] +  rTu.getCoefficientOffset(compID);
 #endif
 
-      if(rTu.ProcessComponentSection(compID))
+      if(rTu.ProcessComponentSection(compID))//需要处理该分量
       {
-        const QpParam cQP(*pcCU, compID);
+        const QpParam cQP(*pcCU, compID);//得到量化参数
 
         checkTransformSkip[compID] = pcCU->getSlice()->getPPS()->getUseTransformSkip() &&
                                      TUCompRectHasAssociatedTransformSkipFlag(rTu.getRect(compID), pcCU->getSlice()->getPPS()->getPpsRangeExtension().getLog2MaxTransformSkipBlockSize()) &&
-                                     (!pcCU->isLosslessCoded(0));
+                                     (!pcCU->isLosslessCoded(0));//允许使用TS 并且该Cu不为lossless模式 则需要检查该Tu是否使用Ts  否则该Cu不使用Ts
 
-        const Bool splitIntoSubTUs = rTu.getRect(compID).width != rTu.getRect(compID).height;
+        const Bool splitIntoSubTUs = rTu.getRect(compID).width != rTu.getRect(compID).height;//宽高不相等 说明该Tu进行了水平分割
 
-        TComTURecurse TUIterator(rTu, false, (splitIntoSubTUs ? TComTU::VERTICAL_SPLIT : TComTU::DONT_SPLIT), true, compID);
+        TComTURecurse TUIterator(rTu, false, (splitIntoSubTUs ? TComTU::VERTICAL_SPLIT : TComTU::DONT_SPLIT), true, compID);//Tu水平分割的子Tu
 
-        const UInt partIdxesPerSubTU = TUIterator.GetAbsPartIdxNumParts(compID);
+        const UInt partIdxesPerSubTU = TUIterator.GetAbsPartIdxNumParts(compID);//水平子TU中4*4小块数
 
         do
         {
-          const UInt           subTUIndex             = TUIterator.GetSectionNumber();
-          const UInt           subTUAbsPartIdx        = TUIterator.GetAbsPartIdxTU(compID);
+          const UInt           subTUIndex             = TUIterator.GetSectionNumber();//该子Tu的索引(表明该子Tu为Tu中第几块子Tu)
+          const UInt           subTUAbsPartIdx        = TUIterator.GetAbsPartIdxTU(compID);//该子Tu在Ctu中的位置
           const TComRectangle &tuCompRect             = TUIterator.getRect(compID);
-          const UInt           subTUBufferOffset      = tuCompRect.width * tuCompRect.height * subTUIndex;
+          const UInt           subTUBufferOffset      = tuCompRect.width * tuCompRect.height * subTUIndex;//该子Tu在Cu中的像素偏移量
 
-                TCoeff        *currentCoefficients    = pcCoeffCurr[compID] + subTUBufferOffset;
+                TCoeff        *currentCoefficients    = pcCoeffCurr[compID] + subTUBufferOffset;//该子Tu在Ctu中变换系数的起始位置
 #if ADAPTIVE_QP_SELECTION
                 TCoeff        *currentARLCoefficients = pcArlCoeffCurr[compID] + subTUBufferOffset;
 #endif
           const Bool isCrossCPredictionAvailable      =    isChroma(compID)
                                                          && pcCU->getSlice()->getPPS()->getPpsRangeExtension().getCrossComponentPredictionEnabledFlag()
-                                                         && (pcCU->getCbf(subTUAbsPartIdx, COMPONENT_Y, uiTrMode) != 0);
+                                                         && (pcCU->getCbf(subTUAbsPartIdx, COMPONENT_Y, uiTrMode) != 0);//允许使用CCp 为色度分量 且存在非零变化系数才使用CCp
 
           Char preCalcAlpha = 0;
-          const Pel *pLumaResi = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddrPix( COMPONENT_Y, rTu.getRect( COMPONENT_Y ).x0, rTu.getRect( COMPONENT_Y ).y0 );
+          const Pel *pLumaResi = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddrPix( COMPONENT_Y, rTu.getRect( COMPONENT_Y ).x0, rTu.getRect( COMPONENT_Y ).y0 );//重建残差值起始位置
 
           if (isCrossCPredictionAvailable)
           {
-            const Bool bUseReconstructedResidualForEstimate = m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate();
-            const Pel  *const lumaResidualForEstimate       = bUseReconstructedResidualForEstimate ? pLumaResi                                                     : pcResi->getAddrPix(COMPONENT_Y, tuCompRect.x0, tuCompRect.y0);
+            const Bool bUseReconstructedResidualForEstimate = m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate();////是否使用亮度分量重建残差用于色度分量残差预测
+            const Pel  *const lumaResidualForEstimate       = bUseReconstructedResidualForEstimate ? pLumaResi     /*重建残差值 */                                  : pcResi->getAddrPix(COMPONENT_Y, tuCompRect.x0, tuCompRect.y0);/*编码残差值*/
             const UInt        lumaResidualStrideForEstimate = bUseReconstructedResidualForEstimate ? m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(COMPONENT_Y) : pcResi->getStride(COMPONENT_Y);
 
             preCalcAlpha = xCalcCrossComponentPredictionAlpha(TUIterator,
@@ -4570,39 +4570,39 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                                               tuCompRect.width,
                                                               tuCompRect.height,
                                                               lumaResidualStrideForEstimate,
-                                                              pcResi->getStride(compID));
+                                                              pcResi->getStride(compID));//计算CCP的alpha值
           }
 
           const Int transformSkipModesToTest    = checkTransformSkip[compID] ? 2 : 1;
-          const Int crossCPredictionModesToTest = (preCalcAlpha != 0)        ? 2 : 1; // preCalcAlpha cannot be anything other than 0 if isCrossCPredictionAvailable is false
+          const Int crossCPredictionModesToTest = (preCalcAlpha != 0)        ? 2 : 1; // preCalcAlpha cannot be anything other than 0 if isCrossCPredictionAvailable is false//alpha值不为0才需要判断是否使用CCp 否则不使用CCp
 
-          const Bool isOneMode                  = (crossCPredictionModesToTest == 1) && (transformSkipModesToTest == 1);
+          const Bool isOneMode                  = (crossCPredictionModesToTest == 1) && (transformSkipModesToTest == 1);//是否只有1种待检查的模式
 
-          for (Int transformSkipModeId = 0; transformSkipModeId < transformSkipModesToTest; transformSkipModeId++)
+          for (Int transformSkipModeId = 0; transformSkipModeId < transformSkipModesToTest; transformSkipModeId++)//遍历是否使用Ts两种模式(checkTransformSkip[compID]为真时 否则不使用Ts)
           {
-            pcCU->setTransformSkipPartRange(transformSkipModeId, compID, subTUAbsPartIdx, partIdxesPerSubTU);
+            pcCU->setTransformSkipPartRange(transformSkipModeId, compID, subTUAbsPartIdx, partIdxesPerSubTU);//根据当前遍历的模式设置该Cu的transformSkipMode标志
 
-            for (Int crossCPredictionModeId = 0; crossCPredictionModeId < crossCPredictionModesToTest; crossCPredictionModeId++)
+            for (Int crossCPredictionModeId = 0; crossCPredictionModeId < crossCPredictionModesToTest; crossCPredictionModeId++)////遍历是否使用CCP两种模式(preCalcAlpha != 0时 否则不使用CCp)
             {
-              const Bool isFirstMode          = (transformSkipModeId == 0) && (crossCPredictionModeId == 0);
-              const Bool bUseCrossCPrediction = crossCPredictionModeId != 0;
+              const Bool isFirstMode          = (transformSkipModeId == 0) && (crossCPredictionModeId == 0);//是否为遍历的第一种模式
+              const Bool bUseCrossCPrediction = crossCPredictionModeId != 0;//该模式下是否使用CCp
 
               m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiDepth ][ CI_QT_TRAFO_ROOT ] );
-              m_pcEntropyCoder->resetBits();
+              m_pcEntropyCoder->resetBits();//重置编码比特数
 
-              pcCU->setTransformSkipPartRange(transformSkipModeId, compID, subTUAbsPartIdx, partIdxesPerSubTU);
-              pcCU->setCrossComponentPredictionAlphaPartRange((bUseCrossCPrediction ? preCalcAlpha : 0), compID, subTUAbsPartIdx, partIdxesPerSubTU );
+              pcCU->setTransformSkipPartRange(transformSkipModeId, compID, subTUAbsPartIdx, partIdxesPerSubTU);//设置Ts标志
+              pcCU->setCrossComponentPredictionAlphaPartRange((bUseCrossCPrediction ? preCalcAlpha : 0), compID, subTUAbsPartIdx, partIdxesPerSubTU );//设置是否使用CCP标志
 
-              if ((compID != COMPONENT_Cr) && ((transformSkipModeId == 1) ? m_pcEncCfg->getUseRDOQTS() : m_pcEncCfg->getUseRDOQ()))
+              if ((compID != COMPONENT_Cr) && ((transformSkipModeId == 1) ? m_pcEncCfg->getUseRDOQTS() : m_pcEncCfg->getUseRDOQ()))//如果使用率失真优化量化
               {
-                m_pcEntropyCoder->estimateBit(m_pcTrQuant->m_pcEstBitsSbac, tuCompRect.width, tuCompRect.height, toChannelType(compID));
+                m_pcEntropyCoder->estimateBit(m_pcTrQuant->m_pcEstBitsSbac, tuCompRect.width, tuCompRect.height, toChannelType(compID));//init rate estimation arrays
               }
 
 #if RDOQ_CHROMA_LAMBDA
               m_pcTrQuant->selectLambda(compID);
 #endif
 
-              Pel *pcResiCurrComp = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddrPix(compID, tuCompRect.x0, tuCompRect.y0);
+              Pel *pcResiCurrComp = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddrPix(compID, tuCompRect.x0, tuCompRect.y0);//当前重建残差像素的起始位置
               UInt resiStride     = m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID);
 
               TCoeff bestCoeffComp   [MAX_TU_SIZE*MAX_TU_SIZE];
@@ -4615,23 +4615,23 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
               UInt       currCompBits = 0;
               Distortion currCompDist = 0;
               Double     currCompCost = 0;
-              UInt       nonCoeffBits = 0;
-              Distortion nonCoeffDist = 0;
-              Double     nonCoeffCost = 0;
+              UInt       nonCoeffBits = 0;//变化系数为0时的总编码比特位
+              Distortion nonCoeffDist = 0;//变化系数为0时的总失真
+              Double     nonCoeffCost = 0;//变化系数为0时的总损耗
 
-              if(!isOneMode && !isFirstMode)
+              if(!isOneMode && !isFirstMode)//不为第一种模式也不是最后一种模式
               {
-                memcpy(bestCoeffComp,    currentCoefficients,    (sizeof(TCoeff) * tuCompRect.width * tuCompRect.height));
+                memcpy(bestCoeffComp,    currentCoefficients,    (sizeof(TCoeff) * tuCompRect.width * tuCompRect.height));//保存最优变换系数至bestCoeffComp(注意 结合4831行的判断 可以保证currentCoefficients一定为当前视为最优系数)
 #if ADAPTIVE_QP_SELECTION
                 memcpy(bestArlCoeffComp, currentARLCoefficients, (sizeof(TCoeff) * tuCompRect.width * tuCompRect.height));
 #endif
-                for(Int y = 0; y < tuCompRect.height; y++)
+                for(Int y = 0; y < tuCompRect.height; y++)//保存最优变换系数至bestCoeffComp(注意 结合4831行的判断 可以保证pcResiCurrComp一定为当前的最优重建残差)
                 {
-                  memcpy(&bestResiComp[y * tuCompRect.width], (pcResiCurrComp + (y * resiStride)), (sizeof(Pel) * tuCompRect.width));
+                  memcpy(&bestResiComp[y * tuCompRect.width], (pcResiCurrComp + (y * resiStride)), (sizeof(Pel) * tuCompRect.width));//保存重建像素至bestResiComp
                 }
               }
 
-              if (bUseCrossCPrediction)
+              if (bUseCrossCPrediction)//如果使用CCp
               {
                 TComTrQuant::crossComponentPrediction(TUIterator,
                                                       compID,
@@ -4643,68 +4643,68 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                                       m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(COMPONENT_Y),
                                                       pcResi->getStride(compID),
                                                       tuCompRect.width,
-                                                      false);
+                                                      false);//由亮度残差预测得到预测色度残差 crossCPredictedResidualBuffer
 
                 m_pcTrQuant->transformNxN(TUIterator, compID, crossCPredictedResidualBuffer, tuCompRect.width, currentCoefficients,
 #if ADAPTIVE_QP_SELECTION
                                           currentARLCoefficients,
 #endif
-                                          currAbsSum, cQP);
+                                          currAbsSum, cQP);//变换量化预测色度残差 得到变换系数
               }
-              else
+              else//若不使用CCP
               {
                 m_pcTrQuant->transformNxN(TUIterator, compID, pcResi->getAddrPix( compID, tuCompRect.x0, tuCompRect.y0 ), pcResi->getStride(compID), currentCoefficients,
 #if ADAPTIVE_QP_SELECTION
                                           currentARLCoefficients,
 #endif
-                                          currAbsSum, cQP);
+                                          currAbsSum, cQP);//则直接变换原始残差 得到变换系数
               }
 
-              if(isFirstMode || (currAbsSum == 0))
+              if(isFirstMode || (currAbsSum == 0))//为第一种模式或变换系数全为零时 计算变换系数全0时的失真及总损耗
               {
-                if (bUseCrossCPrediction)
+                if (bUseCrossCPrediction)//使用CCP
                 {
                   TComTrQuant::crossComponentPrediction(TUIterator,
                                                         compID,
                                                         pLumaResi,
-                                                        m_pTempPel,
+                                                        m_pTempPel,//m_pTempPel为像素值为0 
                                                         m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddrPix(compID, tuCompRect.x0, tuCompRect.y0),
                                                         tuCompRect.width,
                                                         tuCompRect.height,
                                                         m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(COMPONENT_Y),
                                                         tuCompRect.width,
                                                         m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID),
-                                                        true);
+                                                        true);//由亮度残差和预测色度残差得到原色度残差
 
                   nonCoeffDist = m_pcRdCost->getDistPart( channelBitDepth, m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddrPix( compID, tuCompRect.x0, tuCompRect.y0 ),
                                                           m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride( compID ), pcResi->getAddrPix( compID, tuCompRect.x0, tuCompRect.y0 ),
-                                                          pcResi->getStride(compID), tuCompRect.width, tuCompRect.height, compID); // initialized with zero residual distortion
+                                                          pcResi->getStride(compID), tuCompRect.width, tuCompRect.height, compID); // initialized with zero residual distortion//计算预测色度残差为0时 重建残差与编码残差间的失真
                 }
-                else
+                else//不使用CCP
                 {
                   nonCoeffDist = m_pcRdCost->getDistPart( channelBitDepth, m_pTempPel, tuCompRect.width, pcResi->getAddrPix( compID, tuCompRect.x0, tuCompRect.y0 ),
-                                                          pcResi->getStride(compID), tuCompRect.width, tuCompRect.height, compID); // initialized with zero residual distortion
+                                                          pcResi->getStride(compID), tuCompRect.width, tuCompRect.height, compID); // initialized with zero residual distortion//计算重建残差值为0时 编码残差与重建残差之间的失真
                 }
 
-                m_pcEntropyCoder->encodeQtCbfZero( TUIterator, toChannelType(compID) );
+                m_pcEntropyCoder->encodeQtCbfZero( TUIterator, toChannelType(compID) );//编码CBF为0时的编码比特数(变换系数全为0)
 
                 if ( isCrossCPredictionAvailable )
                 {
-                  m_pcEntropyCoder->encodeCrossComponentPrediction( TUIterator, compID );
+                  m_pcEntropyCoder->encodeCrossComponentPrediction( TUIterator, compID );//编码CCP相关信息的比特数
                 }
 
-                nonCoeffBits = m_pcEntropyCoder->getNumberOfWrittenBits();
-                nonCoeffCost = m_pcRdCost->calcRdCost( nonCoeffBits, nonCoeffDist );
+                nonCoeffBits = m_pcEntropyCoder->getNumberOfWrittenBits();//变化系数全为0时的总编码比特数
+                nonCoeffCost = m_pcRdCost->calcRdCost( nonCoeffBits, nonCoeffDist );//变换系数全0时总损耗
               }
 
-              if((puiZeroDist != NULL) && isFirstMode)
+              if((puiZeroDist != NULL) && isFirstMode)//只需要保存一次
               {
-                *puiZeroDist += nonCoeffDist; // initialized with zero residual distortion
+                *puiZeroDist += nonCoeffDist; // initialized with zero residual distortion//保存变换系数全为0时的失真(不使用CCP)
               }
 
               DEBUG_STRING_NEW(sSingleStringTest)
 
-              if( currAbsSum > 0 ) //if non-zero coefficients are present, a residual needs to be derived for further prediction
+              if( currAbsSum > 0 ) //if non-zero coefficients are present, a residual needs to be derived for further prediction//存在非零变换系数
               {
                 if (isFirstMode)
                 {
@@ -4712,21 +4712,21 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                   m_pcEntropyCoder->resetBits();
                 }
 
-                m_pcEntropyCoder->encodeQtCbf( TUIterator, compID, true );
+                m_pcEntropyCoder->encodeQtCbf( TUIterator, compID, true );//编码该Tu的cbf
 
                 if (isCrossCPredictionAvailable)
                 {
-                  m_pcEntropyCoder->encodeCrossComponentPrediction( TUIterator, compID );
+                  m_pcEntropyCoder->encodeCrossComponentPrediction( TUIterator, compID );//编码CCP相关信息的比特数
                 }
 
-                m_pcEntropyCoder->encodeCoeffNxN( TUIterator, currentCoefficients, compID );
-                currCompBits = m_pcEntropyCoder->getNumberOfWrittenBits();
+                m_pcEntropyCoder->encodeCoeffNxN( TUIterator, currentCoefficients, compID );//编码变换系数
+                currCompBits = m_pcEntropyCoder->getNumberOfWrittenBits();//总编码比特数
 
-                pcResiCurrComp = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddrPix( compID, tuCompRect.x0, tuCompRect.y0 );
+                pcResiCurrComp = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddrPix( compID, tuCompRect.x0, tuCompRect.y0 );//将重建像素值保存至m_pcQTTempTComYuv
 
-                m_pcTrQuant->invTransformNxN( TUIterator, compID, pcResiCurrComp, m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID), currentCoefficients, cQP DEBUG_STRING_PASS_INTO_OPTIONAL(&sSingleStringTest, (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask)) );
+                m_pcTrQuant->invTransformNxN( TUIterator, compID, pcResiCurrComp, m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID), currentCoefficients, cQP DEBUG_STRING_PASS_INTO_OPTIONAL(&sSingleStringTest, (DebugOptionList::DebugString_InvTran.getInt()&debugPredModeMask)) );//由变换系数反量化反变化计算重建残差值
 
-                if (bUseCrossCPrediction)
+                if (bUseCrossCPrediction)//使用CCP
                 {
                   TComTrQuant::crossComponentPrediction(TUIterator,
                                                         compID,
@@ -4738,27 +4738,27 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                                                         m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(COMPONENT_Y),
                                                         m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID     ),
                                                         m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID     ),
-                                                        true);
+                                                        true);//由亮度残差和预测色度残差得到原色度残差m_pcQTTempTComYuv
                 }
 
                 currCompDist = m_pcRdCost->getDistPart( channelBitDepth, m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddrPix( compID, tuCompRect.x0, tuCompRect.y0 ),
                                                         m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID),
-                                                        pcResi->getAddrPix( compID, tuCompRect.x0, tuCompRect.y0 ),
+                                                        pcResi->getAddrPix( compID, tuCompRect.x0, tuCompRect.y0 ),//原始(编码)残差像素的起始位置
                                                         pcResi->getStride(compID),
-                                                        tuCompRect.width, tuCompRect.height, compID);
+                                                        tuCompRect.width, tuCompRect.height, compID);//计算重建残差与编码残差间的失真
 
-                currCompCost = m_pcRdCost->calcRdCost(currCompBits, currCompDist);
+                currCompCost = m_pcRdCost->calcRdCost(currCompBits, currCompDist);//计算该模式下的总损耗
                   
-                if (pcCU->isLosslessCoded(0))
+                if (pcCU->isLosslessCoded(0))//Cu为lossless模式时 重建残差不可能为0 (无损模式下编码端残差与解码端(重建)残差相同)
                 {
                   nonCoeffCost = MAX_DOUBLE;
                 }
               }
-              else if ((transformSkipModeId == 1) && !bUseCrossCPrediction)
+              else if ((transformSkipModeId == 1) && !bUseCrossCPrediction)//cbf为0时不能为Ts模式 
               {
                 currCompCost = MAX_DOUBLE;
               }
-              else
+              else//currAbsSum = 0//变换系数全为0 则当前率失真信息为系数全0时的率失真信息
               {
                 currCompBits = nonCoeffBits;
                 currCompDist = nonCoeffDist;
@@ -4766,20 +4766,20 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
               }
 
               // evaluate
-              if ((currCompCost < minCost[compID][subTUIndex]) || ((transformSkipModeId == 1) && (currCompCost == minCost[compID][subTUIndex])))
+              if ((currCompCost < minCost[compID][subTUIndex]) || ((transformSkipModeId == 1) && (currCompCost == minCost[compID][subTUIndex])))//若该模式下总损耗优于之前模式的最优损耗
               {
-                bestExplicitRdpcmModeUnSplit[compID][subTUIndex] = pcCU->getExplicitRdpcmMode(compID, subTUAbsPartIdx);
+                bestExplicitRdpcmModeUnSplit[compID][subTUIndex] = pcCU->getExplicitRdpcmMode(compID, subTUAbsPartIdx);//更新RdpcmMode
 
-                if(isFirstMode) //check for forced null
+                if(isFirstMode) //check for forced null//第一种模式下需要比较变换系数全0时总损耗与当前总损耗 (只有第一次比较是因为其后的模式都会与第一种模式的最优率失真比较 相当于每种模式间接的与系数全0的情况进行了比较)
                 {
-                  if((nonCoeffCost < currCompCost) || (currAbsSum == 0))
+                  if((nonCoeffCost < currCompCost) || (currAbsSum == 0))//变换系数全0时 率失真更优
                   {
-                    memset(currentCoefficients, 0, (sizeof(TCoeff) * tuCompRect.width * tuCompRect.height));
+                    memset(currentCoefficients, 0, (sizeof(TCoeff) * tuCompRect.width * tuCompRect.height));//变换系数全置0
 
                     currAbsSum   = 0;
                     currCompBits = nonCoeffBits;
                     currCompDist = nonCoeffDist;
-                    currCompCost = nonCoeffCost;
+                    currCompCost = nonCoeffCost;//更新该模式下的率失真信息
                   }
                 }
 
@@ -4794,59 +4794,59 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
                 }
 #endif
 
-                uiAbsSum                 [compID][subTUIndex] = currAbsSum;
-                uiSingleDistComp         [compID][subTUIndex] = currCompDist;
-                minCost                  [compID][subTUIndex] = currCompCost;
-                uiBestTransformMode      [compID][subTUIndex] = transformSkipModeId;
-                bestCrossCPredictionAlpha[compID][subTUIndex] = (crossCPredictionModeId == 1) ? pcCU->getCrossComponentPredictionAlpha(subTUAbsPartIdx, compID) : 0;
+                uiAbsSum                 [compID][subTUIndex] = currAbsSum;//更新变换系数绝对值之和
+                uiSingleDistComp         [compID][subTUIndex] = currCompDist;//更新失真
+                minCost                  [compID][subTUIndex] = currCompCost;//更新总损耗
+                uiBestTransformMode      [compID][subTUIndex] = transformSkipModeId;//更新transformSkipMode
+                bestCrossCPredictionAlpha[compID][subTUIndex] = (crossCPredictionModeId == 1) ? pcCU->getCrossComponentPredictionAlpha(subTUAbsPartIdx, compID) : 0;//更新CCp的Alpha值
 
-                if (uiAbsSum[compID][subTUIndex] == 0)
+                if (uiAbsSum[compID][subTUIndex] == 0)//如果最优模式下变换系数全0为最优
                 {
                   if (bUseCrossCPrediction)
                   {
                     TComTrQuant::crossComponentPrediction(TUIterator,
                                                           compID,
                                                           pLumaResi,
-                                                          m_pTempPel,
+                                                          m_pTempPel,//m_pTempPel像素值全为0
                                                           m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddrPix(compID, tuCompRect.x0, tuCompRect.y0),
                                                           tuCompRect.width,
                                                           tuCompRect.height,
                                                           m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(COMPONENT_Y),
                                                           tuCompRect.width,
                                                           m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID),
-                                                          true);
+                                                          true);//CCP求得重建残差
                   }
                   else
                   {
                     pcResiCurrComp = m_pcQTTempTComYuv[uiQTTempAccessLayer].getAddrPix(compID, tuCompRect.x0, tuCompRect.y0);
                     const UInt uiStride = m_pcQTTempTComYuv[uiQTTempAccessLayer].getStride(compID);
-                    for(UInt uiY = 0; uiY < tuCompRect.height; uiY++)
+                    for(UInt uiY = 0; uiY < tuCompRect.height; uiY++)//遍历Tu所有行
                     {
-                      memset(pcResiCurrComp, 0, (sizeof(Pel) * tuCompRect.width));
+                      memset(pcResiCurrComp, 0, (sizeof(Pel) * tuCompRect.width));//重建残差置0
                       pcResiCurrComp += uiStride;
                     }
                   }
                 }
               }
-              else
+              else//若该模式未优于之前模式  第一种模式不可能执行该部分 
               {
                 // reset
-                memcpy(currentCoefficients,    bestCoeffComp,    (sizeof(TCoeff) * tuCompRect.width * tuCompRect.height));
+                memcpy(currentCoefficients,    bestCoeffComp,    (sizeof(TCoeff) * tuCompRect.width * tuCompRect.height));//保证bestCoeffComp为最优模式下的变换系数
 #if ADAPTIVE_QP_SELECTION
                 memcpy(currentARLCoefficients, bestArlCoeffComp, (sizeof(TCoeff) * tuCompRect.width * tuCompRect.height));
 #endif
-                for (Int y = 0; y < tuCompRect.height; y++)
+                for (Int y = 0; y < tuCompRect.height; y++)//保证bestResiComp为最优模式下的重建残差
                 {
                   memcpy((pcResiCurrComp + (y * resiStride)), &bestResiComp[y * tuCompRect.width], (sizeof(Pel) * tuCompRect.width));
                 }
               }
             }
           }
-
-          pcCU->setExplicitRdpcmModePartRange            (   bestExplicitRdpcmModeUnSplit[compID][subTUIndex],                            compID, subTUAbsPartIdx, partIdxesPerSubTU);
-          pcCU->setTransformSkipPartRange                (   uiBestTransformMode         [compID][subTUIndex],                            compID, subTUAbsPartIdx, partIdxesPerSubTU );
-          pcCU->setCbfPartRange                          ((((uiAbsSum                    [compID][subTUIndex] > 0) ? 1 : 0) << uiTrMode), compID, subTUAbsPartIdx, partIdxesPerSubTU );
-          pcCU->setCrossComponentPredictionAlphaPartRange(   bestCrossCPredictionAlpha   [compID][subTUIndex],                            compID, subTUAbsPartIdx, partIdxesPerSubTU );
+          //更新该模式下的Cu信息
+          pcCU->setExplicitRdpcmModePartRange            (   bestExplicitRdpcmModeUnSplit[compID][subTUIndex],                            compID, subTUAbsPartIdx, partIdxesPerSubTU);//设置pcmMode
+          pcCU->setTransformSkipPartRange                (   uiBestTransformMode         [compID][subTUIndex],                            compID, subTUAbsPartIdx, partIdxesPerSubTU );//设置TS
+          pcCU->setCbfPartRange                          ((((uiAbsSum                    [compID][subTUIndex] > 0) ? 1 : 0) << uiTrMode), compID, subTUAbsPartIdx, partIdxesPerSubTU );//设置CBf
+          pcCU->setCrossComponentPredictionAlphaPartRange(   bestCrossCPredictionAlpha   [compID][subTUIndex],                            compID, subTUAbsPartIdx, partIdxesPerSubTU );//设置CCP
         } while (TUIterator.nextSection(rTu)); //end of sub-TU loop
       } // processing section
     } // component loop
@@ -4854,7 +4854,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
     for(UInt ch = 0; ch < numValidComp; ch++)
     {
       const ComponentID compID = ComponentID(ch);
-      if (rTu.ProcessComponentSection(compID) && (rTu.getRect(compID).width != rTu.getRect(compID).height))
+      if (rTu.ProcessComponentSection(compID) && (rTu.getRect(compID).width != rTu.getRect(compID).height))//若该Tu水平分割 用上下两个子Tu的cbf设置父Tu的cbf
       {
         offsetSubTUCBFs(rTu, compID); //the CBFs up to now have been defined for two sub-TUs - shift them down a level and replace with the parent level CBF
       }
@@ -4862,10 +4862,10 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
 
     m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiDepth ][ CI_QT_TRAFO_ROOT ] );
     m_pcEntropyCoder->resetBits();
-
-    if( uiLog2TrSize > pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) )
+    //编码所有模式中最优模式的信息
+    if( uiLog2TrSize > pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) )//如果Tu大小大于最小TU 则需要编码TU是否分割标志 (等于最小时不用编码因为一定不分割)
     {
-      m_pcEntropyCoder->encodeTransformSubdivFlag( 0, 5 - uiLog2TrSize );
+      m_pcEntropyCoder->encodeTransformSubdivFlag( 0, 5 - uiLog2TrSize );//该Tu不分割
     }
 
     for(UInt ch = 0; ch < numValidComp; ch++)
@@ -4874,7 +4874,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
       const ComponentID compID=ComponentID(chOrderChange);
       if( rTu.ProcessComponentSection(compID) )
       {
-        m_pcEntropyCoder->encodeQtCbf( rTu, compID, true );
+        m_pcEntropyCoder->encodeQtCbf( rTu, compID, true );//编码最优模式下各分量的Qt的cbf
       }
     }
 
@@ -4885,24 +4885,24 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
       {
         if(isChroma(compID) && (uiAbsSum[COMPONENT_Y][0] != 0))
         {
-          m_pcEntropyCoder->encodeCrossComponentPrediction( rTu, compID );
+          m_pcEntropyCoder->encodeCrossComponentPrediction( rTu, compID );//编码最优模式下CCP相关信息
         }
 
-        m_pcEntropyCoder->encodeCoeffNxN( rTu, pcCoeffCurr[compID], compID );
+        m_pcEntropyCoder->encodeCoeffNxN( rTu, pcCoeffCurr[compID], compID );//编码最优模式下的变换系数
         for (UInt subTUIndex = 0; subTUIndex < 2; subTUIndex++)
         {
-          uiSingleDist += uiSingleDistComp[compID][subTUIndex];
+          uiSingleDist += uiSingleDistComp[compID][subTUIndex];//该Tu的总损耗(uiSingleDistComp初始化为0 故该Tu未水平分割也不影响计算结果)
         }
       }
     }
 
-    uiSingleBits = m_pcEntropyCoder->getNumberOfWrittenBits();
+    uiSingleBits = m_pcEntropyCoder->getNumberOfWrittenBits();//该Tu(不分割时)的编码总比特位
 
-    dSingleCost = m_pcRdCost->calcRdCost( uiSingleBits, uiSingleDist );
+    dSingleCost = m_pcRdCost->calcRdCost( uiSingleBits, uiSingleDist );////该Tu(不分割时)的编码总损耗
   } // check full
 
   // code sub-blocks
-  if( bCheckSplit )
+  if( bCheckSplit )//判断该Tu是否继续分割
   {
     if( bCheckFull )
     {
@@ -4911,7 +4911,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
     }
     Distortion uiSubdivDist = 0;
     UInt       uiSubdivBits = 0;
-    Double     dSubdivCost = 0.0;
+    Double     dSubdivCost = 0.0;//该Tu向下四叉树分割时的率失真信息
 
     //save the non-split CBFs in case we need to restore them later
 
@@ -4923,23 +4923,23 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
 
       if (rTu.ProcessComponentSection(compID))
       {
-        bestCBF[compID] = pcCU->getCbf(uiAbsPartIdx, compID, uiTrMode);
+        bestCBF[compID] = pcCU->getCbf(uiAbsPartIdx, compID, uiTrMode);//得到该Tu的cbf
 
         const TComRectangle &tuCompRect = rTu.getRect(compID);
-        if (tuCompRect.width != tuCompRect.height)
+        if (tuCompRect.width != tuCompRect.height)//该Tu存在上下两个子Tu
         {
-          const UInt partIdxesPerSubTU = rTu.GetAbsPartIdxNumParts(compID) >> 1;
+          const UInt partIdxesPerSubTU = rTu.GetAbsPartIdxNumParts(compID) >> 1;//上下两个子Tu中4*4小块数
 
           for (UInt subTU = 0; subTU < 2; subTU++)
           {
-            bestsubTUCBF[compID][subTU] = pcCU->getCbf ((uiAbsPartIdx + (subTU * partIdxesPerSubTU)), compID, subTUDepth);
+            bestsubTUCBF[compID][subTU] = pcCU->getCbf ((uiAbsPartIdx + (subTU * partIdxesPerSubTU)), compID, subTUDepth);//得到该Tu的cbfs(上下两个子Tu)
           }
         }
       }
     }
 
 
-    TComTURecurse tuRecurseChild(rTu, false);
+    TComTURecurse tuRecurseChild(rTu, false);//以该Tu作为父Tu得到4个子Tu
     const UInt uiQPartNumSubdiv = tuRecurseChild.GetAbsPartIdxNumParts();
 
     DEBUG_STRING_NEW(sSplitString[MAX_NUM_COMPONENT])
@@ -4967,7 +4967,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
         lastPos=pos;
       }
 #endif
-    } while ( tuRecurseChild.nextSection(rTu) ) ;
+    } while ( tuRecurseChild.nextSection(rTu) ) ;//四叉树的深度遍历  递归处理四个子Tu
 
     UInt uiCbfAny=0;
     for(UInt ch = 0; ch < numValidComp; ch++)
@@ -4975,32 +4975,32 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
       UInt uiYUVCbf = 0;
       for( UInt ui = 0; ui < 4; ++ui )
       {
-        uiYUVCbf |= pcCU->getCbf( uiAbsPartIdx + ui * uiQPartNumSubdiv, ComponentID(ch),  uiTrMode + 1 );
+        uiYUVCbf |= pcCU->getCbf( uiAbsPartIdx + ui * uiQPartNumSubdiv, ComponentID(ch),  uiTrMode + 1 );//各个子Tu的cbf相或 得到该Tu的cbf
       }
       UChar *pBase=pcCU->getCbf( ComponentID(ch) );
-      const UInt flags=uiYUVCbf << uiTrMode;
+      const UInt flags=uiYUVCbf << uiTrMode;//该深度Tu的cbf在Cu的cbfs中对应的位
       for( UInt ui = 0; ui < 4 * uiQPartNumSubdiv; ++ui )
       {
         pBase[uiAbsPartIdx + ui] |= flags;
-      }
-      uiCbfAny|=uiYUVCbf;
+      }//设置该Cu各分量的cbf
+      uiCbfAny|=uiYUVCbf;//该Tu是否存在非零系数
     }
 
     m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiDepth ][ CI_QT_TRAFO_ROOT ] );
     m_pcEntropyCoder->resetBits();
 
     // when compID isn't a channel, code Cbfs:
-    xEncodeInterResidualQT( MAX_NUM_COMPONENT, rTu );
+    xEncodeInterResidualQT( MAX_NUM_COMPONENT, rTu );//编码该TU(分割后)的cbfs
     for(UInt ch = 0; ch < numValidComp; ch++)
     {
-      xEncodeInterResidualQT( ComponentID(ch), rTu );
+      xEncodeInterResidualQT( ComponentID(ch), rTu );//编码该Tu各分量的帧间残差信息
     }
 
-    uiSubdivBits = m_pcEntropyCoder->getNumberOfWrittenBits();
-    dSubdivCost  = m_pcRdCost->calcRdCost( uiSubdivBits, uiSubdivDist );
+    uiSubdivBits = m_pcEntropyCoder->getNumberOfWrittenBits();//该Tu(分割后)编码所需的总比特数
+    dSubdivCost  = m_pcRdCost->calcRdCost( uiSubdivBits, uiSubdivDist );//该Tu(分割后)的总损耗
 
-    if (!bCheckFull || (uiCbfAny && (dSubdivCost < dSingleCost)))
-    {
+    if (!bCheckFull || (uiCbfAny && (dSubdivCost < dSingleCost)))//如果该Tu一定分割或分割后的总损耗小于不分割时的总损耗 (子Tu的cbfs全为零时计算的率失真为Single(checkfull)时的率失真 故此处需cbfany不为0)
+    {//则该Tu的总损耗加上该Tu分割后的总损耗
       rdCost += dSubdivCost;
       ruiBits += uiSubdivBits;
       ruiDist += uiSubdivDist;
@@ -5012,22 +5012,22 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
       }
 #endif
     }
-    else
+    else//该Tu不分割
     {
       rdCost  += dSingleCost;
       ruiBits += uiSingleBits;
-      ruiDist += uiSingleDist;
+      ruiDist += uiSingleDist;//加上该Tu不分割时的率失真信息
 
-      //restore state to unsplit
+      //restore state to unsplit (不分割时设置Tu信息是因为不分割的判断是自底而上的 从而保存最后设置的Tu信息为最优Tu分割时的信息)
 
-      pcCU->setTrIdxSubParts( uiTrMode, uiAbsPartIdx, uiDepth );
+      pcCU->setTrIdxSubParts( uiTrMode, uiAbsPartIdx, uiDepth );//设置该Tu的最优分割信息(表明Qt的结构)
 
-      for(UInt ch = 0; ch < numValidComp; ch++)
+      for(UInt ch = 0; ch < numValidComp; ch++)//遍历所有分量
       {
         const ComponentID compID=ComponentID(ch);
 
         DEBUG_STRING_APPEND(sDebug, debug_reorder_data_inter_token[ch])
-        if (rTu.ProcessComponentSection(compID))
+        if (rTu.ProcessComponentSection(compID))//若该分量需要处理
         {
           DEBUG_STRING_APPEND(sDebug, sSingleStringComp[compID])
 
@@ -5039,7 +5039,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
           {
             const UInt  uisubTUPartIdx = uiAbsPartIdx + (subTUIndex * partIdxesPerSubTU);
 
-            if (splitIntoSubTUs)
+            if (splitIntoSubTUs)//设置该Tu的cbf信息
             {
               const UChar combinedCBF = (bestsubTUCBF[compID][subTUIndex] << subTUDepth) | (bestCBF[compID] << uiTrMode);
               pcCU->setCbfPartRange(combinedCBF, compID, uisubTUPartIdx, partIdxesPerSubTU);
@@ -5049,9 +5049,9 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
               pcCU->setCbfPartRange((bestCBF[compID] << uiTrMode), compID, uisubTUPartIdx, partIdxesPerSubTU);
             }
 
-            pcCU->setCrossComponentPredictionAlphaPartRange(bestCrossCPredictionAlpha[compID][subTUIndex], compID, uisubTUPartIdx, partIdxesPerSubTU);
-            pcCU->setTransformSkipPartRange(uiBestTransformMode[compID][subTUIndex], compID, uisubTUPartIdx, partIdxesPerSubTU);
-            pcCU->setExplicitRdpcmModePartRange(bestExplicitRdpcmModeUnSplit[compID][subTUIndex], compID, uisubTUPartIdx, partIdxesPerSubTU);
+            pcCU->setCrossComponentPredictionAlphaPartRange(bestCrossCPredictionAlpha[compID][subTUIndex], compID, uisubTUPartIdx, partIdxesPerSubTU);//设置该Tu CCP的alpha值
+            pcCU->setTransformSkipPartRange(uiBestTransformMode[compID][subTUIndex], compID, uisubTUPartIdx, partIdxesPerSubTU);//设置该Tu的Ts标志
+            pcCU->setExplicitRdpcmModePartRange(bestExplicitRdpcmModeUnSplit[compID][subTUIndex], compID, uisubTUPartIdx, partIdxesPerSubTU)//设置该Tu的pcmMode
           }
         }
       }
@@ -5059,11 +5059,11 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
       m_pcRDGoOnSbacCoder->load( m_pppcRDSbacCoder[ uiDepth ][ CI_QT_TRAFO_TEST ] );
     }
   }
-  else
+  else//若该Tu一定不分割 
   {
     rdCost  += dSingleCost;
     ruiBits += uiSingleBits;
-    ruiDist += uiSingleDist;
+    ruiDist += uiSingleDist;//则直接加上该Tu不分割的率失真信息
 #if DEBUG_STRING
     for(UInt ch = 0; ch < numValidComp; ch++)
     {
@@ -5082,7 +5082,7 @@ Void TEncSearch::xEstimateInterResidualQT( TComYuv    *pcResi,
 
 
 
-Void TEncSearch::xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu )
+Void TEncSearch::xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu )//编码帧间预测时Tu的残差信息
 {
   TComDataCU* pcCU=rTu.getCU();
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
@@ -5090,36 +5090,36 @@ Void TEncSearch::xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu )
   assert( pcCU->getDepth( 0 ) == pcCU->getDepth( uiAbsPartIdx ) );
   const UInt uiTrMode = pcCU->getTransformIdx( uiAbsPartIdx );
 
-  const Bool bSubdiv = uiCurrTrMode != uiTrMode;
+  const Bool bSubdiv = uiCurrTrMode != uiTrMode;//该Tu是否继续分割
 
   const UInt uiLog2TrSize = rTu.GetLog2LumaTrSize();
 
-  if (compID==MAX_NUM_COMPONENT)  // we are not processing a channel, instead we always recurse and code the CBFs
+  if (compID==MAX_NUM_COMPONENT)  // we are not processing a channel, instead we always recurse and code the CBFs//compID为MAX_NUM_COMPONENT时 处理该Tu的cbfs
   {
-    if( uiLog2TrSize <= pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() && uiLog2TrSize > pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) )
+    if( uiLog2TrSize <= pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() && uiLog2TrSize > pcCU->getQuadtreeTULog2MinSizeInCU(uiAbsPartIdx) )//该Tu大小大于最小TU且不超过最大Tu 说明该Tu可能继续分割
     {
-      if((pcCU->getSlice()->getSPS()->getQuadtreeTUMaxDepthInter() == 1) && (pcCU->getPartitionSize(uiAbsPartIdx) != SIZE_2Nx2N))
+      if((pcCU->getSlice()->getSPS()->getQuadtreeTUMaxDepthInter() == 1) && (pcCU->getPartitionSize(uiAbsPartIdx) != SIZE_2Nx2N))//该情况下Tu可以被推断一定分割 故可以不用编码是否分割标志
       {
         assert(bSubdiv); // Inferred splitting rule - see derivation and use of interSplitFlag in the specification.
       }
       else
       {
-        m_pcEntropyCoder->encodeTransformSubdivFlag( bSubdiv, 5 - uiLog2TrSize );
+        m_pcEntropyCoder->encodeTransformSubdivFlag( bSubdiv, 5 - uiLog2TrSize );//编码该Tu是否分割标志
       }
     }
 
     assert( !pcCU->isIntra(uiAbsPartIdx) );
 
-    const Bool bFirstCbfOfCU = uiCurrTrMode == 0;
+    const Bool bFirstCbfOfCU = uiCurrTrMode == 0;//该Tu是否为Cu的QT的根节点
 
-    for (UInt ch=COMPONENT_Cb; ch<pcCU->getPic()->getNumberValidComponents(); ch++)
+    for (UInt ch=COMPONENT_Cb; ch<pcCU->getPic()->getNumberValidComponents(); ch++)//遍历所有分量
     {
       const ComponentID compIdInner=ComponentID(ch);
       if( bFirstCbfOfCU || rTu.ProcessingAllQuadrants(compIdInner) )
       {
-        if( bFirstCbfOfCU || pcCU->getCbf( uiAbsPartIdx, compIdInner, uiCurrTrMode - 1 ) )
+        if( bFirstCbfOfCU || pcCU->getCbf( uiAbsPartIdx, compIdInner, uiCurrTrMode - 1 ) )//该Tu上一深度的Cbf不为0 (如果上一深度Cbf为0 则该深度cbf也一定为零故无需编码)
         {
-          m_pcEntropyCoder->encodeQtCbf( rTu, compIdInner, !bSubdiv );
+          m_pcEntropyCoder->encodeQtCbf( rTu, compIdInner, !bSubdiv );//则编码QT的cbf(如果分割则不为lowestlevel)
         }
       }
       else
@@ -5128,41 +5128,41 @@ Void TEncSearch::xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu )
       }
     }
 
-    if (!bSubdiv)
+    if (!bSubdiv)//编码lowestlevel的Cbf(该Tu不分割 故该Tu即为lowestlevel的Tu)
     {
       m_pcEntropyCoder->encodeQtCbf( rTu, COMPONENT_Y, true );
     }
   }
 
-  if( !bSubdiv )
+  if( !bSubdiv )//如果该Tu不分割
   {
     if (compID != MAX_NUM_COMPONENT) // we have already coded the CBFs, so now we code coefficients
     {
-      if (rTu.ProcessComponentSection(compID))
+      if (rTu.ProcessComponentSection(compID))//该分量需要处理
       {
-        if (isChroma(compID) && (pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y, uiTrMode) != 0))
+        if (isChroma(compID) && (pcCU->getCbf(uiAbsPartIdx, COMPONENT_Y, uiTrMode) != 0))//色度分量 且存在非零变换系数 则需要编码CCp信息(如alpha值)
         {
           m_pcEntropyCoder->encodeCrossComponentPrediction(rTu, compID);
         }
 
-        if (pcCU->getCbf(uiAbsPartIdx, compID, uiTrMode) != 0)
+        if (pcCU->getCbf(uiAbsPartIdx, compID, uiTrMode) != 0)//该Tu存在非零变换系数
         {
           const UInt uiQTTempAccessLayer = pcCU->getSlice()->getSPS()->getQuadtreeTULog2MaxSize() - uiLog2TrSize;
           TCoeff *pcCoeffCurr = m_ppcQTTempCoeff[compID][uiQTTempAccessLayer] + rTu.getCoefficientOffset(compID);
-          m_pcEntropyCoder->encodeCoeffNxN( rTu, pcCoeffCurr, compID );
+          m_pcEntropyCoder->encodeCoeffNxN( rTu, pcCoeffCurr, compID );//编码该Tu的变换系数
         }
       }
     }
   }
-  else
+  else//若该Tu存在子Tu
   {
-    if( compID==MAX_NUM_COMPONENT || pcCU->getCbf( uiAbsPartIdx, compID, uiCurrTrMode ) )
+    if( compID==MAX_NUM_COMPONENT || pcCU->getCbf( uiAbsPartIdx, compID, uiCurrTrMode ) )//若该Tu存在非零系数(若变换系数全为零则没有递归处理变换系数和CCp信息的必要) 或处理Cbf
     {
       TComTURecurse tuRecurseChild(rTu, false);
       do
       {
         xEncodeInterResidualQT( compID, tuRecurseChild );
-      } while (tuRecurseChild.nextSection(rTu));
+      } while (tuRecurseChild.nextSection(rTu));//递归处理子Tu
     }
   }
 }
@@ -5171,7 +5171,7 @@ Void TEncSearch::xEncodeInterResidualQT( const ComponentID compID, TComTU &rTu )
 
 
 Void TEncSearch::xSetInterResidualQTData( TComYuv* pcResi, Bool bSpatial, TComTU &rTu ) // TODO: turn this into two functions for bSpatial=true and false.
-{
+{//设置(保存)帧间预测Tu块残差信息
   TComDataCU* pcCU=rTu.getCU();
   const UInt uiCurrTrMode=rTu.GetTransformDepthRel();
   const UInt uiAbsPartIdx=rTu.GetAbsPartIdxTU();
@@ -5179,26 +5179,26 @@ Void TEncSearch::xSetInterResidualQTData( TComYuv* pcResi, Bool bSpatial, TComTU
   const UInt uiTrMode = pcCU->getTransformIdx( uiAbsPartIdx );
   const TComSPS *sps=pcCU->getSlice()->getSPS();
 
-  if( uiCurrTrMode == uiTrMode )
+  if( uiCurrTrMode == uiTrMode )//该Tu不分割
   {
     const UInt uiLog2TrSize = rTu.GetLog2LumaTrSize();
     const UInt uiQTTempAccessLayer = sps->getQuadtreeTULog2MaxSize() - uiLog2TrSize;
 
-    if( bSpatial )
+    if( bSpatial )//空间域(指重建像素值)
     {
       // Data to be copied is in the spatial domain, i.e., inverse-transformed.
 
-      for(UInt i=0; i<pcResi->getNumberValidComponents(); i++)
+      for(UInt i=0; i<pcResi->getNumberValidComponents(); i++)//遍历所有分量
       {
         const ComponentID compID=ComponentID(i);
-        if (rTu.ProcessComponentSection(compID))
+        if (rTu.ProcessComponentSection(compID))//若该分量需要处理
         {
           const TComRectangle &rectCompTU(rTu.getRect(compID));
-          m_pcQTTempTComYuv[uiQTTempAccessLayer].copyPartToPartComponentMxN    ( compID, pcResi, rectCompTU );
+          m_pcQTTempTComYuv[uiQTTempAccessLayer].copyPartToPartComponentMxN    ( compID, pcResi, rectCompTU );//将该Tu的重建像素值保存至pcResi
         }
       }
     }
-    else
+    else//频域(指变换系数)
     {
       for (UInt ch=0; ch < getNumberValidComponents(sps->getChromaFormatIdc()); ch++)
       {
@@ -5206,11 +5206,11 @@ Void TEncSearch::xSetInterResidualQTData( TComYuv* pcResi, Bool bSpatial, TComTU
         if (rTu.ProcessComponentSection(compID))
         {
           const TComRectangle &rectCompTU(rTu.getRect(compID));
-          const UInt numCoeffInBlock    = rectCompTU.width * rectCompTU.height;
-          const UInt offset             = rTu.getCoefficientOffset(compID);
-          TCoeff* dest                  = pcCU->getCoeff(compID)                        + offset;
-          const TCoeff* src             = m_ppcQTTempCoeff[compID][uiQTTempAccessLayer] + offset;
-          ::memcpy( dest, src, sizeof(TCoeff)*numCoeffInBlock );
+          const UInt numCoeffInBlock    = rectCompTU.width * rectCompTU.height;//变换系数的个数
+          const UInt offset             = rTu.getCoefficientOffset(compID);//该Tu的变换系数在整个Ctu变换系数中位置的偏移量
+          TCoeff* dest                  = pcCU->getCoeff(compID)                        + offset;//该Tu变换系数在Cu中保存的起始位置
+          const TCoeff* src             = m_ppcQTTempCoeff[compID][uiQTTempAccessLayer] + offset;//该Tu保存在m_ppcQTTempCoeff的变换系数的起始位置
+          ::memcpy( dest, src, sizeof(TCoeff)*numCoeffInBlock );////将该Tu的变换系数保存至Cu信息
 
 #if ADAPTIVE_QP_SELECTION
           TCoeff* pcArlCoeffSrc            = m_ppcQTTempArlCoeff[compID][uiQTTempAccessLayer] + offset;
@@ -5221,21 +5221,21 @@ Void TEncSearch::xSetInterResidualQTData( TComYuv* pcResi, Bool bSpatial, TComTU
       }
     }
   }
-  else
+  else//若存在子Tu
   {
 
     TComTURecurse tuRecurseChild(rTu, false);
     do
     {
       xSetInterResidualQTData( pcResi, bSpatial, tuRecurseChild );
-    } while (tuRecurseChild.nextSection(rTu));
+    } while (tuRecurseChild.nextSection(rTu));//则递归处理子Tu
   }
 }
 
 
 
 
-UInt TEncSearch::xModeBitsIntra( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffset, UInt uiDepth, const ChannelType chType )
+UInt TEncSearch::xModeBitsIntra( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffset, UInt uiDepth, const ChannelType chType )//编码某帧内模式 并返回编码的比特数
 {
   // Reload only contexts required for coding intra mode information
   m_pcRDGoOnSbacCoder->loadIntraDirMode( m_pppcRDSbacCoder[uiDepth][CI_CURR_BEST], chType );
@@ -5245,39 +5245,39 @@ UInt TEncSearch::xModeBitsIntra( TComDataCU* pcCU, UInt uiMode, UInt uiPartOffse
   // the entry at absPartIdx.
 
   UChar &rIntraDirVal=pcCU->getIntraDir( chType )[uiPartOffset];
-  UChar origVal=rIntraDirVal;
-  rIntraDirVal = uiMode;
+  UChar origVal=rIntraDirVal;//将该Pu的原模式保存起来
+  rIntraDirVal = uiMode;//将该Pu的帧内预测模式置为给定模式uiMode 因为编码的帧内模式是通过从Cu得到的帧内预测模式
   //pcCU->setIntraDirSubParts ( chType, uiMode, uiPartOffset, uiDepth + uiInitTrDepth );
 
-  m_pcEntropyCoder->resetBits();
+  m_pcEntropyCoder->resetBits();//重置编码比特数为0
   if (isLuma(chType))
   {
-    m_pcEntropyCoder->encodeIntraDirModeLuma ( pcCU, uiPartOffset);
+    m_pcEntropyCoder->encodeIntraDirModeLuma ( pcCU, uiPartOffset);//亮度分量下编码该帧内预测模式
   }
   else
   {
-    m_pcEntropyCoder->encodeIntraDirModeChroma ( pcCU, uiPartOffset);
+    m_pcEntropyCoder->encodeIntraDirModeChroma ( pcCU, uiPartOffset);//色度分量下编码该帧内预测模式
   }
 
-  rIntraDirVal = origVal; // restore
+  rIntraDirVal = origVal; // restore//还原原帧内预测模式
 
-  return m_pcEntropyCoder->getNumberOfWrittenBits();
+  return m_pcEntropyCoder->getNumberOfWrittenBits();//编码给定的帧内模式的比特数
 }
 
 
 
 
-UInt TEncSearch::xUpdateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList )
+UInt TEncSearch::xUpdateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum, UInt * CandModeList, Double * CandCostList )//更新可能的帧内预测模式候选列表
 {
   UInt i;
   UInt shift=0;
 
-  while ( shift<uiFastCandNum && uiCost<CandCostList[ uiFastCandNum-1-shift ] )
+  while ( shift<uiFastCandNum && uiCost<CandCostList[ uiFastCandNum-1-shift ] )//根据损耗找到该模式在列表中的位置
   {
     shift++;
   }
 
-  if( shift!=0 )
+  if( shift!=0 )//按损耗从小到大的顺序将该模式插入列表中
   {
     for(i=1; i<shift; i++)
     {
@@ -5286,10 +5286,10 @@ UInt TEncSearch::xUpdateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum
     }
     CandModeList[ uiFastCandNum-shift ] = uiMode;
     CandCostList[ uiFastCandNum-shift ] = uiCost;
-    return 1;
+    return 1;//返回1表示列表更新过
   }
 
-  return 0;
+  return 0;//返回0表示列表未更新
 }
 
 
@@ -5303,41 +5303,41 @@ UInt TEncSearch::xUpdateCandList( UInt uiMode, Double uiCost, UInt uiFastCandNum
  * \param ruiBits
  * \returns Void
  */
-Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )
+Void  TEncSearch::xAddSymbolBitsInter( TComDataCU* pcCU, UInt& ruiBits )//编码Cu块帧间预测的语法元素
 {
-  if(pcCU->getMergeFlag( 0 ) && pcCU->getPartitionSize( 0 ) == SIZE_2Nx2N && !pcCU->getQtRootCbf( 0 ))
+  if(pcCU->getMergeFlag( 0 ) && pcCU->getPartitionSize( 0 ) == SIZE_2Nx2N && !pcCU->getQtRootCbf( 0 ))//若Cu的Pu划分方式为2Nx2N使用merge得到运动矢量信息且该Cu不存在非零变换系数
   {
-    pcCU->setSkipFlagSubParts( true, 0, pcCU->getDepth(0) );
+    pcCU->setSkipFlagSubParts( true, 0, pcCU->getDepth(0) );//上述情况下使用skip模式
 
     m_pcEntropyCoder->resetBits();
-    if(pcCU->getSlice()->getPPS()->getTransquantBypassEnableFlag())
+    if(pcCU->getSlice()->getPPS()->getTransquantBypassEnableFlag())//若为lossless模式
     {
-      m_pcEntropyCoder->encodeCUTransquantBypassFlag(pcCU, 0, true);
+      m_pcEntropyCoder->encodeCUTransquantBypassFlag(pcCU, 0, true);//则编码lossless模式标志
     }
-    m_pcEntropyCoder->encodeSkipFlag(pcCU, 0, true);
-    m_pcEntropyCoder->encodeMergeIndex(pcCU, 0, true);
+    m_pcEntropyCoder->encodeSkipFlag(pcCU, 0, true);//编码Skip标志
+    m_pcEntropyCoder->encodeMergeIndex(pcCU, 0, true);//编码merge运动矢量在merge候选列表中的索引
 
-    ruiBits += m_pcEntropyCoder->getNumberOfWrittenBits();
+    ruiBits += m_pcEntropyCoder->getNumberOfWrittenBits();//总比特数加上上述编码比特数
   }
   else
   {
     m_pcEntropyCoder->resetBits();
 
-    if(pcCU->getSlice()->getPPS()->getTransquantBypassEnableFlag())
+    if(pcCU->getSlice()->getPPS()->getTransquantBypassEnableFlag())//若为lossless模式
     {
-      m_pcEntropyCoder->encodeCUTransquantBypassFlag(pcCU, 0, true);
+      m_pcEntropyCoder->encodeCUTransquantBypassFlag(pcCU, 0, true);//则编码lossless模式标志
     }
 
-    m_pcEntropyCoder->encodeSkipFlag ( pcCU, 0, true );
-    m_pcEntropyCoder->encodePredMode( pcCU, 0, true );
-    m_pcEntropyCoder->encodePartSize( pcCU, 0, pcCU->getDepth(0), true );
-    m_pcEntropyCoder->encodePredInfo( pcCU, 0 );
+    m_pcEntropyCoder->encodeSkipFlag ( pcCU, 0, true );//编码Skip标志
+    m_pcEntropyCoder->encodePredMode( pcCU, 0, true );//编码预测模式(帧内 帧间)
+    m_pcEntropyCoder->encodePartSize( pcCU, 0, pcCU->getDepth(0), true );//编码Cu的Pu分割模式
+    m_pcEntropyCoder->encodePredInfo( pcCU, 0 );//编码帧间预测信息(如运动矢量 参考图像索引)
 
     Bool codeDeltaQp = false;
     Bool codeChromaQpAdj = false;
-    m_pcEntropyCoder->encodeCoeff   ( pcCU, 0, pcCU->getDepth(0), codeDeltaQp, codeChromaQpAdj );
+    m_pcEntropyCoder->encodeCoeff   ( pcCU, 0, pcCU->getDepth(0), codeDeltaQp, codeChromaQpAdj );//编码变换系数
 
-    ruiBits += m_pcEntropyCoder->getNumberOfWrittenBits();
+    ruiBits += m_pcEntropyCoder->getNumberOfWrittenBits();//总比特数加上上述编码比特数
   }
 }
 
@@ -5559,30 +5559,30 @@ Void TEncSearch::xExtDIFUpSamplingQ( TComPattern* pattern, TComMv halfPelRef )//
 
 
 //! set wp tables
-Void  TEncSearch::setWpScalingDistParam( TComDataCU* pcCU, Int iRefIdx, RefPicList eRefPicListCur )
+Void  TEncSearch::setWpScalingDistParam( TComDataCU* pcCU, Int iRefIdx, RefPicList eRefPicListCur )///设置加权预测的权重 (由slice信息得到)
 {
-  if ( iRefIdx<0 )
+  if ( iRefIdx<0 )//参考图像无效
   {
-    m_cDistParam.bApplyWeight = false;
+    m_cDistParam.bApplyWeight = false;//无法使用权重 直接返回
     return;
   }
 
   TComSlice       *pcSlice  = pcCU->getSlice();
   WPScalingParam  *wp0 , *wp1;
 
-  m_cDistParam.bApplyWeight = ( pcSlice->getSliceType()==P_SLICE && pcSlice->testWeightPred() ) || ( pcSlice->getSliceType()==B_SLICE && pcSlice->testWeightBiPred() ) ;
+  m_cDistParam.bApplyWeight = ( pcSlice->getSliceType()==P_SLICE && pcSlice->testWeightPred() ) || ( pcSlice->getSliceType()==B_SLICE && pcSlice->testWeightBiPred() ) ;//只有P_SLICE和I_SLice允许预测权重
 
-  if ( !m_cDistParam.bApplyWeight )
+  if ( !m_cDistParam.bApplyWeight )//若不使用加权预测 则直接返回
   {
     return;
   }
 
   Int iRefIdx0 = ( eRefPicListCur == REF_PIC_LIST_0 ) ? iRefIdx : (-1);
-  Int iRefIdx1 = ( eRefPicListCur == REF_PIC_LIST_1 ) ? iRefIdx : (-1);
+  Int iRefIdx1 = ( eRefPicListCur == REF_PIC_LIST_1 ) ? iRefIdx : (-1);//得到给定参考图像列表中给定的参考图像
 
-  getWpScaling( pcCU, iRefIdx0, iRefIdx1, wp0 , wp1 );
+  getWpScaling( pcCU, iRefIdx0, iRefIdx1, wp0 , wp1 );//由slice信息得到对应参考图像的权重
 
-  if ( iRefIdx0 < 0 )
+  if ( iRefIdx0 < 0 )//若参考图像无效 则权重为空
   {
     wp0 = NULL;
   }
@@ -5593,7 +5593,7 @@ Void  TEncSearch::setWpScalingDistParam( TComDataCU* pcCU, Int iRefIdx, RefPicLi
 
   m_cDistParam.wpCur  = NULL;
 
-  if ( eRefPicListCur == REF_PIC_LIST_0 )
+  if ( eRefPicListCur == REF_PIC_LIST_0 )//根据参考图像列表设置权重
   {
     m_cDistParam.wpCur = wp0;
   }

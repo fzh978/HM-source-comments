@@ -3496,7 +3496,7 @@ Void TComTrQuant::crossComponentPrediction(       TComTU      & rTu,
                                             const Bool          reverse )
 {//色度残差的预测　包括正向的预测和反向的重构：预测计算为y'=y-(alpha*x) 重构计算为y'=y+(alpha*x) 其中alpha＝sum(x*y)/sum(x*x)
   const Pel *pResiL = piResiL;//亮度残差
-  const Pel *pResiC = piResiC;//原始色度残差
+  const Pel *pResiC = piResiC;//原始(预测)色度残差
         Pel *pResiT = piResiT;//预测(重构)后的色度残差值
 
   TComDataCU *pCU = rTu.getCU();

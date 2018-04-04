@@ -192,7 +192,7 @@ Void TComPrediction::initIntraPatternChType( TComTU &rTu, const ComponentID comp
     }
 #endif
 
-    if (bFilterRefSamples)//如果参考像素需要滤波
+    if (bFilterefRSamples)//如果参考像素需要滤波
     {
       // generate filtered intra prediction samples
 

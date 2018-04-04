@@ -1527,7 +1527,7 @@ UInt TComDataCU::getQuadtreeTULog2MinSizeInCU( UInt absPartIdx )//以absPartIdx�
   PartSize  partSize  = getPartitionSize( absPartIdx );
   UInt quadtreeTUMaxDepth = isIntra( absPartIdx ) ? m_pcSlice->getSPS()->getQuadtreeTUMaxDepthIntra() : m_pcSlice->getSPS()->getQuadtreeTUMaxDepthInter();//TU允许的最大深度(相对CU)
   Int intraSplitFlag = ( isIntra( absPartIdx ) && partSize == SIZE_NxN ) ? 1 : 0;//intraSplitFlag若为真　则split_transform_flag被推断为1　TU必定会往下分割一次(可节约编码split_transform_flag所需的比特位)
-  Int interSplitFlag = ((quadtreeTUMaxDepth == 1) && isInter( absPartIdx ) && (partSize != SIZE_2Nx2N) );//intraSplitFlag若为真　则split_transform_flag被推断为1
+  Int interSplitFlag = ((quadtreeTUMaxDepth == 1) && isInter( absPartIdx ) && (partSize != SIZE_2Nx2N) );//intraSplitFlag若为真　则split_transform_flag被推断为1 该Tu一定分割
 
   UInt log2MinTUSizeInCU = 0;
   if (log2CbSize < (m_pcSlice->getSPS()->getQuadtreeTULog2MinSize() + quadtreeTUMaxDepth - 1 + interSplitFlag + intraSplitFlag) )//当前Cu能得到最小Tu块小于规定的最小Tu块大小
@@ -2811,9 +2811,9 @@ Void TComDataCU::clipMv    (TComMv&  rcMv)//根据CU的位置限制运动矢量�
 }
 
 
-UInt TComDataCU::getIntraSizeIdx(UInt uiAbsPartIdx)//计算帧间预测　PU块的大小
+UInt TComDataCU::getIntraSizeIdx(UInt uiAbsPartIdx)//计算帧内预测　PU块的大小
 {
-  UInt uiShift = ( m_pePartSize[uiAbsPartIdx]==SIZE_NxN ? 1 : 0 );
+  UInt uiShift = ( m_pePartSize[uiAbsPartIdx]==SIZE_NxN ? 1 : 0 );//帧内预测 Cu的Pu分割只有SIZE_NxN SIZE_2Nx2N两种情况
 
   UChar uiWidth = m_puhWidth[uiAbsPartIdx]>>uiShift;
   UInt  uiCnt = 0;

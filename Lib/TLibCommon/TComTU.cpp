@@ -136,7 +136,7 @@ TComTU::TComTU(TComTU &parent, const Bool bProcessLastOfLevel, const TU_SPLIT_MO
     return;
   }
 
-  for(UInt i=0; i<MAX_NUM_COMPONENT; i++)
+  for(UInt i=0; i<MAX_NUM_COMPONENT; i++)//mSplitMode=QUAD_SPLIT
   {//�ָ�ɵȴ��Ŀ�
     mRect[i].width = (parent.mRect[i].width >> 1);//��Tu�����
     mRect[i].height= (parent.mRect[i].height>> 1);////��Tu�߼���
