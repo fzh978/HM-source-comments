@@ -207,7 +207,7 @@ Void TComRdCost::setLambda( Double dLambda, const BitDepths &bitDepths )//设置
   m_dLambdaMotionSAD[1] = 65536.0 * sqrt(dLambda);
   m_dLambdaMotionSSE[1] = 65536.0 * dLambda;
 #else
-  m_uiLambdaMotionSAD[0] = (UInt)floor(65536.0 * m_sqrtLambda);//0=standard 标准模式下Lambda值　SAD为差值的和　故SAD下的lambda需较SSD下的lambda开放
+  m_uiLambdaMotionSAD[0] = (UInt)floor(65536.0 * m_sqrtLambda);//0=standard 标准模式下Lambda值　SAD为差值的和　故SAD下的lambda需较SSD下的lambda开方
   m_uiLambdaMotionSSE[0] = (UInt)floor(65536.0 * m_dLambda   );//0=standard 标准模式下Lambda值  SSD为差值平方的和
 #if FULL_NBIT
   dLambda = 0.57 * pow(2.0, ((LOSSLESS_AND_MIXED_LOSSLESS_RD_COST_TEST_QP_PRIME - 12) / 3.0));

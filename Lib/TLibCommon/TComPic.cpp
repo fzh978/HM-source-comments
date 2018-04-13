@@ -120,8 +120,8 @@ Void TComPic::compressMotion()
 
 Bool  TComPic::getSAOMergeAvailability(Int currAddr, Int mergeAddr)
 {
-  Bool mergeCtbInSliceSeg = (mergeAddr >= getPicSym()->getCtuTsToRsAddrMap(getCtu(currAddr)->getSlice()->getSliceCurStartCtuTsAddr()));
-  Bool mergeCtbInTile     = (getPicSym()->getTileIdxMap(mergeAddr) == getPicSym()->getTileIdxMap(currAddr));
+  Bool mergeCtbInSliceSeg = (mergeAddr >= getPicSym()->getCtuTsToRsAddrMap(getCtu(currAddr)->getSlice()->getSliceCurStartCtuTsAddr()));//是否在当前Ctu所在slice之前的slice
+  Bool mergeCtbInTile     = (getPicSym()->getTileIdxMap(mergeAddr) == getPicSym()->getTileIdxMap(currAddr));//是否在同一个tile
   return (mergeCtbInSliceSeg && mergeCtbInTile);
 }
 
@@ -133,28 +133,28 @@ UInt TComPic::getSubstreamForCtuAddr(const UInt ctuAddr, const Bool bAddressInRa
 
   if ((bWPPEnabled && picSym.getFrameHeightInCtus()>1) || (picSym.getNumTiles()>1)) // wavefronts, and possibly tiles being used.
   {
-    if (bWPPEnabled)
+    if (bWPPEnabled)//若使用波前并行 (则tile中每一行Ctu为一个substream)
     {
-      const UInt ctuRsAddr                = bAddressInRaster?ctuAddr : picSym.getCtuTsToRsAddrMap(ctuAddr);
+      const UInt ctuRsAddr                = bAddressInRaster?ctuAddr : picSym.getCtuTsToRsAddrMap(ctuAddr);//该Ctu在图像中的Rs地址
       const UInt frameWidthInCtus         = picSym.getFrameWidthInCtus();
-      const UInt tileIndex                = picSym.getTileIdxMap(ctuRsAddr);
-      const UInt numTileColumns           = (picSym.getNumTileColumnsMinus1()+1);
-      const TComTile *pTile               = picSym.getTComTile(tileIndex);
-      const UInt firstCtuRsAddrOfTile     = pTile->getFirstCtuRsAddr();
-      const UInt tileYInCtus              = firstCtuRsAddrOfTile / frameWidthInCtus;
+      const UInt tileIndex                = picSym.getTileIdxMap(ctuRsAddr);//该Ctu所造的tile的索引
+      const UInt numTileColumns           = (picSym.getNumTileColumnsMinus1()+1);//图像中一行tile的tile数(图像中有多少列tile)
+      const TComTile *pTile               = picSym.getTComTile(tileIndex);//该CTU所在tile
+      const UInt firstCtuRsAddrOfTile     = pTile->getFirstCtuRsAddr();//该tile首Ctu在图像中的Rs地址
+      const UInt tileYInCtus              = firstCtuRsAddrOfTile / frameWidthInCtus;//tile首Ctu在图像中的Y坐标(Ctu为单位)
       // independent tiles => substreams are "per tile"
-      const UInt ctuLine                  = ctuRsAddr / frameWidthInCtus;
-      const UInt startingSubstreamForTile =(tileYInCtus*numTileColumns) + (pTile->getTileHeightInCtus()*(tileIndex%numTileColumns));
-      subStrm = startingSubstreamForTile + (ctuLine - tileYInCtus);
-    }
-    else
+      const UInt ctuLine                  = ctuRsAddr / frameWidthInCtus;//该Ctu所在(图像Ctu)行
+      const UInt startingSubstreamForTile =(tileYInCtus*numTileColumns) + (pTile->getTileHeightInCtus()*(tileIndex%numTileColumns));//Ctu所在tile的首Ctu所在Ctu行的Substream
+      subStrm = startingSubstreamForTile + (ctuLine - tileYInCtus);//该Ctu的Substream
+    }//建议简单的画个图 很容易看出Substream的划分
+    else//一个tile为一个substream
     {
       const UInt ctuRsAddr                = bAddressInRaster?ctuAddr : picSym.getCtuTsToRsAddrMap(ctuAddr);
       const UInt tileIndex                = picSym.getTileIdxMap(ctuRsAddr);
       subStrm=tileIndex;
     }
   }
-  else
+  else//一帧图像为一个substream
   {
     // dependent tiles => substreams are "per frame".
     subStrm = 0;

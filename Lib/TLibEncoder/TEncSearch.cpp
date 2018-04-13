@@ -2245,7 +2245,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
 
   do
   {
-    const UInt uiPartOffset=tuRecurseWithPU.GetAbsPartIdxTU();//该Tu在Ctu中的位置
+    const UInt uiPartOffset=tuRecurseWithPU.GetAbsPartIdxTU();//该Pu在Ctu中的位置
 //  for( UInt uiPU = 0, uiPartOffset=0; uiPU < uiNumPU; uiPU++, uiPartOffset += uiQNumParts )
   //{
     //===== init pattern for luma prediction =====
@@ -2515,8 +2515,8 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
       ::memcpy( pcCU->getTransformSkip( compID  ) + uiPartOffset, m_puhQTTempTransformSkipFlag[compID ], uiQPartNum * sizeof( UChar ) );//更新该Tu在最优帧内模式下的cbf
     }
 
-    //--- set reconstruction for next intra prediction blocks ---//设置帧内预测需要用到的重建像素
-    if( !tuRecurseWithPU.IsLastSection() )
+    //--- set reconstruction for next intra prediction blocks ---//设置帧内预测需要用到的参考像素
+    if( !tuRecurseWithPU.IsLastSection() )//Cu中最后一个Pu不需要设置参考像素是因为同一个Cu中的Pu依赖之前Pu的重建像素 该Cu的所有Pu处理完后会在Cu层面设置帧内预测需要的重建像素 保证下一个Cu帧内预测时可以得到正确的参考像素
     {
       const TComRectangle &puRect=tuRecurseWithPU.getRect(COMPONENT_Y);
       const UInt  uiCompWidth   = puRect.width;
@@ -2775,7 +2775,7 @@ Void TEncSearch::xEncPCM (TComDataCU* pcCU, UInt uiAbsPartIdx, Pel* pOrg, Pel* p
 
 
 //!  Function for PCM mode estimation.
-Void TEncSearch::IPCMSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, TComYuv* pcRecoYuv )//计算PCM模式下的编码比特位 总损耗及失真
+Void TEncSearch::IPCMSearch( TComDataCU* pcCU, TComYuv* pcOrgYuv, TComYuv* pcPredYuv, TComYuv* pcResiYuv, TComYuv* pcRecoYuv )//计算PCM模式下的编码比特位 失真及总损耗
 {
   UInt        uiDepth      = pcCU->getDepth(0);
   const UInt  uiDistortion = 0;
@@ -4307,7 +4307,7 @@ Void TEncSearch::encodeResAndCalcRdInterCU( TComDataCU* pcCU, TComYuv* pcYuvOrg,
   // The pcCU is not marked as skip-mode at this point, and its m_pcTrCoeff, m_pcArlCoeff, m_puhCbf, m_puhTrIdx will all be 0.
   // due to prior calls to TComDataCU::initEstData(  );
 
-  if ( bSkipResidual ) //  No residual coding : SKIP mode//SKIP模式下不需要残差编码
+  if ( bSkipResidual ) //  No residual coding : SKIP mode//SKIP模式下不需要残差编码 强制残差为0
   {
     pcCU->setSkipFlagSubParts( true, 0, pcCU->getDepth(0) );//设置Pu的SKIP标志为真
 

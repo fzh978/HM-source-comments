@@ -856,7 +856,7 @@ Void TComDataCU::copyInterPredInfoFrom    ( TComDataCU* pcCU, UInt uiAbsPartIdx,
 
 // Copy small CU to bigger CU.（从小到大）
 // One of quarter parts overwritten by predicted sub part.
-Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth )//将深度为uiDepth的cCU的信息复制到当前CU中索引为uiPartUnitIdx的子CU
+Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDepth )//将深度为uiDepth的pcCU的信息复制到当前CU中索引为uiPartUnitIdx的子CU
 {
   assert( uiPartUnitIdx<4 );
 
@@ -942,7 +942,7 @@ Void TComDataCU::copyPartFrom( TComDataCU* pcCU, UInt uiPartUnitIdx, UInt uiDept
 
 // Copy current predicted part to a CU in picture.
 // It is used to predict for next part
-Void TComDataCU::copyToPic( UChar uhDepth )//复制当前CU的信息到到其所属的CTU所在的位置
+Void TComDataCU::copyToPic( UChar uhDepth )//复制当前CU的信息到图像对应位置 
 {
   TComDataCU* pCtu = m_pcPic->getCtu( m_ctuRsAddr );
   const UInt numValidComp=pCtu->getPic()->getNumberValidComponents();
