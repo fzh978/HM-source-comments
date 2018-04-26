@@ -332,8 +332,8 @@ Void TEncTop::encode( Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvT
     }
   }
 
-  if ((m_iNumPicRcvd == 0) || (!flush && (m_iPOCLast != 0) && (m_iNumPicRcvd != m_iGOPSize) && (m_iGOPSize != 0)))
-  {
+  if ((m_iNumPicRcvd == 0) || (!flush && (m_iPOCLast != 0) && (m_iNumPicRcvd != m_iGOPSize) && (m_iGOPSize != 0)))//m_iNumPicRcvd != m_iGOPSize!!!!该判断语句保证picture buffer list中存在一个完整的GOP m_iNumPicRcvd为待编码图像数
+  {                                                                                                               //(图像缓存列表:从原始视频流中按POC顺序读取的图像 列表大小与GOPSize有关 列表中的图像一般为待处理(编码)图像或用作参考图像 )
     iNumEncoded = 0;
     return;
   }
@@ -466,21 +466,21 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTr
  .
  \retval rpcPic obtained picture buffer
  */
-Void TEncTop::xGetNewPicBuffer ( TComPic*& rpcPic )
+Void TEncTop::xGetNewPicBuffer ( TComPic*& rpcPic )//得到新的图像缓存rpcPic(将从视频流中新读取的帧赋给rpcPic)
 {
   // At this point, the SPS and PPS can be considered activated - they are copied to the new TComPic.
 
-  TComSlice::sortPicList(m_cListPic);
+  TComSlice::sortPicList(m_cListPic);//将图像缓存列表中的图像按POC值从大到小排列
 
 
-  if (m_cListPic.size() >= (UInt)(m_iGOPSize + getMaxDecPicBuffering(MAX_TLAYER-1) + 2) )
+  if (m_cListPic.size() >= (UInt)(m_iGOPSize + getMaxDecPicBuffering(MAX_TLAYER-1) + 2) )//若图像缓存列表大小大于允许的最大缓存图像数 (右侧最大缓存图像数可保证每个GOP中的图像都顺利编解码 不存在无法找到参考图像的情况)(MaxDecPicBuffering(MAX_TLAYER-1)与GOP中图像的最大参考图像数有关 )
   {
     TComList<TComPic*>::iterator iterPic  = m_cListPic.begin();
     Int iSize = Int( m_cListPic.size() );
-    for ( Int i = 0; i < iSize; i++ )
+    for ( Int i = 0; i < iSize; i++ )//依次遍历图像缓存列表中的每帧图像
     {
       rpcPic = *(iterPic++);
-      if(rpcPic->getSlice(0)->isReferenced() == false)
+      if(rpcPic->getSlice(0)->isReferenced() == false)//若该帧图像不用作参考
       {
         break;
       }
@@ -927,79 +927,79 @@ Void TEncTop::xInitPPS()
 }
 
 //Function for initializing m_RPSList, a list of TComReferencePictureSet, based on the GOPEntry objects read from the config file.
-Void TEncTop::xInitRPS(Bool isFieldCoding)
+Void TEncTop::xInitRPS(Bool isFieldCoding)//根据配置文件初始化RPS列表
 {
   TComReferencePictureSet*      rps;
 
-  m_cSPS.createRPSList(getGOPSize() + m_extraRPSs + 1);
+  m_cSPS.createRPSList(getGOPSize() + m_extraRPSs + 1);//创建给定大小的RPS列表(m_extraRPSs根据GOP的结构由计算得到 为额外的RPS数)
   TComRPSList* rpsList = m_cSPS.getRPSList();
-
-  for( Int i = 0; i < getGOPSize()+m_extraRPSs; i++)
+  
+  for( Int i = 0; i < getGOPSize()+m_extraRPSs; i++)//依次处理RPS列表中的每个RPS
   {
     GOPEntry ge = getGOPEntry(i);
     rps = rpsList->getReferencePictureSet(i);
-    rps->setNumberOfPictures(ge.m_numRefPics);
-    rps->setNumRefIdc(ge.m_numRefIdc);
+    rps->setNumberOfPictures(ge.m_numRefPics);//设置该RPS的参考图像数
+    rps->setNumRefIdc(ge.m_numRefIdc);//设置RefIdc数 (其结果为预测RPS的参考图像数加1)
     Int numNeg = 0;
     Int numPos = 0;
-    for( Int j = 0; j < ge.m_numRefPics; j++)
+    for( Int j = 0; j < ge.m_numRefPics; j++)//遍历该RPS的所有(可获得)参考图像
     {
-      rps->setDeltaPOC(j,ge.m_referencePics[j]);
-      rps->setUsed(j,ge.m_usedByCurrPic[j]);
-      if(ge.m_referencePics[j]>0)
+      rps->setDeltaPOC(j,ge.m_referencePics[j]);//设置DeltaPOC(参考图像POC值减去当前图像)
+      rps->setUsed(j,ge.m_usedByCurrPic[j]);//设置是否被当前图像参考
+      if(ge.m_referencePics[j]>0)//计算正向(当前图像右侧)参考图像数
       {
         numPos++;
       }
-      else
+      else//计算负向(当前图像左侧)参考图像数
       {
         numNeg++;
       }
     }
     rps->setNumberOfNegativePictures(numNeg);
-    rps->setNumberOfPositivePictures(numPos);
+    rps->setNumberOfPositivePictures(numPos);//设置正负向参考图像数
 
     // handle inter RPS intialization from the config file.
-    rps->setInterRPSPrediction(ge.m_interRPSPrediction > 0);  // not very clean, converting anything > 0 to true.
-    rps->setDeltaRIdxMinus1(0);                               // index to the Reference RPS is always the previous one.
-    TComReferencePictureSet*     RPSRef = i>0 ? rpsList->getReferencePictureSet(i-1): NULL;  // get the reference RPS
+    rps->setInterRPSPrediction(ge.m_interRPSPrediction > 0);  // not very clean, converting anything > 0 to true.//m_interRPSPrediction>0 则当前RPS由预测得到
+    rps->setDeltaRIdxMinus1(0);                               // index to the Reference RPS is always the previous one.//参考的RPS总是前一个RPS (故DeltaRIdx为1)
+    TComReferencePictureSet*     RPSRef = i>0 ? rpsList->getReferencePictureSet(i-1): NULL;  // get the reference RPS//得到参考(预测)RPS(该RPS的前一个RPS)
 
-    if (ge.m_interRPSPrediction == 2)  // Automatic generation of the inter RPS idc based on the RIdx provided.
+    if (ge.m_interRPSPrediction == 2)  // Automatic generation of the inter RPS idc based on the RIdx provided.//若RPS由预测得到且预测方式为2 则由前一个RPS得到当前RPS信息
     {
       assert (RPSRef!=NULL);
-      Int deltaRPS = getGOPEntry(i-1).m_POC - ge.m_POC;  // the ref POC - current POC
-      Int numRefDeltaPOC = RPSRef->getNumberOfPictures();
+      Int deltaRPS = getGOPEntry(i-1).m_POC - ge.m_POC;  // the ref POC - current POC//deltaRPS为前一个RPS的POC值减去当前RPS的POC值
+      Int numRefDeltaPOC = RPSRef->getNumberOfPictures();////由参考(前一个)RPS得到当前RPS的参考图像数
 
-      rps->setDeltaRPS(deltaRPS);           // set delta RPS
-      rps->setNumRefIdc(numRefDeltaPOC+1);  // set the numRefIdc to the number of pictures in the reference RPS + 1.
+      rps->setDeltaRPS(deltaRPS);           // set delta RPS//设置deltaRPS
+      rps->setNumRefIdc(numRefDeltaPOC+1);  // set the numRefIdc to the number of pictures in the reference RPS + 1.//当前RPSRefIdc为参考RPS的参考图像数加1
       Int count=0;
-      for (Int j = 0; j <= numRefDeltaPOC; j++ ) // cycle through pics in reference RPS.
+      for (Int j = 0; j <= numRefDeltaPOC; j++ ) // cycle through pics in reference RPS.//遍历当前RPS中的图像
       {
-        Int RefDeltaPOC = (j<numRefDeltaPOC)? RPSRef->getDeltaPOC(j): 0;  // if it is the last decoded picture, set RefDeltaPOC = 0
-        rps->setRefIdc(j, 0);
-        for (Int k = 0; k < rps->getNumberOfPictures(); k++ )  // cycle through pics in current RPS.
+        Int RefDeltaPOC = (j<numRefDeltaPOC)? RPSRef->getDeltaPOC(j): 0;  // if it is the last decoded picture, set RefDeltaPOC = 0//当前图像的最后一帧参考图像为参考RPS的POC值对应的图像 故DeltaPOC为0
+        rps->setRefIdc(j, 0);//初始化RefIdc为0 表示该图像不被当前图像用做参考
+        for (Int k = 0; k < rps->getNumberOfPictures(); k++ )  // cycle through pics in current RPS.//遍历当前图像的参考图像
         {
-          if (rps->getDeltaPOC(k) == ( RefDeltaPOC + deltaRPS))  // if the current RPS has a same picture as the reference RPS.
+          if (rps->getDeltaPOC(k) == ( RefDeltaPOC + deltaRPS))  // if the current RPS has a same picture as the reference RPS.//前一个RPS中的图像也在当前RPS中
           {
-              rps->setRefIdc(j, (rps->getUsed(k)?1:2));
+              rps->setRefIdc(j, (rps->getUsed(k)?1:2));//若被当前图像参考则RefIdc置1 否则置2表示将来用作参考
               count++;
               break;
           }
-        }
+        }//否则RefIdc为0 表示该图像不为当前图像用作参考
       }
-      if (count != rps->getNumberOfPictures())
+      if (count != rps->getNumberOfPictures())//当前图像的参考图像无法通过预测全部得到 则警告 并不再使用预测RPS
       {
         printf("Warning: Unable fully predict all delta POCs using the reference RPS index given in the config file.  Setting Inter RPS to false for this RPS.\n");
         rps->setInterRPSPrediction(0);
       }
     }
-    else if (ge.m_interRPSPrediction == 1)  // inter RPS idc based on the RefIdc values provided in config file.
+    else if (ge.m_interRPSPrediction == 1)  // inter RPS idc based on the RefIdc values provided in config file.//RPS预测模式为1 则由配置文件得到当前RPS的(预测)信息
     {
       assert (RPSRef!=NULL);
       rps->setDeltaRPS(ge.m_deltaRPS);
-      rps->setNumRefIdc(ge.m_numRefIdc);
+      rps->setNumRefIdc(ge.m_numRefIdc);//直接由配置文件得到deltaRPS及numRefIdc
       for (Int j = 0; j < ge.m_numRefIdc; j++ )
       {
-        rps->setRefIdc(j, ge.m_refIdc[j]);
+        rps->setRefIdc(j, ge.m_refIdc[j]);//直接由配置文件得到refIdc
       }
       // the following code overwrite the deltaPOC and Used by current values read from the config file with the ones
       // computed from the RefIdc.  A warning is printed if they are not identical.
@@ -1007,13 +1007,13 @@ Void TEncTop::xInitRPS(Bool isFieldCoding)
       numPos = 0;
       TComReferencePictureSet      RPSTemp;  // temporary variable
 
-      for (Int j = 0; j < ge.m_numRefIdc; j++ )
+      for (Int j = 0; j < ge.m_numRefIdc; j++ )//遍历RPS中所有图像(RefIdc)
       {
-        if (ge.m_refIdc[j])
+        if (ge.m_refIdc[j])//不为0 说明该图像被用作参考
         {
-          Int deltaPOC = ge.m_deltaRPS + ((j < RPSRef->getNumberOfPictures())? RPSRef->getDeltaPOC(j) : 0);
-          RPSTemp.setDeltaPOC((numNeg+numPos),deltaPOC);
-          RPSTemp.setUsed((numNeg+numPos),ge.m_refIdc[j]==1?1:0);
+          Int deltaPOC = ge.m_deltaRPS + ((j < RPSRef->getNumberOfPictures())? RPSRef->getDeltaPOC(j) : 0);//当前RPS的deltaPOC由当前RPS的POC与参考(前一个)RPS的POC差值加上参考RPS的DeltaPOC
+          RPSTemp.setDeltaPOC((numNeg+numPos),deltaPOC);//设置DeltaPOC (指明当前图像的参考图像位置)
+          RPSTemp.setUsed((numNeg+numPos),ge.m_refIdc[j]==1?1:0);//是否被当前图像用作参考
           if (deltaPOC<0)
           {
             numNeg++;
@@ -1024,50 +1024,50 @@ Void TEncTop::xInitRPS(Bool isFieldCoding)
           }
         }
       }
-      if (numNeg != rps->getNumberOfNegativePictures())
+      if (numNeg != rps->getNumberOfNegativePictures())//预测RPS与非预测RPS得到的负向参考图像数不同
       {
         printf("Warning: number of negative pictures in RPS is different between intra and inter RPS specified in the config file.\n");
         rps->setNumberOfNegativePictures(numNeg);
-        rps->setNumberOfPictures(numNeg+numPos);
+        rps->setNumberOfPictures(numNeg+numPos);//以预测RPS为准修正
       }
-      if (numPos != rps->getNumberOfPositivePictures())
+      if (numPos != rps->getNumberOfPositivePictures())//预测RPS与非预测RPS得到的正向参考图像数不同
       {
         printf("Warning: number of positive pictures in RPS is different between intra and inter RPS specified in the config file.\n");
         rps->setNumberOfPositivePictures(numPos);
-        rps->setNumberOfPictures(numNeg+numPos);
+        rps->setNumberOfPictures(numNeg+numPos);//以预测RPS为准修正
       }
       RPSTemp.setNumberOfPictures(numNeg+numPos);
       RPSTemp.setNumberOfNegativePictures(numNeg);
       RPSTemp.sortDeltaPOC();     // sort the created delta POC before comparing
       // check if Delta POC and Used are the same
       // print warning if they are not.
-      for (Int j = 0; j < ge.m_numRefIdc; j++ )
+      for (Int j = 0; j < ge.m_numRefIdc; j++ )//依次处理当前RPS中的图像
       {
-        if (RPSTemp.getDeltaPOC(j) != rps->getDeltaPOC(j))
+        if (RPSTemp.getDeltaPOC(j) != rps->getDeltaPOC(j))//预测RPS与非预测RPS得到的图像不同
         {
           printf("Warning: delta POC is different between intra RPS and inter RPS specified in the config file.\n");
-          rps->setDeltaPOC(j,RPSTemp.getDeltaPOC(j));
+          rps->setDeltaPOC(j,RPSTemp.getDeltaPOC(j));//以预测RPS为准修正
         }
         if (RPSTemp.getUsed(j) != rps->getUsed(j))
         {
           printf("Warning: Used by Current in RPS is different between intra and inter RPS specified in the config file.\n");
-          rps->setUsed(j,RPSTemp.getUsed(j));
+          rps->setUsed(j,RPSTemp.getUsed(j));//以预测RPS为准修正
         }
       }
     }
   }
   //In case of field coding, we need to set special parameters for the first bottom field of the sequence, since it is not specified in the cfg file.
   //The position = GOPSize + extraRPSs which is (a priori) unused is reserved for this field in the RPS.
-  if (isFieldCoding)
+  if (isFieldCoding)// 为场编码
   {
-    rps = rpsList->getReferencePictureSet(getGOPSize()+m_extraRPSs);
+    rps = rpsList->getReferencePictureSet(getGOPSize()+m_extraRPSs);//GOPSize + extraRPSs位置的RPS是留作场编码的第一帧底场使用 
     rps->setNumberOfPictures(1);
     rps->setNumberOfNegativePictures(1);
-    rps->setNumberOfPositivePictures(0);
+    rps->setNumberOfPositivePictures(0);//只参考一帧顶场 故正向参考图像数置0 负向参考图像数置1
     rps->setNumberOfLongtermPictures(0);
-    rps->setDeltaPOC(0,-1);
+    rps->setDeltaPOC(0,-1);//底场参考顶场
     rps->setPOC(0,0);
-    rps->setUsed(0,true);
+    rps->setUsed(0,true);//底场参考顶场
     rps->setInterRPSPrediction(false);
     rps->setDeltaRIdxMinus1(0);
     rps->setDeltaRPS(0);
@@ -1078,40 +1078,40 @@ Void TEncTop::xInitRPS(Bool isFieldCoding)
    // This is a function that
    // determines what Reference Picture Set to use
    // for a specific slice (with POC = POCCurr)
-Void TEncTop::selectReferencePictureSet(TComSlice* slice, Int POCCurr, Int GOPid )
-{
-  slice->setRPSidx(GOPid);
+Void TEncTop::selectReferencePictureSet(TComSlice* slice, Int POCCurr, Int GOPid )//关于额外RPS部分参考见TAppEncCfg.cpp中1886行往后的代码
+{//额外RPS指当前图像的对应配置文件中给定参考图像无法全部获得 需要为当前图像重新计算得到新的RPS 即为额外的RPS
+  slice->setRPSidx(GOPid);//初始RPSidx为GOPid 很重要!!! 保证不为额外RPS的图像直接从配置文件中得到正确的RPS
 
-  for(Int extraNum=m_iGOPSize; extraNum<m_extraRPSs+m_iGOPSize; extraNum++)
+  for(Int extraNum=m_iGOPSize; extraNum<m_extraRPSs+m_iGOPSize; extraNum++)//遍历所有额外的RPS
   {
-    if(m_uiIntraPeriod > 0 && getDecodingRefreshType() > 0)
+    if(m_uiIntraPeriod > 0 && getDecodingRefreshType() > 0)//DecodingRefreshType>0表示intra frame period picture为random access point 该帧图像之前的所有图像均不可用作参考
     {
-      Int POCIndex = POCCurr%m_uiIntraPeriod;
+      Int POCIndex = POCCurr%m_uiIntraPeriod;//在一个m_uiIntraPeriod中的位置(每个IntraPeriod相当于新的视频流 即当前IntraPeriod无法获取前一个IntraPeriod的图像)
       if(POCIndex == 0)
       {
         POCIndex = m_uiIntraPeriod;
       }
-      if(POCIndex == m_GOPList[extraNum].m_POC)
+      if(POCIndex == m_GOPList[extraNum].m_POC)//额外RPS中是否存在该图像的RPS
       {
         slice->setRPSidx(extraNum);
       }
     }
     else
     {
-      if(POCCurr==m_GOPList[extraNum].m_POC)
+      if(POCCurr==m_GOPList[extraNum].m_POC)//当前图像的RPS在额外RPS中
       {
-        slice->setRPSidx(extraNum);
+        slice->setRPSidx(extraNum);//设置当前图像的RPS在额外RPS中的索引
       }
     }
   }
 
-  if(POCCurr == 1 && slice->getPic()->isField())
+  if(POCCurr == 1 && slice->getPic()->isField())//场编码且为第一帧底场
   {
-    slice->setRPSidx(m_iGOPSize+m_extraRPSs);
+    slice->setRPSidx(m_iGOPSize+m_extraRPSs);//则使用m_iGOPSize+m_extraRPSs位置的RPS(该出RPS专门留作第一帧底场使用)
   }
-
-  const TComReferencePictureSet *rps = (slice->getSPS()->getRPSList()->getReferencePictureSet(slice->getRPSidx()));
-  slice->setRPS(rps);
+  //若当前图像RPS不在额外的RPS中 则直接由其在GOP中的位置(通过配置文件)得到RPS
+  const TComReferencePictureSet *rps = (slice->getSPS()->getRPSList()->getReferencePictureSet(slice->getRPSidx()));//通过RPS索引的得到对应的RPS
+  slice->setRPS(rps);//设置该slice的RPS
 }
 
 Int TEncTop::getReferencePictureSetIdxForSOP(Int POCCurr, Int GOPid )

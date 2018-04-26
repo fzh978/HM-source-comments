@@ -190,7 +190,7 @@ Bool TComSlice::getRapPicFlag() const//判断是否为IRAP（Intra random access
 }
 
 
-Void  TComSlice::sortPicList (TComList<TComPic*>& rcListPic)//冒泡排序法!　只不过该排序是根据图像的POC值对图像在列表中的位置排序
+Void  TComSlice::sortPicList (TComList<TComPic*>& rcListPic)//本质为冒泡排序法!　只不过该排序是根据图像的POC值对图像在列表中的位置排序 (POC值大的图像在列表前 小的在列表后)
 {
   TComPic*    pcPicExtract;
   TComPic*    pcPicInsert;
@@ -478,7 +478,7 @@ Void TComSlice::setRefPicList( TComList<TComPic*>& rcListPic, Bool checkNumPocTo
   }
 }
 
-Int TComSlice::getNumRpsCurrTempList() const//计算总的参考图像数
+Int TComSlice::getNumRpsCurrTempList() const//计算当前图像的参考图像数
 {
   Int numRpsCurrTempList = 0;
 
@@ -609,7 +609,7 @@ Void TComSlice::decodingRefreshMarking(Int& pocCRA, Bool& bRefreshPending, TComL
   {
     // mark all pictures as not used for reference
     TComList<TComPic*>::iterator        iterPic       = rcListPic.begin();
-    while (iterPic != rcListPic.end())//除当前帧之前解码的所有帧不用作参考帧 因为当前IDR帧之后的帧一定不会继续参考前面这些帧
+    while (iterPic != rcListPic.end())//除当前帧之外的所有帧不用作参考帧 
     {
       rpcPic = *(iterPic);
       rpcPic->setCurrSliceIdx(0);
@@ -627,15 +627,15 @@ Void TComSlice::decodingRefreshMarking(Int& pocCRA, Bool& bRefreshPending, TComL
     }
     if (bEfficientFieldIRAPEnabled)
     {
-      bRefreshPending = true;//表示需要marking pending 将关键帧之前的帧去掉 以前的帧不用作参考帧
+      bRefreshPending = true;//表示需要Refresh marking  
     }
   }
   else // CRA or No DR
   {
-    if(bEfficientFieldIRAPEnabled && (getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_IDR_N_LP || getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_IDR_W_RADL))//当前帧相近的帧为IDR
+    if(bEfficientFieldIRAPEnabled && (getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_IDR_N_LP || getAssociatedIRAPType() == NAL_UNIT_CODED_SLICE_IDR_W_RADL))//当前帧相近的IRAP帧为IDR
     {
       if (bRefreshPending==true && pocCurr > m_iLastIDR) // IDR reference marking pending 
-      {//当前帧在IDR之后并且bRefreshPending为true 则IDR之前的帧不作参考图像
+      {//当前帧在最后的邻近IDR之后并且bRefreshPending为true 则除最新的IDR外其余帧不用做参考
         TComList<TComPic*>::iterator iterPic = rcListPic.begin();
         while (iterPic != rcListPic.end())
         {
@@ -654,7 +654,7 @@ Void TComSlice::decodingRefreshMarking(Int& pocCRA, Bool& bRefreshPending, TComL
       if (bRefreshPending==true && pocCurr > pocCRA) // CRA reference marking pending////当前帧相近的帧为CRA
       {
         TComList<TComPic*>::iterator iterPic = rcListPic.begin();
-        while (iterPic != rcListPic.end())
+        while (iterPic != rcListPic.end())//则除最新的CRA外其余帧不用做参考
         {
           rpcPic = *(iterPic);
           if (rpcPic->getPOC() != pocCurr && rpcPic->getPOC() != pocCRA)
@@ -663,12 +663,12 @@ Void TComSlice::decodingRefreshMarking(Int& pocCRA, Bool& bRefreshPending, TComL
           }
           iterPic++;
         }
-        bRefreshPending = false;//bRefreshPending为false表示marking pending已完成 无CRA前置参考帧
+        bRefreshPending = false;//bRefreshPending为false表示marking pending已完成 
       }
     }
-    if ( getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA ) // CRA picture found 更新CRA 需再次RefreshPending
+    if ( getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA ) // CRA picture found 更新CRA 需再次Refreshmarking
     {
-      bRefreshPending = true;//
+      bRefreshPending = true;
       pocCRA = pocCurr;
     }
   }
@@ -776,7 +776,7 @@ Void TComSlice::copySliceInfo(TComSlice *pSrc)//将给定的slice信息复制到
 
   m_cabacInitFlag                 = pSrc->m_cabacInitFlag;//该slice cabac是否初始化
 
-  m_bLMvdL1Zero                   = pSrc->m_bLMvdL1Zero;//该slice在list1中的Mvd是否为0?
+  m_bLMvdL1Zero                   = pSrc->m_bLMvdL1Zero;//该slice在list1中的Mvd是否为0
   m_LFCrossSliceBoundaryFlag      = pSrc->m_LFCrossSliceBoundaryFlag;//滤波是否允许跨过slice边界
   m_enableTMVPFlag                = pSrc->m_enableTMVPFlag;//是否使用时域MV预测
   m_maxNumMergeCand               = pSrc->m_maxNumMergeCand;//该slice merge最大候选矢量数
@@ -819,7 +819,7 @@ Bool TComSlice::isTemporalLayerSwitchingPoint(TComList<TComPic*>& rcListPic)//�
 /** Function for checking if this is a STSA candidate
  */
 //STSA和TSA的区别在于TSA可切换至任意高的时域层 而STSA只能切换至和STSA一样的时域层
-Bool TComSlice::isStepwiseTemporalLayerSwitchingPointCandidate(TComList<TComPic*>& rcListPic)//详见相关资料STSA的定义
+Bool TComSlice::isStepwiseTemporalLayerSwitchingPointCandidate(TComList<TComPic*>& rcListPic)//详见相关资料STSA的说明
 {
   TComPic* rpcPic;
 
@@ -1006,7 +1006,7 @@ Void TComSlice::checkLeadingPictureRestrictions(TComList<TComPic*>& rcListPic)//
 
 /** Function for applying picture marking based on the Reference Picture Set in pReferencePictureSet.
 */
-Void TComSlice::applyReferencePictureSet( TComList<TComPic*>& rcListPic, const TComReferencePictureSet *pReferencePictureSet)//applying picture marking 根据RPS标记参考图像缓存中的图像
+Void TComSlice::applyReferencePictureSet( TComList<TComPic*>& rcListPic, const TComReferencePictureSet *pReferencePictureSet)//applying picture marking 根据给定的RPS标记(准确的说为更新标记 因为上一帧图像的RPS中的参考图像不一定为当前帧的参考图像)图像缓存列表中的图像是否为参考图像
 {
   TComPic* rpcPic;
   Int i, isReference;
@@ -1061,7 +1061,7 @@ Void TComSlice::applyReferencePictureSet( TComList<TComPic*>& rcListPic, const T
     }
     // mark the picture as "unused for reference" if it is not in
     // the Reference Picture Set
-    if(rpcPic->getPicSym()->getSlice(0)->getPOC() != this->getPOC() && isReference == 0)//该帧图像不被用作参考
+    if(rpcPic->getPicSym()->getSlice(0)->getPOC() != this->getPOC() && isReference == 0)//该帧图像不被用作参考且不为当前图像
     {
       rpcPic->getSlice( 0 )->setReferenced( false );//该帧图像不为参考图像
       rpcPic->setUsedByCurr(0);//该帧图像不被当前图像用作参考
@@ -1086,7 +1086,7 @@ Void TComSlice::applyReferencePictureSet( TComList<TComPic*>& rcListPic, const T
 */
 //pReferencePictureSet为当前slice的PRS
 Int TComSlice::checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, const TComReferencePictureSet *pReferencePictureSet, Bool printErrors, Int pocRandomAccess, Bool bUseRecoveryPoint)//LastRecoveryPicPOC
-{//pocRandomAccess为random access（随机接入）时可以获得的最近的图像的POC值 输出顺序在该图像之前的图像无法获得
+{//pocRandomAccess为random access（随机接入）时可以获得的最后的图像的POC值 输出顺序在该图像之前的图像无法获得
   Int atLeastOneUnabledByRecoveryPoint = 0;
   Int atLeastOneFlushedByPreviousIDR = 0;
   TComPic* rpcPic;
@@ -1608,7 +1608,7 @@ TComPPS::TComPPS()
 : m_PPSId                            (0)//当前激活的PPS的ID号
 , m_SPSId                            (0)//当前激活的SPS的ID号
 , m_picInitQPMinus26                 (0)//规定了每个Slice中亮度分量的量化参数初始值
-, m_useDQP                           (false)//是否使用QG
+, m_useDQP                           (false)//是否使用deltaQP
 , m_bConstrainedIntraPred            (false)//是否允许使用采用帧间预测模式的邻近块信息进行帧内预测
 , m_bSliceChromaQpFlag               (false)//slice中是否存在色度QP
 , m_uiMaxCuDQPDepth                  (0)//QG相对CTU的深度
@@ -1752,7 +1752,7 @@ Void TComReferencePictureSet::sortDeltaPOC()//排列DeltaPOC的顺序
   }
   // flip the negative values to largest first
   Int numNegPics = getNumberOfNegativePictures();
-  for(Int j=0, k=numNegPics-1; j < numNegPics>>1; j++, k--)//将负数部分从中心点翻转 将较大的负数置与较小的负数之前
+  for(Int j=0, k=numNegPics-1; j < numNegPics>>1; j++, k--)//将负数部分从中心点翻转 将较大的负数置于较小的负数之前
   {
     Int deltaPOC = getDeltaPOC(j);
     Bool used = getUsed(j);

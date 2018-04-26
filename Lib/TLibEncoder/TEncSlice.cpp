@@ -193,7 +193,7 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   Double dQP;
   Double dLambda;
 
-  rpcSlice = pcPic->getSlice(0);
+  rpcSlice = pcPic->getSlice(0);//将rpcSlice指向该图像的第一个slice!!!!
   rpcSlice->setSliceBits(0);
   rpcSlice->setPic( pcPic );//该slice所在图像
   rpcSlice->initSlice();
@@ -252,7 +252,7 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   if(!(isField && pocLast == 1) || !m_pcCfg->getEfficientFieldIRAPEnabled())
   {
     if(m_pcCfg->getDecodingRefreshType() == 3)//Use recovery point SEI messages to indicate random access
-    {//poclsat==0说明只能保存一帧图像?  pocCurr % m_pcCfg->getIntraPeriod() = 0说明该图像正好为帧内编码帧  GOPSize=0说明每一帧都独立编解码故一定为I_slice
+    {//poclast=0说明为视频流中第一帧图像  pocCurr % m_pcCfg->getIntraPeriod() = 0说明该图像正好为帧内编码帧  GOPSize=0说明每一帧都独立编解码故一定为I_slice
       eSliceType = (pocLast == 0 || pocCurr % m_pcCfg->getIntraPeriod() == 0             || m_pcGOPEncoder->getGOPSize() == 0) ? I_SLICE : eSliceType;
     }
     else
@@ -264,18 +264,18 @@ Void TEncSlice::initEncSlice( TComPic* pcPic, Int pocLast, Int pocCurr, Int iGOP
   rpcSlice->setSliceType    ( eSliceType );//设置slice类型
 
   // ------------------------------------------------------------------------------------------------------------------
-  // Non-referenced frame marking
+  // Non-referenced frame marking//可参阅<HECV book>中Sub-layer Reference and Sub-layer Non-reference Pictures的说明
   // ------------------------------------------------------------------------------------------------------------------
 
-  if(pocLast == 0)//只能保存一帧图像?
+  if(pocLast == 0)//为编码视频流中第一帧图像
   {
-    rpcSlice->setTemporalLayerNonReferenceFlag(false);//该图像存在参考图像???
+    rpcSlice->setTemporalLayerNonReferenceFlag(false);//视频流中第一帧图像一定用作参考图像 故为Sub-layer Reference图像 Sub-layer Reference图像表明该图像被同时域层图像用作参考 Sub-layer Non-reference Pictures表明该图像不被同时域层任何图像用作参考
   }
   else
   {
-    rpcSlice->setTemporalLayerNonReferenceFlag(!m_pcCfg->getGOPEntry(iGOPid).m_refPic);//根据GOP的结果配置设置该图像是否不存在参考图像???
+    rpcSlice->setTemporalLayerNonReferenceFlag(!m_pcCfg->getGOPEntry(iGOPid).m_refPic);//m_refPic表明图像是否为Sub-layer Reference图像  m_refPic的求得可参阅TAppEnCfg.cpp中1849行往后的代码
   }
-  rpcSlice->setReferenced(true);//被其他图像用做参考
+  rpcSlice->setReferenced(true);//初始化isReferenced=true!!!!很重要 与TcomSlice.ccp中方法对应
 
   // ------------------------------------------------------------------------------------------------------------------
   // QP setting
@@ -485,7 +485,7 @@ Void TEncSlice::setSearchRange( TComSlice* pcSlice )//设置该slice运动估计
   Int iRefPOC;
   Int iGOPSize = m_pcCfg->getGOPSize();
   Int iOffset = (iGOPSize >> 1);
-  Int iMaxSR = m_pcCfg->getSearchRange();//根据配置文件得到搜索范围
+  Int iMaxSR = m_pcCfg->getSearchRange();//根据配置文件得到最大搜索范围
   Int iNumPredDir = pcSlice->isInterP() ? 1 : 2;//预测方向
   //计算自适应搜索范围 搜索范围根据当前图像和参考图像间的POC的差值动态调整
   for (Int iDir = 0; iDir <= iNumPredDir; iDir++)//遍历list0 list1两个参考图像列表
@@ -645,7 +645,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   if (bCompressEntireSlice)//若压缩整个slice
   {
     boundingCtuTsAddr = pcSlice->getSliceCurEndCtuTsAddr();//则处理的末尾Ctu由ss的末尾Ctu变更为slice的末尾Ctu
-    pcSlice->setSliceSegmentCurEndCtuTsAddr(boundingCtuTsAddr);//设置SS末尾Ctu位置为slice的末尾Ctu位置
+    pcSlice->setSliceSegmentCurEndCtuTsAddr(boundingCtuTsAddr);//设置SS末尾Ctu位置为slice的末尾Ctu位置(之所以需要这样设置是因为EncGOP中对图像的压缩是以SS为单位的 见EncGOP.cpp中1406-1446行代码)
   }
 
   // initialize cost values - these are used by precompressSlice (they should be parameters).
@@ -661,7 +661,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   pRDSbacCoder->setBinsCoded( 0 );
 
   TComBitCounter  tempBitCounter;
-  const UInt      frameWidthInCtus = pcPic->getPicSym()->getFrameWidthInCtus();
+  const UInt      frameWidthInCtus = pcPic->getPicSym()->getFrameWidthInCtus();//该帧图像的宽(以Ctu为单位)
   
   m_pcCuEncoder->setFastDeltaQp(bFastDeltaQP);//设置是否使用FastDeltaQp
 
@@ -1221,14 +1221,14 @@ Void TEncSlice::xDetermineStartAndBoundingCtuTsAddr  ( UInt& startCtuTsAddr, UIn
                                      m_pcCfg->getSliceSegmentMode(), m_pcCfg->getSliceSegmentArgument());//计算ss的边界Ctu位置
   if (boundingCtuTsAddrSliceSegment>boundingCtuTsAddrSlice)
   {
-    boundingCtuTsAddrSliceSegment = boundingCtuTsAddrSlice;//ss边界Ctu位置不得超出slic边界Ctu位置
+    boundingCtuTsAddrSliceSegment = boundingCtuTsAddrSlice;//ss边界Ctu位置不得超出slic边界Ctu位置(ss属于slice)
   }
   pcSlice->setSliceSegmentCurEndCtuTsAddr( boundingCtuTsAddrSliceSegment );
   pcSlice->setSliceSegmentCurStartCtuTsAddr(startCtuTsAddrSliceSegment);//设置ss的起始和边界Ctu位置
 
   // Make a joint decision based on reconstruction and dependent slice bounds
   startCtuTsAddr    = max(startCtuTsAddrSlice   , startCtuTsAddrSliceSegment   );
-  boundingCtuTsAddr = boundingCtuTsAddrSliceSegment;//dependent ss bounds???
+  boundingCtuTsAddr = boundingCtuTsAddrSliceSegment;//dependent ss bounds(之所以需要这样设置是因为EncGOP中对图像的压缩是以SS为单位的 见EncGOP.cpp中1406-1446行代码)
 }
 
 Double TEncSlice::xGetQPValueAccordingToLambda ( Double lambda )//根据lambda值得到QP值

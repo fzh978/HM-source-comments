@@ -44,25 +44,25 @@
 //! \ingroup TLibCommon
 //! \{
 
-SAOOffset::SAOOffset()//¹¹Ôìº¯Êı
+SAOOffset::SAOOffset()//ï¿½ï¿½ï¿½ìº¯ï¿½ï¿½
 {
   reset();
 }
 
-SAOOffset::~SAOOffset()//Îö¹¹º¯Êı
+SAOOffset::~SAOOffset()//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 {
 
 }
 
 Void SAOOffset::reset()
-{//SAOOffset¸´Î» ¸³Óè³õÊ¼»¯ÎŞÓÃĞÅÏ¢
+{//SAOOffsetï¿½ï¿½Î» ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
   modeIdc = SAO_MODE_OFF;
   typeIdc = -1;
   typeAuxInfo = -1;
   ::memset(offset, 0, sizeof(Int)* MAX_NUM_SAO_CLASSES);
 }
 
-const SAOOffset& SAOOffset::operator= (const SAOOffset& src)//¸³Öµ ÔËËã·ûÖØÔØ
+const SAOOffset& SAOOffset::operator= (const SAOOffset& src)//ï¿½ï¿½Öµ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 {
   modeIdc = src.modeIdc;
   typeIdc = src.typeIdc;
@@ -72,7 +72,7 @@ const SAOOffset& SAOOffset::operator= (const SAOOffset& src)//¸³Öµ ÔËËã·ûÖØÔØ
   return *this;
 }
 /*
-*SAOOffset½á¹¹ÈçÏÂ£º
+*SAOOffsetï¿½á¹¹ï¿½ï¿½ï¿½Â£ï¿½
 struct SAOOffset
 {
   SAOMode modeIdc; // NEW, MERGE, OFF
@@ -88,25 +88,25 @@ struct SAOOffset
 };
 */
 
-SAOBlkParam::SAOBlkParam()//¹¹Ôìº¯Êı
+SAOBlkParam::SAOBlkParam()//ï¿½ï¿½ï¿½ìº¯ï¿½ï¿½
 {
   reset();
 }
 
-SAOBlkParam::~SAOBlkParam()//Îö¹¹º¯Êı
+SAOBlkParam::~SAOBlkParam()//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 {
 
 }
 
 Void SAOBlkParam::reset()
-{//SAOBlkParam³õÊ¼»¯ °üº¬3¸ö·ÖÁ¿µÄSAOOffset Îª¸÷¸ö·ÖÁ¿µÄSAOOffset¸³Öµ
+{//SAOBlkParamï¿½ï¿½Ê¼ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½3ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½SAOOffset Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½SAOOffsetï¿½ï¿½Öµ
   for(Int compIdx = 0; compIdx < MAX_NUM_COMPONENT; compIdx++)
   {
     offsetParam[compIdx].reset();
   }
 }
 
-const SAOBlkParam& SAOBlkParam::operator= (const SAOBlkParam& src)//ÔËËã·ûÖØÔØ
+const SAOBlkParam& SAOBlkParam::operator= (const SAOBlkParam& src)//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 {
   for(Int compIdx = 0; compIdx < MAX_NUM_COMPONENT; compIdx++)
   {
@@ -125,7 +125,7 @@ TComSampleAdaptiveOffset::TComSampleAdaptiveOffset()
 }
 
 
-TComSampleAdaptiveOffset::~TComSampleAdaptiveOffset()//Îö¹¹º¯Êı  ÊÍ·Å×ÊÔ´
+TComSampleAdaptiveOffset::~TComSampleAdaptiveOffset()//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½  ï¿½Í·ï¿½ï¿½ï¿½Ô´
 {
   destroy();
 
@@ -142,7 +142,7 @@ TComSampleAdaptiveOffset::~TComSampleAdaptiveOffset()//Îö¹¹º¯Êı  ÊÍ·Å×ÊÔ´
 }
 
 Void TComSampleAdaptiveOffset::create( Int picWidth, Int picHeight, ChromaFormat format, UInt maxCUWidth, UInt maxCUHeight, UInt maxCUDepth, UInt lumaBitShift, UInt chromaBitShift )
-{//´´½¨¶ÔÏó ·ÖÅäÄÚ´æ
+{//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ú´ï¿½
   destroy();
 
   m_picWidth        = picWidth;
@@ -151,26 +151,26 @@ Void TComSampleAdaptiveOffset::create( Int picWidth, Int picHeight, ChromaFormat
   m_maxCUWidth      = maxCUWidth;
   m_maxCUHeight     = maxCUHeight;
 
-  m_numCTUInWidth   = (m_picWidth/m_maxCUWidth) + ((m_picWidth % m_maxCUWidth)?1:0);//Í¼Ïñ¿íCTU¸öÊı
-  m_numCTUInHeight  = (m_picHeight/m_maxCUHeight) + ((m_picHeight % m_maxCUHeight)?1:0);//Í¼ÏñÁĞCTU¸öÊı
-  m_numCTUsPic      = m_numCTUInHeight*m_numCTUInWidth;//Í¼ÏñCTU'×Ü¸öÊı
+  m_numCTUInWidth   = (m_picWidth/m_maxCUWidth) + ((m_picWidth % m_maxCUWidth)?1:0);//Í¼ï¿½ï¿½ï¿½CTUï¿½ï¿½ï¿½ï¿½
+  m_numCTUInHeight  = (m_picHeight/m_maxCUHeight) + ((m_picHeight % m_maxCUHeight)?1:0);//Í¼ï¿½ï¿½ï¿½ï¿½CTUï¿½ï¿½ï¿½ï¿½
+  m_numCTUsPic      = m_numCTUInHeight*m_numCTUInWidth;//Í¼ï¿½ï¿½CTU'ï¿½Ü¸ï¿½ï¿½ï¿½
 
   //temporary picture buffer
-  if ( !m_tempPicYuv )//Ôİ´æÍ¼Ïñ
+  if ( !m_tempPicYuv )//ï¿½İ´ï¿½Í¼ï¿½ï¿½
   {
     m_tempPicYuv = new TComPicYuv;
     m_tempPicYuv->create( m_picWidth, m_picHeight, m_chromaFormatIDC, m_maxCUWidth, m_maxCUHeight, maxCUDepth, true );
   }
 
   //bit-depth related
-  for(Int compIdx = 0; compIdx < MAX_NUM_COMPONENT; compIdx++)//·Ö±ğÎªÁÁ¶È É«¶È·ÖÁ¿µÄoffsetÒÆÎ»Á¿¸³Öµ
+  for(Int compIdx = 0; compIdx < MAX_NUM_COMPONENT; compIdx++)//ï¿½Ö±ï¿½Îªï¿½ï¿½ï¿½ï¿½ É«ï¿½È·ï¿½ï¿½ï¿½ï¿½ï¿½offsetï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½Öµ
   {
     m_offsetStepLog2  [compIdx] = isLuma(ComponentID(compIdx))? lumaBitShift : chromaBitShift;
   }
 }
 
 Void TComSampleAdaptiveOffset::destroy()
-{//Ïú»Ù¶ÔÏó
+{//ï¿½ï¿½ï¿½Ù¶ï¿½ï¿½ï¿½
   if ( m_tempPicYuv )
   {
     m_tempPicYuv->destroy();
@@ -186,16 +186,16 @@ Void TComSampleAdaptiveOffset::invertQuantOffsets(ComponentID compIdx, Int typeI
   ::memcpy(codedOffset, srcOffsets, sizeof(Int)*MAX_NUM_SAO_CLASSES);
   ::memset(dstOffsets, 0, sizeof(Int)*MAX_NUM_SAO_CLASSES);
 
-  if(typeIdc == SAO_TYPE_START_BO)//±ß´øÄ£Ê½
+  if(typeIdc == SAO_TYPE_START_BO)//ï¿½ß´ï¿½Ä£Ê½
   {
-    for(Int i=0; i< 4; i++)//CTUÖ»ÄÜÑ¡ÔñËÄÌõÁ¬ĞøµÄ±ß´ø
+    for(Int i=0; i< 4; i++)//CTUÖ»ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä±ß´ï¿½
     {
       dstOffsets[(typeAuxInfo+ i)%NUM_SAO_BO_CLASSES] = codedOffset[(typeAuxInfo+ i)%NUM_SAO_BO_CLASSES]*(1<<m_offsetStepLog2[compIdx]);
     }
   }
-  else //EO ±ß½çÄ£Ê½
+  else //EO ï¿½ß½ï¿½Ä£Ê½
   {
-    for(Int i=0; i< NUM_SAO_EO_CLASSES; i++)//ÒÀ´ÎÎª5ÖÖ±ß½çÄ£Ê½dstOffsets¸³Öµ
+    for(Int i=0; i< NUM_SAO_EO_CLASSES; i++)//ï¿½ï¿½ï¿½ï¿½Îª5ï¿½Ö±ß½ï¿½Ä£Ê½dstOffsetsï¿½ï¿½Öµ
     {
       dstOffsets[i] = codedOffset[i] *(1<<m_offsetStepLog2[compIdx]);
     }
@@ -205,38 +205,38 @@ Void TComSampleAdaptiveOffset::invertQuantOffsets(ComponentID compIdx, Int typeI
 }
 
 Int TComSampleAdaptiveOffset::getMergeList(TComPic* pic, Int ctuRsAddr, SAOBlkParam* blkParams, SAOBlkParam* mergeList[NUM_SAO_MERGE_TYPES])
-{//SAO²ÎÊıÈÚºÏ ÓÉMergeListµÃµ½SAO²ÎÊı
-  Int ctuX = ctuRsAddr % m_numCTUInWidth;//µ±Ç°CTUÔÚÍ¼ÏñÖĞµÄX×ø±ê£¨ÒÔCTUÎªµ¥Î»£©
-  Int ctuY = ctuRsAddr / m_numCTUInWidth;//µ±Ç°CTUÔÚÍ¼ÏñÖĞµÄY×ø±ê£¨ÒÔCTUÎªµ¥Î»£©
+{//SAOï¿½ï¿½ï¿½ï¿½ï¿½Úºï¿½ ï¿½ï¿½MergeListï¿½Ãµï¿½SAOï¿½ï¿½ï¿½ï¿½
+  Int ctuX = ctuRsAddr % m_numCTUInWidth;//ï¿½ï¿½Ç°CTUï¿½ï¿½Í¼ï¿½ï¿½ï¿½Ğµï¿½Xï¿½ï¿½ï¿½ê£¨ï¿½ï¿½CTUÎªï¿½ï¿½Î»ï¿½ï¿½
+  Int ctuY = ctuRsAddr / m_numCTUInWidth;//ï¿½ï¿½Ç°CTUï¿½ï¿½Í¼ï¿½ï¿½ï¿½Ğµï¿½Yï¿½ï¿½ï¿½ê£¨ï¿½ï¿½CTUÎªï¿½ï¿½Î»ï¿½ï¿½
   Int mergedCTUPos;
   Int numValidMergeCandidates = 0;
 
-  for(Int mergeType=0; mergeType< NUM_SAO_MERGE_TYPES; mergeType++)//±éÀúÁ½ÖÖÈÚºÏÄ£Ê½
+  for(Int mergeType=0; mergeType< NUM_SAO_MERGE_TYPES; mergeType++)//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Úºï¿½Ä£Ê½
   {
     SAOBlkParam* mergeCandidate = NULL;
 
     switch(mergeType)
     {
-    case SAO_MERGE_ABOVE: //ÈÚºÏÉÏ·½¿é²ÎÊı
+    case SAO_MERGE_ABOVE: //ï¿½Úºï¿½ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
       {
-        if(ctuY > 0)//²»ÎªµÚÒ»ĞĞ ¼´´æÔÚÉÏ·½¿é
+        if(ctuY > 0)//ï¿½ï¿½Îªï¿½ï¿½Ò»ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ï¿½ï¿½
         {
-          mergedCTUPos = ctuRsAddr- m_numCTUInWidth;//µ±Ç°CTUÉÏ·½CTUµÄÎ»ÖÃ
-          if( pic->getSAOMergeAvailability(ctuRsAddr, mergedCTUPos) )//ÈôÉÏ·½CTU SAO²ÎÊı¿É»ñµÃ
+          mergedCTUPos = ctuRsAddr- m_numCTUInWidth;//ï¿½ï¿½Ç°CTUï¿½Ï·ï¿½CTUï¿½ï¿½Î»ï¿½ï¿½
+          if( pic->getSAOMergeAvailability(ctuRsAddr, mergedCTUPos) )//ï¿½ï¿½ï¿½Ï·ï¿½CTU SAOï¿½ï¿½ï¿½ï¿½ï¿½É»ï¿½ï¿½
           {
-            mergeCandidate = &(blkParams[mergedCTUPos]);//µÃµ½ºòÑ¡²ÎÊı
+            mergeCandidate = &(blkParams[mergedCTUPos]);//ï¿½Ãµï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½
           }
         }
       }
       break;
-    case SAO_MERGE_LEFT://ÈÚºÏ×ó²à¿é²ÎÊı
+    case SAO_MERGE_LEFT://ï¿½Úºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
       {
-        if(ctuX > 0)//²»ÎªµÚÒ»ÁĞ ¼´´æÔÚ×ó²à¿é
+        if(ctuX > 0)//ï¿½ï¿½Îªï¿½ï¿½Ò»ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         {
-          mergedCTUPos = ctuRsAddr- 1;//µ±Ç°CTU×ó²àCTUµÄÎ»ÖÃ
-          if( pic->getSAOMergeAvailability(ctuRsAddr, mergedCTUPos) )//Èô×ó²àCTU SAO²ÎÊı¿É»ñµÃ
+          mergedCTUPos = ctuRsAddr- 1;//ï¿½ï¿½Ç°CTUï¿½ï¿½ï¿½CTUï¿½ï¿½Î»ï¿½ï¿½
+          if( pic->getSAOMergeAvailability(ctuRsAddr, mergedCTUPos) )//ï¿½ï¿½ï¿½ï¿½ï¿½CTU SAOï¿½ï¿½ï¿½ï¿½ï¿½É»ï¿½ï¿½
           {
-            mergeCandidate = &(blkParams[mergedCTUPos]);//µÃµ½ºòÑ¡²ÎÊı
+            mergeCandidate = &(blkParams[mergedCTUPos]);//ï¿½Ãµï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½
           }
         }
       }
@@ -249,38 +249,38 @@ Int TComSampleAdaptiveOffset::getMergeList(TComPic* pic, Int ctuRsAddr, SAOBlkPa
       }
     }
 
-    mergeList[mergeType]=mergeCandidate;//µ±Ç°CTU¿éÈÚºÏ²ÎÊıÁĞ±í£¨×ó²àºÍÉÏ·½£©
+    mergeList[mergeType]=mergeCandidate;//ï¿½ï¿½Ç°CTUï¿½ï¿½ï¿½ÚºÏ²ï¿½ï¿½ï¿½ï¿½Ğ±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ï¿½ï¿½
     if (mergeCandidate != NULL)
     {
       numValidMergeCandidates++;
     }
   }
 
-  return numValidMergeCandidates;//·µ»ØÓĞĞ§ºóĞ§ÈÚºÏºòÑ¡²ÎÊıµÄ¸öÊı
+  return numValidMergeCandidates;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ğ§ï¿½ï¿½Ğ§ï¿½ÚºÏºï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½Ä¸ï¿½ï¿½ï¿½
 }
 
 
 Void TComSampleAdaptiveOffset::reconstructBlkSAOParam(SAOBlkParam& recParam, SAOBlkParam* mergeList[NUM_SAO_MERGE_TYPES])
-{//ÖØ½¨¸ÃCTU¿éËùÓĞ·ÖÁ¿µÄSAO²ÎÊıĞÅÏ¢ SAOBlkParam& recParam±£´æÊä³öĞÅÏ¢
+{//ï¿½Ø½ï¿½ï¿½ï¿½CTUï¿½ï¿½ï¿½ï¿½ï¿½Ğ·ï¿½ï¿½ï¿½ï¿½ï¿½SAOï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ SAOBlkParam& recParamï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
   const Int numberOfComponents = getNumberValidComponents(m_chromaFormatIDC);
-  for(Int compIdx = 0; compIdx < numberOfComponents; compIdx++)//±éÀú¸÷¸ö·ÖÁ¿
+  for(Int compIdx = 0; compIdx < numberOfComponents; compIdx++)//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   {
     const ComponentID component = ComponentID(compIdx);
-    SAOOffset& offsetParam = recParam[component];//¸÷¸ö·ÖÁ¿¶ÔÓ¦µÄSAOOffset²ÎÊı
+    SAOOffset& offsetParam = recParam[component];//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½SAOOffsetï¿½ï¿½ï¿½ï¿½
 
-    if(offsetParam.modeIdc == SAO_MODE_OFF)//Èô¸Ã·ÖÁ¿SAOÄ£Ê½Î´¿ª  Ôò¼ÌĞøÖ´ĞĞÏÂÒ»·ÖÁ¿
+    if(offsetParam.modeIdc == SAO_MODE_OFF)//ï¿½ï¿½Ã·ï¿½ï¿½ï¿½SAOÄ£Ê½Î´ï¿½ï¿½  ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½
     {
       continue;
     }
 
     switch(offsetParam.modeIdc)
     {
-    case SAO_MODE_NEW://±ß´ø»ò±ß½çÄ£Ê½
+    case SAO_MODE_NEW://ï¿½ß´ï¿½ï¿½ï¿½ß½ï¿½Ä£Ê½
       {
         invertQuantOffsets(component, offsetParam.typeIdc, offsetParam.typeAuxInfo, offsetParam.offset, offsetParam.offset);
       }
       break;
-    case SAO_MODE_MERGE://²ÎÊıÈÚºÏÄ£Ê½ ÓÉ×ó²à»òÉÏ·½¿é²ÎÊıÖ±½ÓµÃµ½¸Ã¿éµÄ²ÎÊı
+    case SAO_MODE_MERGE://ï¿½ï¿½ï¿½ï¿½ï¿½Úºï¿½Ä£Ê½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö±ï¿½ÓµÃµï¿½ï¿½Ã¿ï¿½Ä²ï¿½ï¿½ï¿½
       {
         SAOBlkParam* mergeTarget = mergeList[offsetParam.typeIdc];
         assert(mergeTarget != NULL);
@@ -299,22 +299,22 @@ Void TComSampleAdaptiveOffset::reconstructBlkSAOParam(SAOBlkParam& recParam, SAO
 }
 
 Void TComSampleAdaptiveOffset::reconstructBlkSAOParams(TComPic* pic, SAOBlkParam* saoBlkParams)
-{//µÃµ½¸ÃÍ¼ÏñËùÓĞCTU¿éµÄSAO²ÎÊıĞÅÏ¢
+{//ï¿½Ãµï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½CTUï¿½ï¿½ï¿½SAOï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
   for(Int compIdx = 0; compIdx < MAX_NUM_COMPONENT; compIdx++)
   {
-    m_picSAOEnabled[compIdx] = false;//¸÷¸ö·ÖÁ¿SAOÊ¹ÄÜ³õÊ¼»¯¸³false
+    m_picSAOEnabled[compIdx] = false;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½SAOÊ¹ï¿½Ü³ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½false
   }
 
   const Int numberOfComponents = getNumberValidComponents(m_chromaFormatIDC);
 
-  for(Int ctuRsAddr=0; ctuRsAddr< m_numCTUsPic; ctuRsAddr++)//±éÀúÍ¼ÏñËùÓĞCTU¿é
+  for(Int ctuRsAddr=0; ctuRsAddr< m_numCTUsPic; ctuRsAddr++)//ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½CTUï¿½ï¿½
   {
     SAOBlkParam* mergeList[NUM_SAO_MERGE_TYPES] = { NULL };
     getMergeList(pic, ctuRsAddr, saoBlkParams, mergeList);
 
-    reconstructBlkSAOParam(saoBlkParams[ctuRsAddr], mergeList);//ÖØ½¨¸ÃCTU¿éSAO²ÎÊı
+    reconstructBlkSAOParam(saoBlkParams[ctuRsAddr], mergeList);//ï¿½Ø½ï¿½ï¿½ï¿½CTUï¿½ï¿½SAOï¿½ï¿½ï¿½ï¿½
 
-    for(Int compIdx = 0; compIdx < numberOfComponents; compIdx++)//Èô¸Ã·ÖÁ¿ÖĞ´æÔÚ¿ªÆôSAOÄ£Ê½µÄCTU¿é Ôò¸Ã·ÖÁ¿SAOÊ¹ÄÜ
+    for(Int compIdx = 0; compIdx < numberOfComponents; compIdx++)//ï¿½ï¿½Ã·ï¿½ï¿½ï¿½ï¿½Ğ´ï¿½ï¿½Ú¿ï¿½ï¿½ï¿½SAOÄ£Ê½ï¿½ï¿½CTUï¿½ï¿½ ï¿½ï¿½Ã·ï¿½ï¿½ï¿½SAOÊ¹ï¿½ï¿½
     {
       if(saoBlkParams[ctuRsAddr][compIdx].modeIdc != SAO_MODE_OFF)
       {
@@ -348,40 +348,40 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
     m_signLineBuf2 = new Char[m_lineBufWidth+1];
   }
 
-  const Int maxSampleValueIncl = (1<< channelBitDepth )-1;//×î´óÏñËØÖµ
+  const Int maxSampleValueIncl = (1<< channelBitDepth )-1;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
 
   Int x,y, startX, startY, endX, endY, edgeType;
   Int firstLineStartX, firstLineEndX, lastLineStartX, lastLineEndX;
   Char signLeft, signRight, signDown;
 
-  Pel* srcLine = srcBlk;//SAO²¹³¥Ç°µÄÏñËØÖµ
-  Pel* resLine = resBlk;//SAO²¹³¥ºóµÄÏñËØÖµ
+  Pel* srcLine = srcBlk;//SAOï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
+  Pel* resLine = resBlk;//SAOï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
 
-  switch(typeIdx)//SAO²¹³¥ÀàĞÍ
+  switch(typeIdx)//SAOï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   {
-  case SAO_TYPE_EO_0://Ë®Æ½·½Ïò±ß½ç²¹³¥
+  case SAO_TYPE_EO_0://Ë®Æ½ï¿½ï¿½ï¿½ï¿½ß½ç²¹ï¿½ï¿½
     {
       offset += 2;
-      startX = isLeftAvail ? 0 : 1;//µ±Ç°ÏñËØ×ó²à±ØĞëÓĞÏñËØ
-      endX   = isRightAvail ? width : (width -1);////µ±Ç°ÏñËØÓÒ²à±ØĞëÓĞÏñËØ
-      for (y=0; y< height; y++)//±éÀúÁĞ
+      startX = isLeftAvail ? 0 : 1;//ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+      endX   = isRightAvail ? width : (width -1);////ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+      for (y=0; y< height; y++)//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
       {
-        signLeft = (Char)sgn(srcLine[startX] - srcLine[startX-1]);//µ±Ç°ÏñËØÓÚ×ó²àÏñËØ´óĞ¡
-        for (x=startX; x< endX; x++)//±éÀúĞĞ
+        signLeft = (Char)sgn(srcLine[startX] - srcLine[startX-1]);//ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø´ï¿½Ğ¡
+        for (x=startX; x< endX; x++)//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         {
-          signRight = (Char)sgn(srcLine[x] - srcLine[x+1]); //µ±Ç°ÏñËØÓëÓÒ²àÏñËØ´óĞ¡
-          edgeType =  signRight + signLeft;//±ß½ç²¹³¥·ÖÀà(¹²5Àà -2 -1 0 1 2)
-          signLeft  = -signRight;//ÏñËØÏòÓÒÒÆ¶¯Ò»¸ö µ±Ç°ÏñËØµÄsignRightÊÇÏÂÒ»ÏñËØsignLeftµÄÏà·´Öµ
+          signRight = (Char)sgn(srcLine[x] - srcLine[x+1]); //ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½Ø´ï¿½Ğ¡
+          edgeType =  signRight + signLeft;//ï¿½ß½ç²¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½5ï¿½ï¿½ -2 -1 0 1 2)
+          signLeft  = -signRight;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ¶ï¿½Ò»ï¿½ï¿½ ï¿½ï¿½Ç°ï¿½ï¿½ï¿½Øµï¿½signRightï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½signLeftï¿½ï¿½ï¿½à·´Öµ
 
-          resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);//²»Í¬·ÖÀà¼ÓÉÏ¶ÔÓ¦²¹³¥Öµ
+          resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);//ï¿½ï¿½Í¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¶ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½Öµ
         }
-        srcLine  += srcStride;//ÏÂÒ»ĞĞ
+        srcLine  += srcStride;//ï¿½ï¿½Ò»ï¿½ï¿½
         resLine += resStride;
       }
 
     }
     break;
-  case SAO_TYPE_EO_90://´¹Ö±·½Ïò±ß½ç²¹³¥ ÓëË®Æ½·½Ïò»ù±¾ÏàÍ¬ ²»ÔÙĞğÊö
+  case SAO_TYPE_EO_90://ï¿½ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ß½ç²¹ï¿½ï¿½ ï¿½ï¿½Ë®Æ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¬ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     {
       offset += 2;
       Char *signUpLine = m_signLineBuf1;
@@ -419,7 +419,7 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
 
     }
     break;
-  case SAO_TYPE_EO_135://135¶È·½Ïò ±ß½ç²¹³¥
+  case SAO_TYPE_EO_135://135ï¿½È·ï¿½ï¿½ï¿½ ï¿½ß½ç²¹ï¿½ï¿½
     {
       offset += 2;
       Char *signUpLine, *signDownLine, *signTmpLine;
@@ -427,50 +427,50 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
       signUpLine  = m_signLineBuf1;
       signDownLine= m_signLineBuf2;
 
-      startX = isLeftAvail ? 0 : 1 ;//±£Ö¤µ±Ç°ÏñËØ×ó²àÓĞÏñËØ
-      endX   = isRightAvail ? width : (width-1);//±£Ö¤µ±Ç°ÏñËØÓÒ²àÓĞÏñËØ
+      startX = isLeftAvail ? 0 : 1 ;//ï¿½ï¿½Ö¤ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+      endX   = isRightAvail ? width : (width-1);//ï¿½ï¿½Ö¤ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
       //prepare 2nd line's upper sign
-      Pel* srcLineBelow= srcLine+ srcStride;//µÚ¶şĞĞÏñËØ
-      for (x=startX; x< endX+1; x++)//±È¼ÛµÚ¶şĞĞÏñËØÓëÆä×óÉÏ½ÇÏñËØ´óĞ¡
+      Pel* srcLineBelow= srcLine+ srcStride;//ï¿½Ú¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+      for (x=startX; x< endX+1; x++)//ï¿½È¼ÛµÚ¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï½ï¿½ï¿½ï¿½ï¿½Ø´ï¿½Ğ¡
       {
         signUpLine[x] = (Char)sgn(srcLineBelow[x] - srcLine[x- 1]);
       }
 
       //1st line
       Pel* srcLineAbove= srcLine- srcStride;
-      firstLineStartX = isAboveLeftAvail ? 0 : 1;//¸ÃĞĞÏñËØ×óÉÏÏñËØÊÇ·ñ¿ÉµÃµ½
+      firstLineStartX = isAboveLeftAvail ? 0 : 1;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ÉµÃµï¿½
       firstLineEndX   = isAboveAvail? endX: 1;
-      for(x= firstLineStartX; x< firstLineEndX; x++)//µÚÒ»ĞĞÏñËØµ¥¶ÀÅĞ¶Ï±ß½ç²¹³¥·ÖÀà ÒòÎª²»È·¶¨µÚÒ»ĞĞÏñËØ×óÉÏ·½ÏñËØÊÇ·ñ¿ÉÒÔ»ñµÃ Èô×óÉÏÏñËØÎŞ·¨»ñµÃ ÔòÎŞĞèÅĞ¶Ï¸ÃĞĞÏñËØ
+      for(x= firstLineStartX; x< firstLineEndX; x++)//ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½Ğ¶Ï±ß½ç²¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Îªï¿½ï¿½È·ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Ô»ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ş·ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ğ¶Ï¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
       {
-        edgeType  =  sgn(srcLine[x] - srcLineAbove[x- 1]) - signUpLine[x+1];//Óë×óÉÏ ÓÒÏÂÏñËØ±È½Ï´óĞ¡ µÃµ½±ß½ç²¹³¥·ÖÀà
+        edgeType  =  sgn(srcLine[x] - srcLineAbove[x- 1]) - signUpLine[x+1];//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø±È½Ï´ï¿½Ğ¡ ï¿½Ãµï¿½ï¿½ß½ç²¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
-        resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);//²¹³¥ºóÏñËØÖµ
+        resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
       }
-      srcLine  += srcStride;//ÏÂÒ»ĞĞ
+      srcLine  += srcStride;//ï¿½ï¿½Ò»ï¿½ï¿½
       resLine  += resStride;
 
 
       //middle lines
-      for (y= 1; y< height-1; y++)//ËùÓĞÖĞ¼äĞĞ¼ÆËã±ß½ç²¹³¥ÀàĞÍ ÖĞ¼äĞĞµÄÉÏ·½ºÍÏÂ·½ÏñËØÒ»¶¨¿ÉµÃµ½
+      for (y= 1; y< height-1; y++)//ï¿½ï¿½ï¿½ï¿½ï¿½Ğ¼ï¿½ï¿½Ğ¼ï¿½ï¿½ï¿½ß½ç²¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ğ¼ï¿½ï¿½Ğµï¿½ï¿½Ï·ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ÉµÃµï¿½
       {
-        srcLineBelow= srcLine+ srcStride;//µ±Ç°ÏñËØÏÂ·½ÏñËØ
+        srcLineBelow= srcLine+ srcStride;//ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½
 
-        for (x=startX; x<endX; x++)//±éÀú¸ÃĞĞ
+        for (x=startX; x<endX; x++)//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         {
-          signDown =  (Char)sgn(srcLine[x] - srcLineBelow[x+ 1]);//¸ÃÏñËØÓëÓÒÏÂÏñËØ´óĞ¡
-          edgeType =  signDown + signUpLine[x];//ÓÉ×óÉÏ ÓÒÏÂÏñËØ¼ÆËã±ß½ç²¹³¥·ÖÀà
-          resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);//²¹³¥ºóÏñËØÖµ
+          signDown =  (Char)sgn(srcLine[x] - srcLineBelow[x+ 1]);//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø´ï¿½Ğ¡
+          edgeType =  signDown + signUpLine[x];//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø¼ï¿½ï¿½ï¿½ß½ç²¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+          resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
 
-          signDownLine[x+1] = -signDown;//±£´æ¸ÃĞĞÏñËØµÄsignDownÏà·´Öµ
+          signDownLine[x+1] = -signDown;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½signDownï¿½à·´Öµ
         }
-        signDownLine[startX] = (Char)sgn(srcLineBelow[startX] - srcLine[startX-1]);//ÏÂĞĞµÄµÚÒ»¸öÏñËØµÄsignDownLineÎŞ·¨ÓÉÉÏĞĞÏñËØµÃµ½  µÃÓÉ¼ÆËãµÃµ½
+        signDownLine[startX] = (Char)sgn(srcLineBelow[startX] - srcLine[startX-1]);//ï¿½ï¿½ï¿½ĞµÄµï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½signDownLineï¿½Ş·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ØµÃµï¿½  ï¿½ï¿½ï¿½É¼ï¿½ï¿½ï¿½Ãµï¿½
 
         signTmpLine  = signUpLine;
-        signUpLine   = signDownLine;//ÏÂĞĞÏñËØµÄsignUpÊÇÉÏĞĞÏñËØµÄsignDown ¼´ÏÂĞĞÏñËØÓë×óÉÏÏñËØ´óĞ¡µÄsignÊÇÉÏĞĞÏñËØÓëÓÒÏÂÏñËØ´óĞ¡µÄsignµÄÏà·´Öµ
+        signUpLine   = signDownLine;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½signUpï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½signDown ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø´ï¿½Ğ¡ï¿½ï¿½signï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø´ï¿½Ğ¡ï¿½ï¿½signï¿½ï¿½ï¿½à·´Öµ
         signDownLine = signTmpLine;
 
-        srcLine += srcStride;//ÏÂÒ»ĞĞ
+        srcLine += srcStride;//ï¿½ï¿½Ò»ï¿½ï¿½
         resLine += resStride;
       }
 
@@ -478,7 +478,7 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
       srcLineBelow= srcLine+ srcStride;
       lastLineStartX = isBelowAvail ? startX : (width -1);
       lastLineEndX   = isBelowRightAvail ? width : (width -1);
-      for(x= lastLineStartX; x< lastLineEndX; x++)//×îºóÒ»ĞĞÏñËØµ¥¶ÀÅĞ¶Ï±ß½ç²¹³¥·ÖÀà ÒòÎª²»È·¶¨×îºóĞĞÏñËØÓÒÏÂ·½ÏñËØÊÇ·ñ¿ÉÒÔ»ñµÃ ÈôÓÒÏÂÏñËØÎŞ·¨»ñµÃ ÔòÎŞĞèÅĞ¶Ï¸ÃĞĞÏñËØ
+      for(x= lastLineStartX; x< lastLineEndX; x++)//ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½Ğ¶Ï±ß½ç²¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Îªï¿½ï¿½È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Ô»ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ş·ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ğ¶Ï¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
       {
         edgeType =  sgn(srcLine[x] - srcLineBelow[x+ 1]) + signUpLine[x];
         resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[edgeType]);
@@ -486,7 +486,7 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
       }
     }
     break;
-  case SAO_TYPE_EO_45://45¶È·½ÏòÍ¬135¶È·½Ïò ¹Ê²»ÔÚĞğÊö
+  case SAO_TYPE_EO_45://45ï¿½È·ï¿½ï¿½ï¿½Í¬135ï¿½È·ï¿½ï¿½ï¿½ ï¿½Ê²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     {
       offset += 2;
       Char *signUpLine = m_signLineBuf1+1;
@@ -543,16 +543,16 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
       }
     }
     break;
-  case SAO_TYPE_BO://±ß´ø²¹³¥
+  case SAO_TYPE_BO://ï¿½ß´ï¿½ï¿½ï¿½ï¿½ï¿½
     {
       const Int shiftBits = channelBitDepth - NUM_SAO_BO_CLASSES_LOG2;
-      for (y=0; y< height; y++)//ÎªÃ¿¸öÏñËØ¼ÆËã²¹³¥ºóµÄÖµ
+      for (y=0; y< height; y++)//ÎªÃ¿ï¿½ï¿½ï¿½ï¿½ï¿½Ø¼ï¿½ï¿½ã²¹ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
       {
         for (x=0; x< width; x++)
         {
-          resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[srcLine[x] >> shiftBits] );//srcLine[x] >> shiftBitsµÃµ½¸ÃÏñËØÎª32Ìõ±ß´øÖĞÄÇÒ»Ìõ
+          resLine[x] = Clip3<Int>(0, maxSampleValueIncl, srcLine[x] + offset[srcLine[x] >> shiftBits] );//srcLine[x] >> shiftBitsï¿½Ãµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îª32ï¿½ï¿½ï¿½ß´ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½
         }
-        srcLine += srcStride;//ÏÂÒ»ĞĞ
+        srcLine += srcStride;//ï¿½ï¿½Ò»ï¿½ï¿½
         resLine += resStride;
       }
     }
@@ -567,12 +567,12 @@ Void TComSampleAdaptiveOffset::offsetBlock(const Int channelBitDepth, Int typeId
 }
 
 Void TComSampleAdaptiveOffset::offsetCTU(Int ctuRsAddr, TComPicYuv* srcYuv, TComPicYuv* resYuv, SAOBlkParam& saoblkParam, TComPic* pPic)
-{//ÎªCTUÖĞ¸÷¸ö·ÖÁ¿SAO²¹³¥
+{//ÎªCTUï¿½Ğ¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½SAOï¿½ï¿½ï¿½ï¿½
   Bool isLeftAvail,isRightAvail,isAboveAvail,isBelowAvail,isAboveLeftAvail,isAboveRightAvail,isBelowLeftAvail,isBelowRightAvail;
 
   const Int numberOfComponents = getNumberValidComponents(m_chromaFormatIDC);
   Bool bAllOff=true;
-  for(Int compIdx = 0; compIdx < numberOfComponents; compIdx++)//ÈôËùÓĞ·ÖÁ¿¾ù²»ĞèÒª²¹³¥ Ôò·½·¨Ö±½Ó½áÊø
+  for(Int compIdx = 0; compIdx < numberOfComponents; compIdx++)//ï¿½ï¿½ï¿½ï¿½ï¿½Ğ·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ ï¿½ò·½·ï¿½Ö±ï¿½Ó½ï¿½ï¿½ï¿½
   {
     if (saoblkParam[compIdx].modeIdc != SAO_MODE_OFF)
     {
@@ -587,7 +587,7 @@ Void TComSampleAdaptiveOffset::offsetCTU(Int ctuRsAddr, TComPicYuv* srcYuv, TCom
   //block boundary availability
   pPic->getPicSym()->deriveLoopFilterBoundaryAvailibility(ctuRsAddr, isLeftAvail,isRightAvail,isAboveAvail,isBelowAvail,isAboveLeftAvail,isAboveRightAvail,isBelowLeftAvail,isBelowRightAvail);
 
-  Int yPos   = (ctuRsAddr / m_numCTUInWidth)*m_maxCUHeight;//¸ÃCTUÔÚÍ¼ÏñÖĞµÄÎ»ÖÃ(CTUÎªµ¥Î»)
+  Int yPos   = (ctuRsAddr / m_numCTUInWidth)*m_maxCUHeight;//ï¿½ï¿½CTUï¿½ï¿½Í¼ï¿½ï¿½ï¿½Ğµï¿½Î»ï¿½ï¿½(CTUÎªï¿½ï¿½Î»)
   Int xPos   = (ctuRsAddr % m_numCTUInWidth)*m_maxCUWidth;
   Int height = (yPos + m_maxCUHeight > m_picHeight)?(m_picHeight- yPos):m_maxCUHeight;
   Int width  = (xPos + m_maxCUWidth  > m_picWidth )?(m_picWidth - xPos):m_maxCUWidth;
@@ -607,8 +607,8 @@ Void TComSampleAdaptiveOffset::offsetCTU(Int ctuRsAddr, TComPicYuv* srcYuv, TCom
       Int  blkXPos    = (xPos   >> componentScaleX);
       Int  blkYPos    = (yPos   >> componentScaleY);
 
-      Int  srcStride  = srcYuv->getStride(component);//¸Ã·ÖÁ¿Í¼ÏñÖĞ²½³¤´óĞ¡
-      Pel* srcBlk     = srcYuv->getAddr(component) + blkYPos*srcStride + blkXPos;//¸Ã·ÖÁ¿ÖĞµ±Ç°CTUµÄÊ×ÏñËØÔÚÍ¼ÏñÖĞµÄÎ»ÖÃ£¨ÏñËØÎªµ¥Î»£©
+      Int  srcStride  = srcYuv->getStride(component);//ï¿½Ã·ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½Ğ²ï¿½ï¿½ï¿½ï¿½ï¿½Ğ¡
+      Pel* srcBlk     = srcYuv->getAddr(component) + blkYPos*srcStride + blkXPos;//ï¿½Ã·ï¿½ï¿½ï¿½ï¿½Ğµï¿½Ç°CTUï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½Ğµï¿½Î»ï¿½Ã£ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½Î»ï¿½ï¿½
 
       Int  resStride  = resYuv->getStride(component);
       Pel* resBlk     = resYuv->getAddr(component) + blkYPos*resStride + blkXPos;
@@ -619,7 +619,7 @@ Void TComSampleAdaptiveOffset::offsetCTU(Int ctuRsAddr, TComPicYuv* srcYuv, TCom
                   , isAboveAvail, isBelowAvail
                   , isAboveLeftAvail, isAboveRightAvail
                   , isBelowLeftAvail, isBelowRightAvail
-                  );//¶Ô¸Ã·ÖÁ¿SAO²¹³¥
+                  );//ï¿½Ô¸Ã·ï¿½ï¿½ï¿½SAOï¿½ï¿½ï¿½ï¿½
     }
   } //compIdx
 
@@ -627,10 +627,10 @@ Void TComSampleAdaptiveOffset::offsetCTU(Int ctuRsAddr, TComPicYuv* srcYuv, TCom
 
 
 Void TComSampleAdaptiveOffset::SAOProcess(TComPic* pDecPic)
-{//ÒÔCTUÎªµ¥Î» ¶ÔÕû·ùÍ¼ÏñSAO²¹³¥
+{//ï¿½ï¿½CTUÎªï¿½ï¿½Î» ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½SAOï¿½ï¿½ï¿½ï¿½
   const Int numberOfComponents = getNumberValidComponents(m_chromaFormatIDC);
   Bool bAllDisabled=true;
-  for(Int compIdx = 0; compIdx < numberOfComponents; compIdx++)//ÈôËùÓĞ·ÖÁ¿¾ù²»ĞèÒª²¹³¥ Ôò·½·¨Ö±½Ó½áÊø
+  for(Int compIdx = 0; compIdx < numberOfComponents; compIdx++)//ï¿½ï¿½ï¿½ï¿½ï¿½Ğ·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ ï¿½ò·½·ï¿½Ö±ï¿½Ó½ï¿½ï¿½ï¿½
   {
     if (m_picSAOEnabled[compIdx])
     {
@@ -667,15 +667,15 @@ Void TComSampleAdaptiveOffset::PCMLFDisableProcess (TComPic* pcPic)
  */
 Void TComSampleAdaptiveOffset::xPCMRestoration(TComPic* pcPic)
 {
-  Bool  bPCMFilter = (pcPic->getSlice(0)->getSPS()->getUsePCM() && pcPic->getSlice(0)->getSPS()->getPCMFilterDisableFlag())? true : false;
+  Bool  bPCMFilter = (pcPic->getSlice(0)->getSPS()->getUsePCM() && pcPic->getSlice(0)->getSPS()->getPCMFilterDisableFlag())? true : false;//PCMæ¨¡å¼ä¸”ä¸ä½¿ç”¨PCMæ»¤æ³¢
 
-  if(bPCMFilter || pcPic->getSlice(0)->getPPS()->getTransquantBypassEnableFlag())
+  if(bPCMFilter || pcPic->getSlice(0)->getPPS()->getTransquantBypassEnableFlag())//ä¸ºlosslessæ¨¡å¼ æˆ–PCMæ¨¡å¼ä¸‹ä¸ä½¿ç”¨PCMæ»¤æ³¢
   {
-    for( UInt ctuRsAddr = 0; ctuRsAddr < pcPic->getNumberOfCtusInFrame() ; ctuRsAddr++ )
+    for( UInt ctuRsAddr = 0; ctuRsAddr < pcPic->getNumberOfCtusInFrame() ; ctuRsAddr++ )//ä¾æ¬¡å¤„ç†å›¾åƒä¸­çš„æ¯ä¸ªCtu
     {
       TComDataCU* pcCU = pcPic->getCtu(ctuRsAddr);
 
-      xPCMCURestoration(pcCU, 0, 0);
+      xPCMCURestoration(pcCU, 0, 0);//ç”¨PCMåƒç´ å€¼è¿˜åŸé‡å»ºåƒç´ 
     }
   }
 }
@@ -685,20 +685,20 @@ Void TComSampleAdaptiveOffset::xPCMRestoration(TComPic* pcPic)
  * \param uiAbsZorderIdx  part index
  * \param uiDepth         CU depth
  */
-Void TComSampleAdaptiveOffset::xPCMCURestoration ( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth )
+Void TComSampleAdaptiveOffset::xPCMCURestoration ( TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth )//PCM/losslessæ¨¡å¼ä¸‹å¾—åˆ°Cuçš„é‡å»ºåƒç´ å€¼
 {
   TComPic* pcPic     = pcCU->getPic();
   UInt uiCurNumParts = pcPic->getNumPartitionsInCtu() >> (uiDepth<<1);
   UInt uiQNumParts   = uiCurNumParts>>2;
 
   // go to sub-CU
-  if( pcCU->getDepth(uiAbsZorderIdx) > uiDepth )
+  if( pcCU->getDepth(uiAbsZorderIdx) > uiDepth )//è‹¥è¯¥Cuå­˜åœ¨å­Cu
   {
-    for ( UInt uiPartIdx = 0; uiPartIdx < 4; uiPartIdx++, uiAbsZorderIdx+=uiQNumParts )
+    for ( UInt uiPartIdx = 0; uiPartIdx < 4; uiPartIdx++, uiAbsZorderIdx+=uiQNumParts )//åˆ™é€’å½’å¤„ç†4ä¸ªå­Cu
     {
       UInt uiLPelX   = pcCU->getCUPelX() + g_auiRasterToPelX[ g_auiZscanToRaster[uiAbsZorderIdx] ];
       UInt uiTPelY   = pcCU->getCUPelY() + g_auiRasterToPelY[ g_auiZscanToRaster[uiAbsZorderIdx] ];
-      if( ( uiLPelX < pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() ) && ( uiTPelY < pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() ) )
+      if( ( uiLPelX < pcCU->getSlice()->getSPS()->getPicWidthInLumaSamples() ) && ( uiTPelY < pcCU->getSlice()->getSPS()->getPicHeightInLumaSamples() ) )//ä¸å¾—è¶…å‡ºå›¾åƒè¾¹ç•Œ
       {
         xPCMCURestoration( pcCU, uiAbsZorderIdx, uiDepth+1 );
       }
@@ -707,12 +707,12 @@ Void TComSampleAdaptiveOffset::xPCMCURestoration ( TComDataCU* pcCU, UInt uiAbsZ
   }
 
   // restore PCM samples
-  if ((pcCU->getIPCMFlag(uiAbsZorderIdx)&& pcPic->getSlice(0)->getSPS()->getPCMFilterDisableFlag()) || pcCU->isLosslessCoded( uiAbsZorderIdx))
+  if ((pcCU->getIPCMFlag(uiAbsZorderIdx)&& pcPic->getSlice(0)->getSPS()->getPCMFilterDisableFlag()) || pcCU->isLosslessCoded( uiAbsZorderIdx))//è¯¥Cuä¸ºPCMæ¨¡å¼ä¸”PCMä¸‹ä¸æ»¤æ³¢ æˆ–è¯¥Cuä¸ºlosslessæ¨¡å¼!!!
   {
     const UInt numComponents=pcPic->getNumberValidComponents();
     for(UInt comp=0; comp<numComponents; comp++)
     {
-      xPCMSampleRestoration (pcCU, uiAbsZorderIdx, uiDepth, ComponentID(comp));
+      xPCMSampleRestoration (pcCU, uiAbsZorderIdx, uiDepth, ComponentID(comp));//å¾—åˆ°å›¾åƒçš„é‡å»ºåƒç´ å€¼
     }
   }
 }
@@ -723,7 +723,7 @@ Void TComSampleAdaptiveOffset::xPCMCURestoration ( TComDataCU* pcCU, UInt uiAbsZ
  * \param uiDepth        CU depth
  * \param compID         texture component type
  */
-Void TComSampleAdaptiveOffset::xPCMSampleRestoration (TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth, const ComponentID compID)
+Void TComSampleAdaptiveOffset::xPCMSampleRestoration (TComDataCU* pcCU, UInt uiAbsZorderIdx, UInt uiDepth, const ComponentID compID)//ç”±PCMåƒç´ å¾—åˆ°é‡å»ºåƒç´ å€¼
 {
         TComPicYuv* pcPicYuvRec = pcCU->getPic()->getPicYuvRec();
         UInt uiPcmLeftShiftBit;
@@ -732,14 +732,14 @@ Void TComSampleAdaptiveOffset::xPCMSampleRestoration (TComDataCU* pcCU, UInt uiA
   const UInt csy=pcPicYuvRec->getComponentScaleY(compID);
   const UInt uiOffset   = (uiMinCoeffSize*uiAbsZorderIdx)>>(csx+csy);
 
-        Pel *piSrc = pcPicYuvRec->getAddr(compID, pcCU->getCtuRsAddr(), uiAbsZorderIdx);
-  const Pel *piPcm = pcCU->getPCMSample(compID) + uiOffset;
+        Pel *piSrc = pcPicYuvRec->getAddr(compID, pcCU->getCtuRsAddr(), uiAbsZorderIdx);//é‡å»ºåƒç´ èµ·å§‹åœ°å€
+  const Pel *piPcm = pcCU->getPCMSample(compID) + uiOffset;//PCMåƒç´ èµ·å§‹åœ°å€
   const UInt uiStride  = pcPicYuvRec->getStride(compID);
   const TComSPS &sps = *(pcCU->getSlice()->getSPS());
   const UInt uiWidth  = ((sps.getMaxCUWidth()  >> uiDepth) >> csx);
   const UInt uiHeight = ((sps.getMaxCUHeight() >> uiDepth) >> csy);
 
-  if ( pcCU->isLosslessCoded(uiAbsZorderIdx) && !pcCU->getIPCMFlag(uiAbsZorderIdx) )
+  if ( pcCU->isLosslessCoded(uiAbsZorderIdx) && !pcCU->getIPCMFlag(uiAbsZorderIdx) )//losslessæ¨¡å¼ä¸‹ ä¸ç§»ä½
   {
     uiPcmLeftShiftBit = 0;
   }
@@ -748,11 +748,11 @@ Void TComSampleAdaptiveOffset::xPCMSampleRestoration (TComDataCU* pcCU, UInt uiA
     uiPcmLeftShiftBit = sps.getBitDepth(toChannelType(compID)) - sps.getPCMBitDepth(toChannelType(compID));
   }
 
-  for(UInt uiY = 0; uiY < uiHeight; uiY++ )
+  for(UInt uiY = 0; uiY < uiHeight; uiY++ )//éå†æ¯ä¸ªåƒç´ 
   {
     for(UInt uiX = 0; uiX < uiWidth; uiX++ )
     {
-      piSrc[uiX] = (piPcm[uiX] << uiPcmLeftShiftBit);
+      piSrc[uiX] = (piPcm[uiX] << uiPcmLeftShiftBit);//å°†è¿˜åŸä½æ·±åçš„PCMåƒç´ å€¼èµ‹ç»™é‡å»ºåƒç´ 
     }
     piPcm += uiWidth;
     piSrc += uiStride;

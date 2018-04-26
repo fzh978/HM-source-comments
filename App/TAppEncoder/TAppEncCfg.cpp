@@ -1845,7 +1845,7 @@ Void TAppEncCfg::xCheckParameter()
   {
     xConfirmPara( m_intraConstraintFlag, "IntraConstraintFlag cannot be 1 for inter sequences");
   }
-
+  //初始化赋值 (为得到正确的GOP结构)
   Bool verifiedGOP=false;
   Bool errorGOP=false;
   Int checkGOP=1;
@@ -1885,9 +1885,9 @@ Void TAppEncCfg::xCheckParameter()
   //start looping through frames in coding order until we can verify that the GOP structure is correct.
   while(!verifiedGOP&&!errorGOP)
   {
-    Int curGOP = (checkGOP-1)%m_iGOPSize;
-    Int curPOC = ((checkGOP-1)/m_iGOPSize)*m_iGOPSize + m_GOPList[curGOP].m_POC;
-    if(m_GOPList[curGOP].m_POC<0)
+    Int curGOP = (checkGOP-1)%m_iGOPSize;//当前的GOPid 表明在一个GOP中的位置
+    Int curPOC = ((checkGOP-1)/m_iGOPSize)*m_iGOPSize + m_GOPList[curGOP].m_POC;//当前图像的POC值
+    if(m_GOPList[curGOP].m_POC<0)//m_POC不能小于零 (规定GOP中m_POC最小从以开始)
     {
       printf("\nError: found fewer Reference Picture Sets than GOPSize\n");
       errorGOP=true;
@@ -1896,10 +1896,10 @@ Void TAppEncCfg::xCheckParameter()
     {
       //check that all reference pictures are available, or have a POC < 0 meaning they might be available in the next GOP.
       Bool beforeI = false;
-      for(Int i = 0; i< m_GOPList[curGOP].m_numRefPics; i++)
+      for(Int i = 0; i< m_GOPList[curGOP].m_numRefPics; i++)//遍历GOP中该帧图像的所有参考图像
       {
-        Int absPOC = curPOC+m_GOPList[curGOP].m_referencePics[i];
-        if(absPOC < 0)
+        Int absPOC = curPOC+m_GOPList[curGOP].m_referencePics[i];//该帧图像的参考图像的POC值
+        if(absPOC < 0)//POC值小于零说明下个GOP中的该图像可能可以得到该位置的参考图像
         {
           beforeI=true;
         }
@@ -1908,90 +1908,90 @@ Void TAppEncCfg::xCheckParameter()
           Bool found=false;
           for(Int j=0; j<numRefs; j++)
           {
-            if(refList[j]==absPOC)
+            if(refList[j]==absPOC)//若参考图像列表中存在该参考图像
             {
               found=true;
-              for(Int k=0; k<m_iGOPSize; k++)
+              for(Int k=0; k<m_iGOPSize; k++)//遍历GOP中所有图像
               {
-                if(absPOC%m_iGOPSize == m_GOPList[k].m_POC%m_iGOPSize)
+                if(absPOC%m_iGOPSize == m_GOPList[k].m_POC%m_iGOPSize)//若该参考图像在GOP中的位置为K
                 {
-                  if(m_GOPList[k].m_temporalId==m_GOPList[curGOP].m_temporalId)
+                  if(m_GOPList[k].m_temporalId==m_GOPList[curGOP].m_temporalId)//若该帧图像与其参考图像在同一时域层
                   {
-                    m_GOPList[k].m_refPic = true;
+                    m_GOPList[k].m_refPic = true;//则m_refPic置为真 表明该参考图像为Sub-layer Reference图像
                   }
-                  m_GOPList[curGOP].m_usedByCurrPic[i]=m_GOPList[k].m_temporalId<=m_GOPList[curGOP].m_temporalId;
+                  m_GOPList[curGOP].m_usedByCurrPic[i]=m_GOPList[k].m_temporalId<=m_GOPList[curGOP].m_temporalId;//低时域层的图像不能参考高时域层的图像
                 }
               }
             }
           }
-          if(!found)
+          if(!found)//found为false 说明GOP中该帧图像存在无法获得的参考图像
           {
             printf("\nError: ref pic %d is not available for GOP frame %d\n",m_GOPList[curGOP].m_referencePics[i],curGOP+1);
             errorGOP=true;
           }
         }
       }
-      if(!beforeI&&!errorGOP)
+      if(!beforeI&&!errorGOP)//随着当前图像POCd的逐渐增加 直到该帧图像配置文件中所有参考图像都可获得
       {
         //all ref frames were present
         if(!isOK[curGOP])
         {
           numOK++;
           isOK[curGOP]=true;
-          if(numOK==m_iGOPSize)
+          if(numOK==m_iGOPSize)//配置文件结构GOP中每帧图像的全部参考图像都可获得
           {
-            verifiedGOP=true;
+            verifiedGOP=true;//标志置为真 不用在计算额外的RPS
           }
         }
       }
-      else
+      else//beforeI为真 说明该GOP中存在无法获得的参考图像 故需重新设置该帧图像的PRS (需要在下个GOP中判断该位置图像的参考图像是否可获得)
       {
         //create a new GOPEntry for this frame containing all the reference pictures that were available (POC > 0)
-        m_GOPList[m_iGOPSize+m_extraRPSs]=m_GOPList[curGOP];
+        m_GOPList[m_iGOPSize+m_extraRPSs]=m_GOPList[curGOP];//用上个GOP中图像的GOPEntry初始化下个GOP的对应图像的GOPEntry
         Int newRefs=0;
-        for(Int i = 0; i< m_GOPList[curGOP].m_numRefPics; i++)
+        for(Int i = 0; i< m_GOPList[curGOP].m_numRefPics; i++)//将m_GOPList[curGOP]图像可获得的参考图像赋给m_GOPList[m_iGOPSize+m_extraRPSs]
         {
           Int absPOC = curPOC+m_GOPList[curGOP].m_referencePics[i];
           if(absPOC>=0)
           {
             m_GOPList[m_iGOPSize+m_extraRPSs].m_referencePics[newRefs]=m_GOPList[curGOP].m_referencePics[i];
             m_GOPList[m_iGOPSize+m_extraRPSs].m_usedByCurrPic[newRefs]=m_GOPList[curGOP].m_usedByCurrPic[i];
-            newRefs++;
+            newRefs++;//记录可获得的参考图像数
           }
         }
         Int numPrefRefs = m_GOPList[curGOP].m_numRefPicsActive;
-
-        for(Int offset = -1; offset>-checkGOP; offset--)
+        //在之前的GOP中寻找参考图像 (上个GOP中POC<0的参考图像 可能在当前GOP(m_iGOPSize+m_extraRPSs)之前的GOP中可以获得)
+        for(Int offset = -1; offset>-checkGOP; offset--)//遍历所有当前图像之前的所有图像
         {
           //step backwards in coding order and include any extra available pictures we might find useful to replace the ones with POC < 0.
           Int offGOP = (checkGOP-1+offset)%m_iGOPSize;
-          Int offPOC = ((checkGOP-1+offset)/m_iGOPSize)*m_iGOPSize + m_GOPList[offGOP].m_POC;
-          if(offPOC>=0&&m_GOPList[offGOP].m_temporalId<=m_GOPList[curGOP].m_temporalId)
+          Int offPOC = ((checkGOP-1+offset)/m_iGOPSize)*m_iGOPSize + m_GOPList[offGOP].m_POC;//之前图像的POC值
+          if(offPOC>=0&&m_GOPList[offGOP].m_temporalId<=m_GOPList[curGOP].m_temporalId)//offPOC>=0保证该图像可获得 m_GOPList[offGOP].m_temporalId<=m_GOPList[curGOP].m_temporalId保证该图像可以被当前图像参考
           {
             Bool newRef=false;
-            for(Int i=0; i<numRefs; i++)
+            for(Int i=0; i<numRefs; i++)//遍历该图像的所有参考图像
             {
-              if(refList[i]==offPOC)
+              if(refList[i]==offPOC)//若该参考图像可获得
               {
-                newRef=true;
+                newRef=true;//newRef置为真
               }
             }
-            for(Int i=0; i<newRefs; i++)
+            for(Int i=0; i<newRefs; i++)//同时要确保该参考图像不为(之前GOP)已经可获得的参考图像
             {
               if(m_GOPList[m_iGOPSize+m_extraRPSs].m_referencePics[i]==offPOC-curPOC)
               {
                 newRef=false;
               }
             }
-            if(newRef)
+            if(newRef)//若该参考图像为新的可获得的参考图像
             {
               Int insertPoint=newRefs;
               //this picture can be added, find appropriate place in list and insert it.
-              if(m_GOPList[offGOP].m_temporalId==m_GOPList[curGOP].m_temporalId)
+              if(m_GOPList[offGOP].m_temporalId==m_GOPList[curGOP].m_temporalId)////若该帧图像与其参考图像在同一时域层
               {
-                m_GOPList[offGOP].m_refPic = true;
+                m_GOPList[offGOP].m_refPic = true;//则m_refPic置为真 表明该参考图像为Sub-layer Reference图像
               }
-              for(Int j=0; j<newRefs; j++)
+              for(Int j=0; j<newRefs; j++)//按照m_referencePics的大小顺序找到新的参考图像在m_referencePics列表中的位置
               {
                 if(m_GOPList[m_iGOPSize+m_extraRPSs].m_referencePics[j]<offPOC-curPOC||m_GOPList[m_iGOPSize+m_extraRPSs].m_referencePics[j]>0)
                 {
@@ -2001,7 +2001,7 @@ Void TAppEncCfg::xCheckParameter()
               }
               Int prev = offPOC-curPOC;
               Int prevUsed = m_GOPList[offGOP].m_temporalId<=m_GOPList[curGOP].m_temporalId;
-              for(Int j=insertPoint; j<newRefs+1; j++)
+              for(Int j=insertPoint; j<newRefs+1; j++)//将新的可获得的参考图像插入到对应位置
               {
                 Int newPrev = m_GOPList[m_iGOPSize+m_extraRPSs].m_referencePics[j];
                 Int newUsed = m_GOPList[m_iGOPSize+m_extraRPSs].m_usedByCurrPic[j];
@@ -2010,41 +2010,41 @@ Void TAppEncCfg::xCheckParameter()
                 prevUsed=newUsed;
                 prev=newPrev;
               }
-              newRefs++;
+              newRefs++;//可获得的参考图像数加1
             }
           }
-          if(newRefs>=numPrefRefs)
+          if(newRefs>=numPrefRefs)//当前图像可获得的参考图像数大于或等于规定的最大参考图像数 
           {
-            break;
+            break;//则不用继续寻找可获得的参考图像数
           }
         }
-        m_GOPList[m_iGOPSize+m_extraRPSs].m_numRefPics=newRefs;
-        m_GOPList[m_iGOPSize+m_extraRPSs].m_POC = curPOC;
-        if (m_extraRPSs == 0)
+        m_GOPList[m_iGOPSize+m_extraRPSs].m_numRefPics=newRefs;//当前图像总的可获得的参考图像数
+        m_GOPList[m_iGOPSize+m_extraRPSs].m_POC = curPOC;//当前图像的POC值
+        if (m_extraRPSs == 0)//第一个额外的RPS 故不能为预测RPS 
         {
           m_GOPList[m_iGOPSize+m_extraRPSs].m_interRPSPrediction = 0;
           m_GOPList[m_iGOPSize+m_extraRPSs].m_numRefIdc = 0;
         }
-        else
+        else//之后额外的RPS可以用之前的RPS做预测
         {
-          Int rIdx =  m_iGOPSize + m_extraRPSs - 1;
+          Int rIdx =  m_iGOPSize + m_extraRPSs - 1;//前一个RPS(用作当前RPS的预测RPS)
           Int refPOC = m_GOPList[rIdx].m_POC;
           Int refPics = m_GOPList[rIdx].m_numRefPics;
           Int newIdc=0;
-          for(Int i = 0; i<= refPics; i++)
+          for(Int i = 0; i<= refPics; i++)//计算当前RPS的refIdc //当前图像的RPS为前一个RPS的参考图像加上上一帧(编码顺序)图像 故numRefIdc为refPics+1
           {
-            Int deltaPOC = ((i != refPics)? m_GOPList[rIdx].m_referencePics[i] : 0);  // check if the reference abs POC is >= 0
-            Int absPOCref = refPOC+deltaPOC;
+            Int deltaPOC = ((i != refPics)? m_GOPList[rIdx].m_referencePics[i] : 0);  // check if the reference abs POC is >= 0//当前图像的RPS中最后一帧图像为上一帧(编码顺序)图像
+            Int absPOCref = refPOC+deltaPOC;//当前图像RPS中的参考图像(参考图像这一表述并不准确 因为这些图像不一定被当前图像参考)
             Int refIdc = 0;
             for (Int j = 0; j < m_GOPList[m_iGOPSize+m_extraRPSs].m_numRefPics; j++)
             {
-              if ( (absPOCref - curPOC) == m_GOPList[m_iGOPSize+m_extraRPSs].m_referencePics[j])
+              if ( (absPOCref - curPOC) == m_GOPList[m_iGOPSize+m_extraRPSs].m_referencePics[j])//该参考图像为当前图像的参考图像
               {
-                if (m_GOPList[m_iGOPSize+m_extraRPSs].m_usedByCurrPic[j])
+                if (m_GOPList[m_iGOPSize+m_extraRPSs].m_usedByCurrPic[j])//被当前图像所参考 refIdc置1
                 {
                   refIdc = 1;
                 }
-                else
+                else//将来用作参考 置为2
                 {
                   refIdc = 2;
                 }
@@ -2055,13 +2055,13 @@ Void TAppEncCfg::xCheckParameter()
           }
           m_GOPList[m_iGOPSize+m_extraRPSs].m_interRPSPrediction = 1;
           m_GOPList[m_iGOPSize+m_extraRPSs].m_numRefIdc = newIdc;
-          m_GOPList[m_iGOPSize+m_extraRPSs].m_deltaRPS = refPOC - m_GOPList[m_iGOPSize+m_extraRPSs].m_POC;
-        }
+          m_GOPList[m_iGOPSize+m_extraRPSs].m_deltaRPS = refPOC - m_GOPList[m_iGOPSize+m_extraRPSs].m_POC;//预测PRS的POC与当前RPS的POC间的差值
+        }//通过预测RPS方法设置当前RPS信息
         curGOP=m_iGOPSize+m_extraRPSs;
-        m_extraRPSs++;
+        m_extraRPSs++;//下一个额外RPS
       }
       numRefs=0;
-      for(Int i = 0; i< m_GOPList[curGOP].m_numRefPics; i++)
+      for(Int i = 0; i< m_GOPList[curGOP].m_numRefPics; i++)//根据当前图像的参考图像信息 设置可获得的参考图像
       {
         Int absPOC = curPOC+m_GOPList[curGOP].m_referencePics[i];
         if(absPOC >= 0)
@@ -2070,8 +2070,8 @@ Void TAppEncCfg::xCheckParameter()
           numRefs++;
         }
       }
-      refList[numRefs]=curPOC;
-      numRefs++;
+      refList[numRefs]=curPOC; //reflist则一定包含下帧图像(编码顺序)的所有参考图像
+      numRefs++;//加上当前图像
     }
     checkGOP++;
   }
