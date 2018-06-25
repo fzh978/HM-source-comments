@@ -50,18 +50,18 @@
  *  - the initial startcode in the access unit,
  *  - any SPS/PPS nal units
  */
-static std::vector<UInt> writeAnnexB(std::ostream& out, const AccessUnit& au)
+static std::vector<UInt> writeAnnexB(std::ostream& out, const AccessUnit& au)//按照AnnexB of AVC字节流格式将所有NALu写入输出比特流
 {
   std::vector<UInt> annexBsizes;
 
-  for (AccessUnit::const_iterator it = au.begin(); it != au.end(); it++)
+  for (AccessUnit::const_iterator it = au.begin(); it != au.end(); it++)//遍历AccessUnit中的所有NALu
   {
     const NALUnitEBSP& nalu = **it;
     UInt size = 0; /* size of annexB unit in bytes */
 
     static const Char start_code_prefix[] = {0,0,0,1};
     if (it == au.begin() || nalu.m_nalUnitType == NAL_UNIT_VPS || nalu.m_nalUnitType == NAL_UNIT_SPS || nalu.m_nalUnitType == NAL_UNIT_PPS)
-    {
+    {//该nalu类型为VPS PPS 或AccessUnit的第一个NALU
       /* From AVC, When any of the following conditions are fulfilled, the
        * zero_byte syntax element shall be present:
        *  - the nal_unit_type within the nal_unit() is equal to 7 (sequence
@@ -70,13 +70,13 @@ static std::vector<UInt> writeAnnexB(std::ostream& out, const AccessUnit& au)
        *    unit of an access unit in decoding order, as specified by subclause
        *    7.4.1.2.3.
        */
-      out.write(start_code_prefix, 4);
-      size += 4;
+      out.write(start_code_prefix, 4);//则在NALU前插入4字节的起始码0x00000001
+      size += 4;//字节数+4
     }
-    else
+    else//在每个NALU前插入3字节的起始码0x000001
     {
       out.write(start_code_prefix+1, 3);
-      size += 3;
+      size += 3;//字节数+3
     }
     out << nalu.m_nalUnitData.str();
     size += UInt(nalu.m_nalUnitData.str().size());

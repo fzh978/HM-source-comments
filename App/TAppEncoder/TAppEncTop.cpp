@@ -66,7 +66,7 @@ TAppEncTop::~TAppEncTop()
 {
 }
 
-Void TAppEncTop::xInitLibCfg()
+Void TAppEncTop::xInitLibCfg()//用得到的编码器配置参数初始化顶层编码类需要的各种参数 不再叙述
 {
   TComVPS vps;
 
@@ -434,7 +434,7 @@ Void TAppEncTop::xInitLib(Bool isFieldCoding)
  - destroy internal class
  .
  */
-Void TAppEncTop::encode()
+Void TAppEncTop::encode()//根据给定配置参数编码视频流
 {
   fstream bitstreamFile(m_pchBitstreamFile, fstream::binary | fstream::out);
   if (!bitstreamFile)
@@ -474,29 +474,29 @@ Void TAppEncTop::encode()
   {
     pcPicYuvOrg->create  ( m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_uiMaxCUWidth, m_uiMaxCUHeight, m_uiMaxTotalCUDepth, true );
     cPicYuvTrueOrg.create(m_iSourceWidth, m_iSourceHeight, m_chromaFormatIDC, m_uiMaxCUWidth, m_uiMaxCUHeight, m_uiMaxTotalCUDepth, true );
-  }
+  }//创建原始图像缓存
 
   while ( !bEos )
   {
     // get buffers
-    xGetBuffer(pcPicYuvRec);
+    xGetBuffer(pcPicYuvRec);//从重建图像缓存列表中得到重建图像缓存pcPicYuvRec
 
     // read input YUV file
-    m_cTVideoIOYuvInputFile.read( pcPicYuvOrg, &cPicYuvTrueOrg, ipCSC, m_aiPad, m_InputChromaFormatIDC, m_bClipInputVideoToRec709Range );
+    m_cTVideoIOYuvInputFile.read( pcPicYuvOrg, &cPicYuvTrueOrg, ipCSC, m_aiPad, m_InputChromaFormatIDC, m_bClipInputVideoToRec709Range );//从视频流中读取一帧待编码(原始)图像
 
     // increase number of received frames
-    m_iFrameRcvd++;
+    m_iFrameRcvd++;//接收到的帧数+1
 
-    bEos = (m_isField && (m_iFrameRcvd == (m_framesToBeEncoded >> 1) )) || ( !m_isField && (m_iFrameRcvd == m_framesToBeEncoded) );
+    bEos = (m_isField && (m_iFrameRcvd == (m_framesToBeEncoded >> 1) )) || ( !m_isField && (m_iFrameRcvd == m_framesToBeEncoded) );//视频流是否编码结束(根据配置文件中的m_framesToBeEncoded判断 m_framesToBeEncoded不一定为给定视频流的帧数 也可小于给定视频流的帧数)
 
     Bool flush = 0;
     // if end of file (which is only detected on a read failure) flush the encoder of any queued pictures
-    if (m_cTVideoIOYuvInputFile.isEof())
+    if (m_cTVideoIOYuvInputFile.isEof())//若为end of file
     {
       flush = true;
-      bEos = true;
-      m_iFrameRcvd--;
-      m_cTEncTop.setFramesToBeEncoded(m_iFrameRcvd);
+      bEos = true;//视频流编码结束
+      m_iFrameRcvd--;//-1 是因为Eof为视频流中最后一帧的下个读取状态
+      m_cTEncTop.setFramesToBeEncoded(m_iFrameRcvd);//编码帧数为接收到的帧数
     }
 
     // call encoding function for one frame
@@ -512,12 +512,12 @@ Void TAppEncTop::encode()
     // write bistream to file if necessary
     if ( iNumEncoded > 0 )
     {
-      xWriteOutput(bitstreamFile, iNumEncoded, outputAccessUnits);
+      xWriteOutput(bitstreamFile, iNumEncoded, outputAccessUnits);//将比特流写入文件
       outputAccessUnits.clear();
     }
   }
 
-  m_cTEncTop.printSummary(m_isField);
+  m_cTEncTop.printSummary(m_isField);//输出总结(失真)信息
 
   // delete original YUV buffer
   pcPicYuvOrg->destroy();
@@ -532,7 +532,7 @@ Void TAppEncTop::encode()
   xDeleteBuffer();
   xDestroyLib();
 
-  printRateSummary();
+  printRateSummary();//输出码率信息
 
   return;
 }
@@ -567,7 +567,7 @@ Void TAppEncTop::xGetBuffer( TComPicYuv*& rpcPicYuvRec)
   m_cListPicYuvRec.pushBack( rpcPicYuvRec );
 }
 
-Void TAppEncTop::xDeleteBuffer( )
+Void TAppEncTop::xDeleteBuffer( )//删除重建图像缓存列表
 {
   TComList<TComPicYuv*>::iterator iterPicYuvRec  = m_cListPicYuvRec.begin();
 

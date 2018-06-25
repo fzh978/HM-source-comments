@@ -178,20 +178,20 @@ Void TEncTop::destroy ()
   return;
 }
 
-Void TEncTop::init(Bool isFieldCoding)
+Void TEncTop::init(Bool isFieldCoding)//初始化顶层的编码信息
 {
   // initialize SPS
   xInitSPS();
-  xInitVPS();
+  xInitVPS();//初始化SPS VPS
 
   m_cRdCost.setCostMode(m_costMode);
 
   // initialize PPS
-  xInitPPS();
-  xInitRPS(isFieldCoding);
+  xInitPPS();//初始化PPS
+  xInitRPS(isFieldCoding);//初始化RPS
 
   xInitPPSforTiles();
-
+  //初始化编码需要用到的各种类
   // initialize processing unit classes
   m_cGOPEncoder.  init( this );
   m_cSliceEncoder.init( this );
@@ -218,10 +218,10 @@ Void TEncTop::init(Bool isFieldCoding)
 
   m_iMaxRefPicNum = 0;
 
-  xInitScalingLists();
+  xInitScalingLists();//初始化量化矩阵
 }
 
-Void TEncTop::xInitScalingLists()
+Void TEncTop::xInitScalingLists()//初始化量化矩阵
 {
   // Initialise scaling lists
   // The encoder will only use the SPS scaling lists. The PPS will never be marked present.
@@ -230,14 +230,14 @@ Void TEncTop::xInitScalingLists()
       m_cSPS.getMaxLog2TrDynamicRange(CHANNEL_TYPE_LUMA),
       m_cSPS.getMaxLog2TrDynamicRange(CHANNEL_TYPE_CHROMA)
   };
-  if(getUseScalingListId() == SCALING_LIST_OFF)
+  if(getUseScalingListId() == SCALING_LIST_OFF)//若不使用量化矩阵
   {
     getTrQuant()->setFlatScalingList(maxLog2TrDynamicRange, m_cSPS.getBitDepths());
-    getTrQuant()->setUseScalingList(false);
+    getTrQuant()->setUseScalingList(false);//量化类中设置不使用量化矩阵
     m_cSPS.setScalingListPresentFlag(false);
-    m_cPPS.setScalingListPresentFlag(false);
+    m_cPPS.setScalingListPresentFlag(false);//SPS PPS信息中设置不使用量化矩阵
   }
-  else if(getUseScalingListId() == SCALING_LIST_DEFAULT)
+  else if(getUseScalingListId() == SCALING_LIST_DEFAULT)//使用默认的量化矩阵
   {
     m_cSPS.getScalingList().setDefaultScalingList ();
     m_cSPS.setScalingListPresentFlag(false);
@@ -246,10 +246,10 @@ Void TEncTop::xInitScalingLists()
     getTrQuant()->setScalingList(&(m_cSPS.getScalingList()), maxLog2TrDynamicRange, m_cSPS.getBitDepths());
     getTrQuant()->setUseScalingList(true);
   }
-  else if(getUseScalingListId() == SCALING_LIST_FILE_READ)
+  else if(getUseScalingListId() == SCALING_LIST_FILE_READ)//使用文件中自定义的量化矩阵
   {
     m_cSPS.getScalingList().setDefaultScalingList ();
-    if(m_cSPS.getScalingList().xParseScalingList(getScalingListFile()))
+    if(m_cSPS.getScalingList().xParseScalingList(getScalingListFile()))//若从给定的文件中读取发生错误(高判断语句完成对文件中量化矩阵的读取)
     {
       Bool bParsedScalingList=false; // Use of boolean so that assertion outputs useful string
       assert(bParsedScalingList);
@@ -261,22 +261,22 @@ Void TEncTop::xInitScalingLists()
     getTrQuant()->setScalingList(&(m_cSPS.getScalingList()), maxLog2TrDynamicRange, m_cSPS.getBitDepths());
     getTrQuant()->setUseScalingList(true);
   }
-  else
+  else//若以上类型均不是则打印错误信息
   {
     printf("error : ScalingList == %d not supported\n",getUseScalingListId());
     assert(0);
   }
 
-  if (getUseScalingListId() != SCALING_LIST_OFF)
+  if (getUseScalingListId() != SCALING_LIST_OFF)//若使用量化矩阵
   {
     // Prepare delta's:
-    for(UInt sizeId = 0; sizeId < SCALING_LIST_SIZE_NUM; sizeId++)
+    for(UInt sizeId = 0; sizeId < SCALING_LIST_SIZE_NUM; sizeId++)//处理每个类型的量化矩阵
     {
       const Int predListStep = (sizeId == SCALING_LIST_32x32? (SCALING_LIST_NUM/NUMBER_OF_PREDICTION_MODES) : 1); // if 32x32, skip over chroma entries.
 
       for(UInt listId = 0; listId < SCALING_LIST_NUM; listId+=predListStep)
       {
-        m_cSPS.getScalingList().checkPredMode( sizeId, listId );
+        m_cSPS.getScalingList().checkPredMode( sizeId, listId );//检查该量化矩阵是否可由之前的量化矩阵得到
       }
     }
   }
@@ -286,7 +286,7 @@ Void TEncTop::xInitScalingLists()
 // Public member functions
 // ====================================================================================================================
 
-Void TEncTop::deletePicBuffer()
+Void TEncTop::deletePicBuffer()//删除图像缓存列表
 {
   TComList<TComPic*>::iterator iterPic = m_cListPic.begin();
   Int iSize = Int( m_cListPic.size() );
@@ -316,17 +316,17 @@ Void TEncTop::deletePicBuffer()
  */
 Void TEncTop::encode( Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTrueOrg, const InputColourSpaceConversion snrCSC, TComList<TComPicYuv*>& rcListPicYuvRecOut, std::list<AccessUnit>& accessUnitsOut, Int& iNumEncoded )
 {
-  if (pcPicYuvOrg != NULL)
+  if (pcPicYuvOrg != NULL)//若(接收到的)原始图像不为空
   {
     // get original YUV
     TComPic* pcPicCurr = NULL;
 
-    xGetNewPicBuffer( pcPicCurr );
+    xGetNewPicBuffer( pcPicCurr );//从图像缓存列表中得到新的图像缓存pcPicCurr
     pcPicYuvOrg->copyToPic( pcPicCurr->getPicYuvOrg() );
-    pcPicYuvTrueOrg->copyToPic( pcPicCurr->getPicYuvTrueOrg() );
+    pcPicYuvTrueOrg->copyToPic( pcPicCurr->getPicYuvTrueOrg() );//将原始图像保存至pcPicCurr
 
     // compute image characteristics
-    if ( getUseAdaptiveQP() )
+    if ( getUseAdaptiveQP() )//若使用自适应QP 则需计算图像特性(用于确定QP值) 
     {
       m_cPreanalyzer.xPreanalyze( dynamic_cast<TEncPic*>( pcPicCurr ) );
     }
@@ -338,34 +338,34 @@ Void TEncTop::encode( Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvT
     return;
   }
 
-  if ( m_RCEnableRateControl )
+  if ( m_RCEnableRateControl )//若使用码率控制 则还需初始化码率控制相关类
   {
     m_cRateCtrl.initRCGOP( m_iNumPicRcvd );
   }
 
   // compress GOP
-  m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, false, false, snrCSC, m_printFrameMSE);
+  m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut, accessUnitsOut, false, false, snrCSC, m_printFrameMSE);//压缩该GOP(中每帧图像)
 
   if ( m_RCEnableRateControl )
   {
     m_cRateCtrl.destroyRCGOP();
   }
 
-  iNumEncoded         = m_iNumPicRcvd;
+  iNumEncoded         = m_iNumPicRcvd;//完成编码的图像数为接收的图像数
   m_iNumPicRcvd       = 0;
-  m_uiNumAllPicCoded += iNumEncoded;
+  m_uiNumAllPicCoded += iNumEncoded;//编码的总图像数
 }
 
 /**------------------------------------------------
  Separate interlaced frame into two fields
  -------------------------------------------------**/
-Void separateFields(Pel* org, Pel* dstField, UInt stride, UInt width, UInt height, Bool isTop)
+Void separateFields(Pel* org, Pel* dstField, UInt stride, UInt width, UInt height, Bool isTop)//将一帧图像分为两场 dstField为得到的场
 {
-  if (!isTop)
+  if (!isTop)//顶场由图像第一行开始隔行扫描得到
   {
-    org += stride;
+    org += stride;//底场由图像第二行开始隔行扫描得到
   }
-  for (Int y = 0; y < height>>1; y++)
+  for (Int y = 0; y < height>>1; y++)//因为隔行取像素 所以得到的场高为原图像的一半
   {
     for (Int x = 0; x < width; x++)
     {
@@ -373,7 +373,7 @@ Void separateFields(Pel* org, Pel* dstField, UInt stride, UInt width, UInt heigh
     }
 
     dstField += stride;
-    org += stride*2;
+    org += stride*2;//隔行扫描
   }
 
 }
@@ -382,19 +382,19 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTr
 {
   iNumEncoded = 0;
 
-  for (Int fieldNum=0; fieldNum<2; fieldNum++)
+  for (Int fieldNum=0; fieldNum<2; fieldNum++)//分别处理上下两场
   {
     if (pcPicYuvOrg)
     {
 
       /* -- field initialization -- */
-      const Bool isTopField=isTff==(fieldNum==0);
+      const Bool isTopField=isTff==(fieldNum==0);//该场是否为顶场
 
       TComPic *pcField;
-      xGetNewPicBuffer( pcField );
-      pcField->setReconMark (false);                     // where is this normally?
+      xGetNewPicBuffer( pcField );//从图像缓存列表中得到新的场缓存pcField
+      pcField->setReconMark (false);  //该场还未重建        // where is this normally?
 
-      if (fieldNum==1)                                   // where is this normally?
+      if (fieldNum==1)  // 为底场                // where is this normally?
       {
         TComPicYuv* rpcPicYuvRec;
 
@@ -434,7 +434,7 @@ Void TEncTop::encode(Bool flush, TComPicYuv* pcPicYuvOrg, TComPicYuv* pcPicYuvTr
                        pcPicYuvTrueOrg->getWidth(component),
                        pcPicYuvTrueOrg->getHeight(component),
                        isTopField);
-      }
+      }//得到该帧各个分量的场(更新至图像缓存列表)
 
       // compute image characteristics
       if ( getUseAdaptiveQP() )
