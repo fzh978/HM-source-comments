@@ -107,15 +107,15 @@ Void TComOutputBitstream::clear()
   m_num_held_bits = 0;
 }
 
-Void TComOutputBitstream::write   ( UInt uiBits, UInt uiNumberOfBits )
+Void TComOutputBitstream::write   ( UInt uiBits, UInt uiNumberOfBits )//将给定的比特写入TComOutputBitstream类(中的m_fifo)
 {
   assert( uiNumberOfBits <= 32 );
   assert( uiNumberOfBits == 32 || (uiBits & (~0 << uiNumberOfBits)) == 0 );
 
   /* any modulo 8 remainder of num_total_bits cannot be written this time,
    * and will be held until next time. */
-  UInt num_total_bits = uiNumberOfBits + m_num_held_bits;
-  UInt next_num_held_bits = num_total_bits % 8;
+  UInt num_total_bits = uiNumberOfBits + m_num_held_bits;//总比特数为当前比特数加上上次未写入遗留下的比特数
+  UInt next_num_held_bits = num_total_bits % 8;//这次未写入遗留下的比特数(8比特作为一次写入)
 
   /* form a byte aligned word (write_bits), by concatenating any held bits
    * with the new bits, discarding the bits that will form the next_held_bits.
@@ -123,9 +123,9 @@ Void TComOutputBitstream::write   ( UInt uiBits, UInt uiNumberOfBits )
    * len(H)=7, len(V)=1: ... ---- HHHH HHHV . 0000 0000, next_num_held_bits=0
    * len(H)=7, len(V)=2: ... ---- HHHH HHHV . V000 0000, next_num_held_bits=1
    * if total_bits < 8, the value of v_ is not used */
-  UChar next_held_bits = uiBits << (8 - next_num_held_bits);
+  UChar next_held_bits = uiBits << (8 - next_num_held_bits);//本次遗留的比特 注意!!!!其类型为Uchar即只保留uiBits << (8 - next_num_held_bits)的低8位!!
 
-  if (!(num_total_bits >> 3))
+  if (!(num_total_bits >> 3))//比特数不够8位写入
   {
     /* insufficient bits accumulated to write out, append new_held_bits to
      * current held_bits */
@@ -136,19 +136,19 @@ Void TComOutputBitstream::write   ( UInt uiBits, UInt uiNumberOfBits )
   }
 
   /* topword serves to justify held_bits to align with the msb of uiBits */
-  UInt topword = (uiNumberOfBits - next_num_held_bits) & ~((1 << 3) -1);
-  UInt write_bits = (m_held_bits << topword) | (uiBits >> next_num_held_bits);
+  UInt topword = (uiNumberOfBits - next_num_held_bits) & ~((1 << 3) -1);//二进制计算(uiNumberOfBits - next_num_held_bits)减去其对8的余数 (uiNumberOfBits - next_num_held_bits)/8*8
+  UInt write_bits = (m_held_bits << topword) | (uiBits >> next_num_held_bits);//将上次遗留的比特(在高位)和当前待写入的比特(除去本次遗留下的比特)连接成最终要写入的比特
 
-  switch (num_total_bits >> 3)
+  switch (num_total_bits >> 3)//每次写入8位  vector中uint8_t为8位数据类型
   {
   case 4: m_fifo.push_back(write_bits >> 24);
   case 3: m_fifo.push_back(write_bits >> 16);
   case 2: m_fifo.push_back(write_bits >> 8);
   case 1: m_fifo.push_back(write_bits);
-  }
+  }//注意!此处没有break 故待写入的比特数将从高8位依次向低8位写入m_fifo
 
   m_held_bits = next_held_bits;
-  m_num_held_bits = next_num_held_bits;
+  m_num_held_bits = next_num_held_bits;//更新遗留的比特
 }
 
 Void TComOutputBitstream::writeAlignOne()
@@ -174,7 +174,7 @@ Void TComOutputBitstream::writeAlignZero()
  .
  \param  pcSubstream  substream to be added
  */
-Void   TComOutputBitstream::addSubstream( TComOutputBitstream* pcSubstream )
+Void   TComOutputBitstream::addSubstream( TComOutputBitstream* pcSubstream )//添加子流到当前比特流的尾部
 {
   UInt uiNumBits = pcSubstream->getNumberOfWrittenBits();
 
@@ -182,10 +182,10 @@ Void   TComOutputBitstream::addSubstream( TComOutputBitstream* pcSubstream )
   for (vector<uint8_t>::const_iterator it = rbsp.begin(); it != rbsp.end();)
   {
     write(*it++, 8);
-  }
-  if (uiNumBits&0x7)
+  }//以每8比特为单位写入当前比特流
+  if (uiNumBits&0x7)//子流比特数不为8的整数倍
   {
-    write(pcSubstream->getHeldBits()>>(8-(uiNumBits&0x7)), uiNumBits&0x7);
+    write(pcSubstream->getHeldBits()>>(8-(uiNumBits&0x7)), uiNumBits&0x7);//写入遗留的比特(每次写入以8比特为单位 故待写入比特数小于8的比特定为遗留的比特)
   }
 }
 
@@ -204,10 +204,10 @@ Int TComOutputBitstream::countStartCodeEmulations()
     vector<uint8_t>::iterator found = it;
     do
     {
-      // find the next emulated 00 00 {00,01,02,03}
+      // find the next emulated 00 00 {00,01,02,03}//寻找 00 00 00 或者00 00 01 或00 00 02 或00 00 03出现的次数
       // NB, end()-1, prevents finding a trailing two byte sequence
       found = search_n(found, rbsp.end()-1, 2, 0);
-      found++;
+      found++;//若未找到 found=end 若找到found为第二个00的位置
       // if not found, found == end, otherwise found = second zero byte
       if (found == rbsp.end())
       {
@@ -235,7 +235,7 @@ Int TComOutputBitstream::countStartCodeEmulations()
  * the bitstream is effectively padded with sufficient zero-bits to
  * avoid the overrun.
  */
-Void TComInputBitstream::pseudoRead ( UInt uiNumberOfBits, UInt& ruiBits )
+Void TComInputBitstream::pseudoRead ( UInt uiNumberOfBits, UInt& ruiBits )//只读取 不改变比特流状态
 {
   UInt saved_num_held_bits = m_num_held_bits;
   UChar saved_held_bits = m_held_bits;
@@ -251,7 +251,7 @@ Void TComInputBitstream::pseudoRead ( UInt uiNumberOfBits, UInt& ruiBits )
 }
 
 
-Void TComInputBitstream::read (UInt uiNumberOfBits, UInt& ruiBits)
+Void TComInputBitstream::read (UInt uiNumberOfBits, UInt& ruiBits)//读取m_fifo中的比特数据
 {
   assert( uiNumberOfBits <= 32 );
 
@@ -259,18 +259,18 @@ Void TComInputBitstream::read (UInt uiNumberOfBits, UInt& ruiBits)
 
   /* NB, bits are extracted from the MSB of each byte. */
   UInt retval = 0;
-  if (uiNumberOfBits <= m_num_held_bits)
+  if (uiNumberOfBits <= m_num_held_bits)//带读取的比特数小于或等于遗留的比特数
   {
     /* n=1, len(H)=7:   -VHH HHHH, shift_down=6, mask=0xfe
      * n=3, len(H)=7:   -VVV HHHH, shift_down=4, mask=0xf8
      */
     retval = m_held_bits >> (m_num_held_bits - uiNumberOfBits);
-    retval &= ~(0xff << uiNumberOfBits);
+    retval &= ~(0xff << uiNumberOfBits);//则从遗留的比特读取相应位数
     m_num_held_bits -= uiNumberOfBits;
     ruiBits = retval;
     return;
   }
-
+  //否则分两步读取 先读取待遗留的比特至于高位 再读取m_fifo中的比特  
   /* all num_held_bits will go into retval
    *   => need to mask leftover bits from previous extractions
    *   => align retval with top of extracted word */
@@ -289,7 +289,7 @@ Void TComInputBitstream::read (UInt uiNumberOfBits, UInt& ruiBits)
    * n=5,  len(H)=1, load 1byte,  shift_down=1+3
    */
   UInt aligned_word = 0;
-  UInt num_bytes_to_load = (uiNumberOfBits - 1) >> 3;
+  UInt num_bytes_to_load = (uiNumberOfBits - 1) >> 3;//在m_fifo中读取的bytes数为 num_bytes_to_load+1
   assert(m_fifo_idx + num_bytes_to_load < m_fifo.size());
 
   switch (num_bytes_to_load)
@@ -298,10 +298,10 @@ Void TComInputBitstream::read (UInt uiNumberOfBits, UInt& ruiBits)
   case 2: aligned_word |= m_fifo[m_fifo_idx++] << 16;
   case 1: aligned_word |= m_fifo[m_fifo_idx++] <<  8;
   case 0: aligned_word |= m_fifo[m_fifo_idx++];
-  }
+  }//同写入 每次读取8比特
 
   /* resolve remainder bits */
-  UInt next_num_held_bits = (32 - uiNumberOfBits) % 8;
+  UInt next_num_held_bits = (32 - uiNumberOfBits) % 8;//本次读取后遗留下的比特数
 
   /* copy required part of aligned_word into retval */
   retval |= aligned_word >> next_num_held_bits;
@@ -317,13 +317,13 @@ Void TComInputBitstream::read (UInt uiNumberOfBits, UInt& ruiBits)
  * insert the contents of the bytealigned (and flushed) bitstream src
  * into this at byte position pos.
  */
-Void TComOutputBitstream::insertAt(const TComOutputBitstream& src, UInt pos)
+Void TComOutputBitstream::insertAt(const TComOutputBitstream& src, UInt pos)//将一段比特流插入当前比特流指定位置
 {
   UInt src_bits = src.getNumberOfWrittenBits();
-  assert(0 == src_bits % 8);
+  assert(0 == src_bits % 8);//确保待插入的比特流比特数为8的整数倍(bytealigned (and flushed) )
 
   vector<uint8_t>::iterator at = m_fifo.begin() + pos;
-  m_fifo.insert(at, src.m_fifo.begin(), src.m_fifo.end());
+  m_fifo.insert(at, src.m_fifo.begin(), src.m_fifo.end());//插入
 }
 
 UInt TComInputBitstream::readOutTrailingBits ()
@@ -355,15 +355,15 @@ UInt TComInputBitstream::readOutTrailingBits ()
 
  \param  uiNumBits    number of bits to transfer
  */
-TComInputBitstream *TComInputBitstream::extractSubstream( UInt uiNumBits )
+TComInputBitstream *TComInputBitstream::extractSubstream( UInt uiNumBits )//从当前比特流提取子流
 {
   UInt uiNumBytes = uiNumBits/8;
   TComInputBitstream *pResult = new TComInputBitstream;
 
   std::vector<uint8_t> &buf = pResult->getFifo();
-  buf.reserve((uiNumBits+7)>>3);
+  buf.reserve((uiNumBits+7)>>3);//reserve为vector预留大小 而不为vector的实际大小
 
-  if (m_num_held_bits == 0)
+  if (m_num_held_bits == 0)//无遗留比特 则可按整字节直接复制
   {
     std::size_t currentOutputBufferSize=buf.size();
     const UInt uiNumBytesToReadFromFifo = std::min<UInt>(uiNumBytes, (UInt)m_fifo.size() - m_fifo_idx);
@@ -371,7 +371,7 @@ TComInputBitstream *TComInputBitstream::extractSubstream( UInt uiNumBits )
     memcpy(&(buf[currentOutputBufferSize]), &(m_fifo[m_fifo_idx]), uiNumBytesToReadFromFifo); m_fifo_idx+=uiNumBytesToReadFromFifo;
     if (uiNumBytesToReadFromFifo != uiNumBytes)
     {
-      memset(&(buf[currentOutputBufferSize+uiNumBytesToReadFromFifo]), 0, uiNumBytes - uiNumBytesToReadFromFifo);
+      memset(&(buf[currentOutputBufferSize+uiNumBytesToReadFromFifo]), 0, uiNumBytes - uiNumBytesToReadFromFifo);//当前比特流不够读取  则剩余位置补0
     }
   }
   else

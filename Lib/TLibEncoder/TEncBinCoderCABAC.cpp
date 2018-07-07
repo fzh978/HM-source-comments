@@ -304,7 +304,7 @@ Void TEncBinCABAC::encodeBinsEP( UInt binValues, Int numBins )
   if (m_uiRange == 256)
   {
     encodeAlignedBinsEP(binValues, numBins);
-    return;
+    return;//!!!方法直接结束
   }
 
   while ( numBins > 8 )

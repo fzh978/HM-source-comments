@@ -71,7 +71,7 @@ public:
  * Model of a writable bitstream that accumulates bits to produce a
  * bytestream.
  */
-class TComOutputBitstream : public TComBitIf
+class TComOutputBitstream : public TComBitIf//TComOutputBitstream类表示需实际编码该比特流(最终写入文件)
 {
   /**
    * FIFO for storage of bytes.  Use:

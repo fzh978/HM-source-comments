@@ -367,7 +367,7 @@ Void TEncSampleAdaptiveOffset::decidePicParams(Bool* sliceEnabled, Int picTempLa
   }
 }
 
-Int64 TEncSampleAdaptiveOffset::getDistortion(const Int channelBitDepth, Int typeIdc, Int typeAuxInfo, Int* invQuantOffset, SAOStatData& statData)
+Int64 TEncSampleAdaptiveOffset::getDistortion(const Int channelBitDepth, Int typeIdc, Int typeAuxInfo, Int* invQuantOffset, SAOStatData& statData)//计算不同SAO模式下的失真delta_D=D_post-D_pre通常为负值
 {
   Int64 dist        = 0;
   Int shift         = 2 * DISTORTION_PRECISION_ADJUSTMENT(channelBitDepth - 8);
@@ -379,13 +379,13 @@ Int64 TEncSampleAdaptiveOffset::getDistortion(const Int channelBitDepth, Int typ
     case SAO_TYPE_EO_135:
     case SAO_TYPE_EO_45:
       {
-        for (Int offsetIdx=0; offsetIdx<NUM_SAO_EO_CLASSES; offsetIdx++)
+        for (Int offsetIdx=0; offsetIdx<NUM_SAO_EO_CLASSES; offsetIdx++)//该算法满足线性关系 故该Ctu的总相对失真可由不同类像素的相对失真相加得到
         {
-          dist += estSaoDist( statData.count[offsetIdx], invQuantOffset[offsetIdx], statData.diff[offsetIdx], shift);
+          dist += estSaoDist( statData.count[offsetIdx], invQuantOffset[offsetIdx], statData.diff[offsetIdx], shift);//此处的计算为快速算法
         }
       }
       break;
-    case SAO_TYPE_BO:
+    case SAO_TYPE_BO://BO模式同理
       {
         for (Int offsetIdx=typeAuxInfo; offsetIdx<typeAuxInfo+4; offsetIdx++)
         {
@@ -405,9 +405,9 @@ Int64 TEncSampleAdaptiveOffset::getDistortion(const Int channelBitDepth, Int typ
   return dist;
 }
 
-inline Int64 TEncSampleAdaptiveOffset::estSaoDist(Int64 count, Int64 offset, Int64 diffSum, Int shift)
+inline Int64 TEncSampleAdaptiveOffset::estSaoDist(Int64 count, Int64 offset, Int64 diffSum, Int shift)//此处的失真计算为快速算法 涉及简单的数学推导
 {
-  return (( count*offset*offset-diffSum*offset*2 ) >> shift);
+  return (( count*offset*offset-diffSum*offset*2 ) >> shift);//delta_D=Nm^2-2mE 
 }
 
 
@@ -590,7 +590,7 @@ Void TEncSampleAdaptiveOffset::deriveModeNewRDO(const BitDepths &bitDepths, Int 
     modeParam[compIdx].modeIdc = SAO_MODE_OFF;
     m_pcRDGoOnSbacCoder->resetBits();
     m_pcRDGoOnSbacCoder->codeSAOOffsetParam(compIdx, modeParam[compIdx], sliceEnabled[compIdx], bitDepths.recon[CHANNEL_TYPE_LUMA]);
-    modeDist[compIdx] = 0;
+    modeDist[compIdx] = 0;//off模式下deltaD=0 delta=D_post-D_pre 此处涉及率失真的快速算法
     minCost= m_lambda[compIdx]*((Double)m_pcRDGoOnSbacCoder->getNumberOfWrittenBits());
     m_pcRDGoOnSbacCoder->store(cabacCoderRDO[SAO_CABACSTATE_BLK_TEMP]);
     if(sliceEnabled[compIdx])
@@ -782,7 +782,7 @@ Void TEncSampleAdaptiveOffset::decideBlkParams(TComPic* pic, Bool* sliceEnabled,
 
   Double totalCost = 0; // Used if bTestSAODisableAtPictureLevel==true
 
-  for(Int ctuRsAddr=0; ctuRsAddr< m_numCTUsPic; ctuRsAddr++)
+  for(Int ctuRsAddr=0; ctuRsAddr< m_numCTUsPic; ctuRsAddr++)//依次处理该帧图像中的Ctu
   {
     if(allBlksDisabled)
     {
@@ -839,8 +839,8 @@ Void TEncSampleAdaptiveOffset::decideBlkParams(TComPic* pic, Bool* sliceEnabled,
 
     //apply reconstructed offsets
     reconParams[ctuRsAddr] = codedParams[ctuRsAddr];
-    reconstructBlkSAOParam(reconParams[ctuRsAddr], mergeList);
-    offsetCTU(ctuRsAddr, srcYuv, resYuv, reconParams[ctuRsAddr], pic);
+    reconstructBlkSAOParam(reconParams[ctuRsAddr], mergeList);//得到用于Ctu补偿的SAO参数(包括SAO_MODE_NEW模式下逆量化offset及merge模式下从相邻的参数融合块中得到SAO参数)
+    offsetCTU(ctuRsAddr, srcYuv, resYuv, reconParams[ctuRsAddr], pic);//SAO处理 为Ctu补偿计算出的偏移值
   } //ctuRsAddr
 
   if (!allBlksDisabled && (totalCost >= 0) && bTestSAODisableAtPictureLevel) //SAO has not beneficial in this case - disable it
@@ -893,7 +893,7 @@ Void TEncSampleAdaptiveOffset::getBlkStats(const ComponentID compIdx, const Int 
                         , Pel* srcBlk, Pel* orgBlk, Int srcStride, Int orgStride, Int width, Int height
                         , Bool isLeftAvail,  Bool isRightAvail, Bool isAboveAvail, Bool isBelowAvail, Bool isAboveLeftAvail, Bool isAboveRightAvail
                         , Bool isCalculatePreDeblockSamples
-                        )
+                        )//计算相对失真所需的数据 保存至statsDataTypes
 {
   if(m_lineBufWidth != m_maxCUWidth)
   {

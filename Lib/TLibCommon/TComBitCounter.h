@@ -52,7 +52,7 @@
 // ====================================================================================================================
 
 /// class for counting bits
-class TComBitCounter : public TComBitIf
+class TComBitCounter : public TComBitIf//TComBitCounter类型表示不需要实际编码比特流  只需计算编码后的bin位数
 {
 protected:
   UInt  m_uiBitCounter;

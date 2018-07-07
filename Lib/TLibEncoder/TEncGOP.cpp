@@ -1492,7 +1492,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     if (pcSlice->getSPS()->getUseSAO())//若允许使用SAO
     {
       Bool sliceEnabled[MAX_NUM_COMPONENT];
-      TComBitCounter tempBitCounter;
+      TComBitCounter tempBitCounter;//TComBitCounter类型表示值计算编码比特数 而不实际编码 
       tempBitCounter.resetBits();
       m_pcEncTop->getRDGoOnSbacCoder()->setBitstream(&tempBitCounter);
       m_pcSAO->initRDOCabacCoder(m_pcEncTop->getRDGoOnSbacCoder(), pcSlice);
@@ -1566,7 +1566,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       pcSlice->clearSubstreamSizes(  );//清除Substream
       {
         UInt numBinsCoded = 0;
-        m_pcSliceEncoder->encodeSlice(pcPic, &(substreamsOut[0]), numBinsCoded);//编码该slice 将该slice的比特流写入substreamsOut对应位置
+        m_pcSliceEncoder->encodeSlice(pcPic, &(substreamsOut[0]), numBinsCoded);//编码该slice 将该slice的比特流写入vector<TComOutputBitstream> substreamsOut(numSubstreams)中的对应子流
         binCountsInNalUnits+=numBinsCoded;//总的编码二进制数
       }
 
@@ -1578,7 +1578,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
         m_pcEntropyCoder->setBitstream(&nalu.m_Bitstream);
         m_pcEntropyCoder->encodeTilesWPPEntryPoint( pcSlice );//Write tiles and wavefront substreams sizes for the slice header (entry points).
 
-        // Append substreams...
+        // Append substreams...//substreamsOut包含整帧图像编码的子流
         TComOutputBitstream *pcOut = pcBitstreamRedirect;
         const Int numZeroSubstreamsAtStartOfSlice  = pcPic->getSubstreamForCtuAddr(pcSlice->getSliceSegmentCurStartCtuTsAddr(), false, pcSlice);//该slice的比特流在substreamsOut中的对应起始位置
         const Int numSubstreamsToCode  = pcSlice->getNumberOfSubstreamSizes()+1;//该slice比特流的所包含Substreams数
