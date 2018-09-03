@@ -1492,7 +1492,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
     if (pcSlice->getSPS()->getUseSAO())//若允许使用SAO
     {
       Bool sliceEnabled[MAX_NUM_COMPONENT];
-      TComBitCounter tempBitCounter;//TComBitCounter类型表示值计算编码比特数 而不实际编码 
+      TComBitCounter tempBitCounter;//TComBitCounter类型表示只计算编码比特数 而不实际编码 
       tempBitCounter.resetBits();
       m_pcEncTop->getRDGoOnSbacCoder()->setBitstream(&tempBitCounter);
       m_pcSAO->initRDOCabacCoder(m_pcEncTop->getRDGoOnSbacCoder(), pcSlice);
@@ -1566,7 +1566,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       pcSlice->clearSubstreamSizes(  );//清除Substream
       {
         UInt numBinsCoded = 0;
-        m_pcSliceEncoder->encodeSlice(pcPic, &(substreamsOut[0]), numBinsCoded);//编码该slice 将该slice的比特流写入vector<TComOutputBitstream> substreamsOut(numSubstreams)中的对应子流
+        m_pcSliceEncoder->encodeSlice(pcPic, &(substreamsOut[0]), numBinsCoded);//编码该slice(写入比特流) 将该slice的比特流写入vector<TComOutputBitstream> substreamsOut(numSubstreams)中的对应子流
         binCountsInNalUnits+=numBinsCoded;//总的编码二进制数
       }
 

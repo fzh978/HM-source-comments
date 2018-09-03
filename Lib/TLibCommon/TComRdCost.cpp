@@ -1070,7 +1070,7 @@ Distortion TComRdCost::xGetSSE16( DistParam* pcDtParam )//只计算16＊M内的S
   Int  iStrideCur = pcDtParam->iStrideCur;
 
   Distortion uiSum   = 0;
-  UInt       uiShift = DISTORTION_PRECISION_ADJUSTMENT((pcDtParam->bitDepth-8) << 1);
+  UInt       uiShift = DISTORTION_PRECISION_ADJUSTMENT((pcDtParam->bitDepth-8) << 1);//左移一位（＊２）是因为SSE的计算带平方　
 
   Intermediate_Int  iTemp;
 

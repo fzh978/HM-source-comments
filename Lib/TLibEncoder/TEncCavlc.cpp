@@ -881,10 +881,10 @@ Void TEncCavlc::codeSliceHeader         ( TComSlice* pcSlice )
     }
     if(pcSlice->getSPS()->getUseSAO())
     {
-       WRITE_FLAG( pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_LUMA), "slice_sao_luma_flag" );
+       WRITE_FLAG( pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_LUMA), "slice_sao_luma_flag" );//标识当前slice的亮度分量是否进行SAO操作
        if (chromaEnabled)
        {
-         WRITE_FLAG( pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_CHROMA), "slice_sao_chroma_flag" );
+         WRITE_FLAG( pcSlice->getSaoEnabledFlag(CHANNEL_TYPE_CHROMA), "slice_sao_chroma_flag" );//标识当前slice的色度分量是否进行SAO操作
        }
     }
 

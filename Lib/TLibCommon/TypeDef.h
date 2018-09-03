@@ -514,7 +514,7 @@ enum SAOEOClasses
 };
 
 #define NUM_SAO_BO_CLASSES_LOG2  5
-#define NUM_SAO_BO_CLASSES       (1<<NUM_SAO_BO_CLASSES_LOG2)
+#define NUM_SAO_BO_CLASSES       (1<<NUM_SAO_BO_CLASSES_LOG2)//CTU内的像素被划分到32个边带
 
 namespace Profile
 {
@@ -672,7 +672,7 @@ class TComPicSym;
 
 #define MAX_NUM_SAO_CLASSES  32  //(NUM_SAO_EO_GROUPS > NUM_SAO_BO_GROUPS)?NUM_SAO_EO_GROUPS:NUM_SAO_BO_GROUPS
 
-struct SAOOffset
+struct SAOOffset//保存SAO参数信息（待编码的SAO参数 需传至解码段）
 {
   SAOMode modeIdc; // NEW, MERGE, OFF
   Int typeIdc;     // union of SAOModeMergeTypes and SAOModeNewTypes, depending on modeIdc.
@@ -686,7 +686,7 @@ struct SAOOffset
   const SAOOffset& operator= (const SAOOffset& src);
 };
 
-struct SAOBlkParam
+struct SAOBlkParam//各分量的SAO参数信息
 {
 
   SAOBlkParam();

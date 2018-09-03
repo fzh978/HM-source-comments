@@ -63,10 +63,10 @@ enum SAOCabacStateLablesRDO //CABAC state labels
   NUM_SAO_CABACSTATE_LABELS
 };
 
-struct SAOStatData //data structure for SAO statistics
+struct SAOStatData //data structure for SAO statistics//计算失真的数据
 {
-  Int64 diff[MAX_NUM_SAO_CLASSES];
-  Int64 count[MAX_NUM_SAO_CLASSES];
+  Int64 diff[MAX_NUM_SAO_CLASSES];//原始像素与重构像素之间的差值之和
+  Int64 count[MAX_NUM_SAO_CLASSES];//像素个数
 
   SAOStatData(){}
   ~SAOStatData(){}

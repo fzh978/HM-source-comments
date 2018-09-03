@@ -259,7 +259,7 @@ Void TEncSampleAdaptiveOffset::SAOProcess(TComPic* pPic, Bool* sliceEnabled, con
 
   //block on/off
   SAOBlkParam* reconParams = new SAOBlkParam[m_numCTUsPic]; //temporary parameter buffer for storing reconstructed SAO parameters
-  decideBlkParams(pPic, sliceEnabled, m_statData, srcYuv, resYuv, reconParams, pPic->getPicSym()->getSAOBlkParam(), bTestSAODisableAtPictureLevel, saoEncodingRate, saoEncodingRateChroma);
+  decideBlkParams(pPic, sliceEnabled, m_statData, srcYuv, resYuv, reconParams, pPic->getPicSym()->getSAOBlkParam(), bTestSAODisableAtPictureLevel, saoEncodingRate, saoEncodingRateChroma);//率失真计算出个Ctu最优的SAO参数
   delete[] reconParams;
 }
 
@@ -695,7 +695,7 @@ Void TEncSampleAdaptiveOffset::deriveModeNewRDO(const BitDepths &bitDepths, Int 
 
   //----- re-gen rate & normalized cost----//
   modeNormCost = 0;
-  for(UInt componentIndex = COMPONENT_Y; componentIndex < numberOfComponents; componentIndex++)
+  for(UInt componentIndex = COMPONENT_Y; componentIndex < numberOfComponents; componentIndex++)//所有分量的率失真
   {
     modeNormCost += (Double)modeDist[componentIndex] / m_lambda[componentIndex];
   }
@@ -840,10 +840,10 @@ Void TEncSampleAdaptiveOffset::decideBlkParams(TComPic* pic, Bool* sliceEnabled,
     //apply reconstructed offsets
     reconParams[ctuRsAddr] = codedParams[ctuRsAddr];
     reconstructBlkSAOParam(reconParams[ctuRsAddr], mergeList);//得到用于Ctu补偿的SAO参数(包括SAO_MODE_NEW模式下逆量化offset及merge模式下从相邻的参数融合块中得到SAO参数)
-    offsetCTU(ctuRsAddr, srcYuv, resYuv, reconParams[ctuRsAddr], pic);//SAO处理 为Ctu补偿计算出的偏移值
+    offsetCTU(ctuRsAddr, srcYuv, resYuv, reconParams[ctuRsAddr], pic);//应用SAO参数 得到SAO处理后的重建图像
   } //ctuRsAddr
 
-  if (!allBlksDisabled && (totalCost >= 0) && bTestSAODisableAtPictureLevel) //SAO has not beneficial in this case - disable it
+  if (!allBlksDisabled && (totalCost >= 0) && bTestSAODisableAtPictureLevel) //SAO has not beneficial in this case - disable it//totalCsost>=0说明该帧图像使用SAO较不使用SAO率失真大
   {
     for(Int ctuRsAddr = 0; ctuRsAddr < m_numCTUsPic; ctuRsAddr++)
     {

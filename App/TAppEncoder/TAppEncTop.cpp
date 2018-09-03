@@ -512,7 +512,7 @@ Void TAppEncTop::encode()//根据给定配置参数编码视频流
     // write bistream to file if necessary
     if ( iNumEncoded > 0 )
     {
-      xWriteOutput(bitstreamFile, iNumEncoded, outputAccessUnits);//将比特流写入文件
+      xWriteOutput(bitstreamFile, iNumEncoded, outputAccessUnits);//将比特流及重建视频序列写入文件
       outputAccessUnits.clear();
     }
   }
