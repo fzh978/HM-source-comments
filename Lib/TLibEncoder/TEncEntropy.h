@@ -56,7 +56,7 @@ class SEI;
 // ====================================================================================================================
 
 /// entropy encoder pure class
-class TEncEntropyIf
+class TEncEntropyIf//抽象接口类　定义编码各种语法元素的函数(包括高层语法和属于slice的低层语法)
 {
 public:
   virtual Void  resetEntropy          (const TComSlice *pSlice)                = 0;
@@ -114,7 +114,7 @@ public:
 };
 
 /// entropy encoder class
-class TEncEntropy
+class TEncEntropy//TEncEntropy为CABAC编码器，用于编码属于slice的语法元素(区别于VPS SPS PPS等)　　含有一个TEncSbac类对象　该类利用TEncSbac对象从更高层的概念上进行编码　例如TU块　PU块
 {
 public:
   Void    setEntropyCoder           ( TEncEntropyIf* e );

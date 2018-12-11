@@ -63,7 +63,7 @@ class TEncTop;
 // ====================================================================================================================
 
 /// SBAC encoder class
-class TEncSbac : public TEncEntropyIf
+class TEncSbac : public TEncEntropyIf//TEncSbac类继承TEncEntropyIf抽象接口　完成对特定的语法元素的编码(二元化＋编码)
 {
 public:
   TEncSbac();

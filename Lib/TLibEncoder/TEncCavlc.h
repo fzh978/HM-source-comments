@@ -58,7 +58,7 @@ class TEncTop;
 // ====================================================================================================================
 
 /// CAVLC encoder class
-class TEncCavlc : public SyntaxElementWriter, public TEncEntropyIf
+class TEncCavlc : public SyntaxElementWriter, public TEncEntropyIf//CAVLC熵编码类　使用零阶哥伦布编码和定长编码　用来编码高层语法元素如VPS SPS PPS等
 {
 public:
   TEncCavlc();

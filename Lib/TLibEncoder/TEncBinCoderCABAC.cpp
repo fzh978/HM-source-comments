@@ -184,7 +184,7 @@ UInt TEncBinCABAC::getNumWrittenBits()
  * \param binValue   bin value
  * \param rcCtxModel context model
  */
-Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
+Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )//while用来编码多位
 {
   //{
   //  DTRACE_CABAC_VL( g_nSymbolCounter++ )
@@ -200,12 +200,12 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
 #endif
 
   m_uiBinsCoded += m_binCountIncrement;
-  rcCtxModel.setBinsCoded( 1 );
+  rcCtxModel.setBinsCoded( 1 );//待编码的bin为一位
 
   UInt  uiLPS   = TComCABACTables::sm_aucLPSTable[ rcCtxModel.getState() ][ ( m_uiRange >> 6 ) & 3 ];
   m_uiRange    -= uiLPS;
 
-  if( binValue != rcCtxModel.getMps() )
+  if( binValue != rcCtxModel.getMps() )//当前编码值为MSP
   {
     Int numBits = TComCABACTables::sm_aucRenormTable[ uiLPS >> 3 ];
     m_uiLow     = ( m_uiLow + m_uiRange ) << numBits;
@@ -214,7 +214,7 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
     m_bitsLeft -= numBits;
     testAndWriteOut();
   }
-  else
+  else//为LPS
   {
     rcCtxModel.updateMPS();
 
@@ -252,7 +252,7 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )
  *
  * \param binValue bin value
  */
-Void TEncBinCABAC::encodeBinEP( UInt binValue )
+Void TEncBinCABAC::encodeBinEP( UInt binValue )//旁路编码一位bin
 {
   if (false)
   {
@@ -271,7 +271,7 @@ Void TEncBinCABAC::encodeBinEP( UInt binValue )
   }
 
   m_uiLow <<= 1;
-  if( binValue )
+  if( binValue )//bin!=0
   {
     m_uiLow += m_uiRange;
   }
@@ -286,8 +286,8 @@ Void TEncBinCABAC::encodeBinEP( UInt binValue )
  * \param binValues bin values
  * \param numBins number of bins
  */
-Void TEncBinCABAC::encodeBinsEP( UInt binValues, Int numBins )
-{
+Void TEncBinCABAC::encodeBinsEP( UInt binValues, Int numBins )//对应定长二元化bins的等概率编码!!numBins指定定长二元化的长度
+{//numBins为编码位数 对应定长二元化bins的等概率编码　　
   m_uiBinsCoded += numBins & -m_binCountIncrement;
 
   if (false)
@@ -307,7 +307,7 @@ Void TEncBinCABAC::encodeBinsEP( UInt binValues, Int numBins )
     return;//!!!方法直接结束
   }
 
-  while ( numBins > 8 )
+  while ( numBins > 8 )//以位为单位处理
   {
     numBins -= 8;
     UInt pattern = binValues >> numBins;
@@ -318,7 +318,7 @@ Void TEncBinCABAC::encodeBinsEP( UInt binValues, Int numBins )
 
     testAndWriteOut();
   }
-
+　　
   m_uiLow <<= numBins;
   m_uiLow += m_uiRange * binValues;
   m_bitsLeft -= numBins;

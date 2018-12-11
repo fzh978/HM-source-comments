@@ -81,7 +81,7 @@ struct SAOStatData //data structure for SAO statistics//计算失真的数据
     ::memcpy(count, src.count, sizeof(Int64)*MAX_NUM_SAO_CLASSES);
     return *this;
   }
-  const SAOStatData& operator+= (const SAOStatData& src)
+  const SAOStatData& operator+= (const SAOStatData& src)//重载＋运算符
   {
     for(Int i=0; i< MAX_NUM_SAO_CLASSES; i++)
     {

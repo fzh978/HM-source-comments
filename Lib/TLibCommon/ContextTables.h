@@ -82,8 +82,8 @@
 #define NUM_SIG_FLAG_CTX_CHROMA      16       ///< number of context models for chroma sig flag
 
 //                                                                                                           |----Luma-----|  |---Chroma----|
-static const UInt significanceMapContextSetStart         [MAX_NUM_CHANNEL_TYPE][CONTEXT_NUMBER_OF_TYPES] = { {0,  9, 21, 27}, {0,  9, 12, 15} };
-static const UInt significanceMapContextSetSize          [MAX_NUM_CHANNEL_TYPE][CONTEXT_NUMBER_OF_TYPES] = { {9, 12,  6,  1}, {9,  3,  3,  1} };
+static const UInt significanceMapContextSetStart         [MAX_NUM_CHANNEL_TYPE][CONTEXT_NUMBER_OF_TYPES] = { {0,  9, 21, 27}, {0,  9, 12, 15} };//SIG的上下文可分为四类(本应为3类　加上Single context则为四类)　对应每一类的起始位置　
+static const UInt significanceMapContextSetSize          [MAX_NUM_CHANNEL_TYPE][CONTEXT_NUMBER_OF_TYPES] = { {9, 12,  6,  1}, {9,  3,  3,  1} };//每一类的上下文数
 static const UInt nonDiagonalScan8x8ContextOffset        [MAX_NUM_CHANNEL_TYPE]                          = {  6,               0              };
 static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE]                          = {  3,               0              };
 
@@ -164,7 +164,7 @@ static const UInt notFirstGroupNeighbourhoodContextOffset[MAX_NUM_CHANNEL_TYPE] 
 
 
 // ====================================================================================================================
-// Tables
+// Tables//每个语法元素的上下文都根据slice(I/P/B)分为3种！！！
 // ====================================================================================================================
 
 // initial probability for cu_transquant_bypass flag
@@ -328,7 +328,7 @@ INIT_QT_ROOT_CBF[NUMBER_OF_SLICE_TYPES][NUM_QT_ROOT_CBF_CTX] =
 //Initialisation for last-significant-position
 
 //                                           |------------------------------Luminance----------------------------------|
-#define BSLICE_LUMA_LAST_POSITION_CONTEXT     125, 110, 124, 110,  95,  94, 125, 111, 111,  79, 125, 126, 111, 111,  79
+#define BSLICE_LUMA_LAST_POSITION_CONTEXT     125, 110, 124, 110,  95,  94, 125, 111, 111,  79, 125, 126, 111, 111,  79 //总计15种　根据TB块的大小和prefix bins(最多9位　位置索引从0-8)的位置决定具体的上下文
 #define PSLICE_LUMA_LAST_POSITION_CONTEXT     125, 110,  94, 110,  95,  79, 125, 111, 110,  78, 110, 111, 111,  95,  94
 #define ISLICE_LUMA_LAST_POSITION_CONTEXT     110, 110, 124, 125, 140, 153, 125, 127, 140, 109, 111, 143, 127, 111,  79
 //                                           |------------------------------Chrominance--------------------------------|

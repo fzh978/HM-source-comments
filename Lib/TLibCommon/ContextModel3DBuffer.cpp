@@ -50,8 +50,8 @@ ContextModel3DBuffer::ContextModel3DBuffer( UInt uiSizeZ, UInt uiSizeY, UInt uiS
 , m_sizeXYZ( uiSizeX * uiSizeY * uiSizeZ )
 {
   // allocate 3D buffer
-  m_contextModel = basePtr;
-  count += m_sizeXYZ;
+  m_contextModel = basePtr;//上下文模型起始位置
+  count += m_sizeXYZ;//计算总的上下文模型数(加上该语法元素的上下文模型数)
 }
 
 // ====================================================================================================================
@@ -67,12 +67,12 @@ ContextModel3DBuffer::ContextModel3DBuffer( UInt uiSizeZ, UInt uiSizeY, UInt uiS
  */
 Void ContextModel3DBuffer::initBuffer( SliceType sliceType, Int qp, UChar* ctxModel )//将3Dbuffer中的每个上下文模型用给定的qp和ctxModel初始化
 {
-  ctxModel += sliceType * m_sizeXYZ;// sliceType对应的3D buffer上下文模型初始值
+  ctxModel += sliceType * m_sizeXYZ;// 根据slice类型确定上下文初始值模型的入口(I/P/B对应３种起始位置)
 
-  for ( Int n = 0; n < m_sizeXYZ; n++ )
+  for ( Int n = 0; n < m_sizeXYZ; n++ )//根据上下文模型的初始值该slice的所有上下文的MPS和LSP概率
   {
     m_contextModel[ n ].init( qp, ctxModel[ n ] );
-    m_contextModel[ n ].setBinsCoded( 0 );
+    m_contextModel[ n ].setBinsCoded( 0 );//初始化该上下文模型所编码过的bin数为零
   }
 }
 
@@ -83,7 +83,7 @@ Void ContextModel3DBuffer::initBuffer( SliceType sliceType, Int qp, UChar* ctxMo
  * \param  qp             input QP value
  * \param  ctxModel      given probability table
  */
-UInt ContextModel3DBuffer::calcCost( SliceType sliceType, Int qp, UChar* ctxModel )//计算3D buffer总的编码损耗
+UInt ContextModel3DBuffer::calcCost( SliceType sliceType, Int qp, UChar* ctxModel )//当下个slice为给定类型时该语法元素不同的（当前的）上下文模型编码下一bin的平均编码比特数
 {
   UInt cost = 0;
   ctxModel += sliceType * m_sizeXYZ;
@@ -96,7 +96,7 @@ UInt ContextModel3DBuffer::calcCost( SliceType sliceType, Int qp, UChar* ctxMode
     // Map the 64 CABAC states to their corresponding probability values
     static const Double aStateToProbLPS[] = {0.50000000, 0.47460857, 0.45050660, 0.42762859, 0.40591239, 0.38529900, 0.36573242, 0.34715948, 0.32952974, 0.31279528, 0.29691064, 0.28183267, 0.26752040, 0.25393496, 0.24103941, 0.22879875, 0.21717969, 0.20615069, 0.19568177, 0.18574449, 0.17631186, 0.16735824, 0.15885931, 0.15079198, 0.14313433, 0.13586556, 0.12896592, 0.12241667, 0.11620000, 0.11029903, 0.10469773, 0.09938088, 0.09433404, 0.08954349, 0.08499621, 0.08067986, 0.07658271, 0.07269362, 0.06900203, 0.06549791, 0.06217174, 0.05901448, 0.05601756, 0.05317283, 0.05047256, 0.04790942, 0.04547644, 0.04316702, 0.04097487, 0.03889405, 0.03691890, 0.03504406, 0.03326442, 0.03157516, 0.02997168, 0.02844963, 0.02700488, 0.02563349, 0.02433175, 0.02309612, 0.02192323, 0.02080991, 0.01975312, 0.01875000};
 
-    Double probLPS          = aStateToProbLPS[ m_contextModel[ n ].getState() ];//得到概率状态对应的出现LPS的概率值
+    Double probLPS          = aStateToProbLPS[ m_contextModel[ n ].getState() ];//从当前的CABCA状态得到概率状态对应的出现LPS的概率值
     Double prob0, prob1;
     if (m_contextModel[ n ].getMps()==1)//MPS为1
     {

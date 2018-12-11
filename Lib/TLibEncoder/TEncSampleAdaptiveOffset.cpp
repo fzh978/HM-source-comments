@@ -233,13 +233,13 @@ Void TEncSampleAdaptiveOffset::initRDOCabacCoder(TEncSbac* pcRDGoOnSbacCoder, TC
   m_pcRDGoOnSbacCoder->resetEntropy(pcSlice);
   m_pcRDGoOnSbacCoder->resetBits();
 
-  m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[SAO_CABACSTATE_PIC_INIT]);
+  m_pcRDGoOnSbacCoder->store( m_pppcRDSbacCoder[SAO_CABACSTATE_PIC_INIT]);//得到SAO　CABAC的初始状态
 }
 
 
 
 Void TEncSampleAdaptiveOffset::SAOProcess(TComPic* pPic, Bool* sliceEnabled, const Double *lambdas, const Bool bTestSAODisableAtPictureLevel, const Double saoEncodingRate, const Double saoEncodingRateChroma, Bool isPreDBFSamplesUsed )
-{
+{//SAO处理最顶层函数
   TComPicYuv* orgYuv= pPic->getPicYuvOrg();
   TComPicYuv* resYuv= pPic->getPicYuvRec();
   memcpy(m_lambda, lambdas, sizeof(m_lambda));
@@ -249,7 +249,7 @@ Void TEncSampleAdaptiveOffset::SAOProcess(TComPic* pPic, Bool* sliceEnabled, con
   srcYuv->extendPicBorder();
 
   //collect statistics
-  getStatistics(m_statData, orgYuv, srcYuv, pPic);
+  getStatistics(m_statData, orgYuv, srcYuv, pPic);//计算图像的统计信息并保存在m_statData　m_statData为３维数组　[][][]　分别为CTU位置　分量类型　SAO模式类型
   if(isPreDBFSamplesUsed)
   {
     addPreDBFStatistics(m_statData);
@@ -263,7 +263,7 @@ Void TEncSampleAdaptiveOffset::SAOProcess(TComPic* pPic, Bool* sliceEnabled, con
   delete[] reconParams;
 }
 
-Void TEncSampleAdaptiveOffset::getPreDBFStatistics(TComPic* pPic)
+Void TEncSampleAdaptiveOffset::getPreDBFStatistics(TComPic* pPic)//得到图像在方块滤波之前的统计信息
 {
   getStatistics(m_preDBFstatData, pPic->getPicYuvOrg(), pPic->getPicYuvRec(), pPic, true);
 }
@@ -283,7 +283,7 @@ Void TEncSampleAdaptiveOffset::addPreDBFStatistics(SAOStatData*** blkStats)
 }
 
 Void TEncSampleAdaptiveOffset::getStatistics(SAOStatData*** blkStats, TComPicYuv* orgYuv, TComPicYuv* srcYuv, TComPic* pPic, Bool isCalculatePreDeblockSamples)
-{
+{//计算图像的统计信息保存在blkStats
   Bool isLeftAvail,isRightAvail,isAboveAvail,isBelowAvail,isAboveLeftAvail,isAboveRightAvail,isBelowLeftAvail,isBelowRightAvail;
 
   const Int numberOfComponents = getNumberValidComponents(m_chromaFormatIDC);
@@ -412,7 +412,7 @@ inline Int64 TEncSampleAdaptiveOffset::estSaoDist(Int64 count, Int64 offset, Int
 
 
 inline Int TEncSampleAdaptiveOffset::estIterOffset(Int typeIdx, Double lambda, Int offsetInput, Int64 count, Int64 diffSum, Int shift, Int bitIncrease, Int64& bestDist, Double& bestCost, Int offsetTh )
-{
+{//根据RDO计算给定模式下给定像素类别的最优补偿值
   Int iterOffset, tempOffset;
   Int64 tempDist, tempRate;
   Double tempCost, tempMinCost;
@@ -420,18 +420,18 @@ inline Int TEncSampleAdaptiveOffset::estIterOffset(Int typeIdx, Double lambda, I
   iterOffset = offsetInput;
   // Assuming sending quantized value 0 results in zero offset and sending the value zero needs 1 bit. entropy coder can be used to measure the exact rate here.
   tempMinCost = lambda;
-  while (iterOffset != 0)
+  while (iterOffset != 0)//补偿值的绝对值使用TrU二元化(可查阅Tru相关资料)!!　比特数为补偿值加１(0对应１位比特数)
   {
     // Calculate the bits required for signaling the offset
-    tempRate = (typeIdx == SAO_TYPE_BO) ? (abs((Int)iterOffset)+2) : (abs((Int)iterOffset)+1);
-    if (abs((Int)iterOffset)==offsetTh) //inclusive
+    tempRate = (typeIdx == SAO_TYPE_BO) ? (abs((Int)iterOffset)+2) : (abs((Int)iterOffset)+1);//BO模式下需增加一位来表明补偿值的符号，而EO模式则可根据像素类型推断出符号
+    if (abs((Int)iterOffset)==offsetTh) //inclusive//TrU二元化时　当补偿值等于CMax时　比特数不会再增加(最后一位变为１而不增加长度)
     {
       tempRate --;
     }
     // Do the dequantization before distortion calculation
     tempOffset  = iterOffset << bitIncrease;
     tempDist    = estSaoDist( count, tempOffset, diffSum, shift);
-    tempCost    = ((Double)tempDist + lambda * (Double) tempRate);
+    tempCost    = ((Double)tempDist + lambda * (Double) tempRate);//率失真损耗
     if(tempCost < tempMinCost)
     {
       tempMinCost = tempCost;
@@ -439,21 +439,21 @@ inline Int TEncSampleAdaptiveOffset::estIterOffset(Int typeIdx, Double lambda, I
       bestDist = tempDist;
       bestCost = tempCost;
     }
-    iterOffset = (iterOffset > 0) ? (iterOffset-1):(iterOffset+1);
+    iterOffset = (iterOffset > 0) ? (iterOffset-1):(iterOffset+1);//补偿值(绝对值)从大到小遍历
   }
   return offsetOutput;
 }
 
 Void TEncSampleAdaptiveOffset::deriveOffsets(ComponentID compIdx, const Int channelBitDepth, Int typeIdc, SAOStatData& statData, Int* quantOffsets, Int& typeAuxInfo)
-{
+{//计算给定模式下(EO/BO)的最优补偿值　并保存在quantOffsets
   Int bitDepth = channelBitDepth;
   Int shift    = 2 * DISTORTION_PRECISION_ADJUSTMENT(bitDepth-8);
-  Int offsetTh = TComSampleAdaptiveOffset::getMaxOffsetQVal(channelBitDepth);  //inclusive
+  Int offsetTh = TComSampleAdaptiveOffset::getMaxOffsetQVal(channelBitDepth);  //inclusive//允许的补偿值最大值
 
   ::memset(quantOffsets, 0, sizeof(Int)*MAX_NUM_SAO_CLASSES);
 
   //derive initial offsets
-  Int numClasses = (typeIdc == SAO_TYPE_BO)?((Int)NUM_SAO_BO_CLASSES):((Int)NUM_SAO_EO_CLASSES);
+  Int numClasses = (typeIdc == SAO_TYPE_BO)?((Int)NUM_SAO_BO_CLASSES):((Int)NUM_SAO_EO_CLASSES);//EO模式有5种像素类别　BO模式有32种像素类别
   for(Int classIdx=0; classIdx< numClasses; classIdx++)
   {
     if( (typeIdc != SAO_TYPE_BO) && (classIdx==SAO_CLASS_EO_PLAIN)  )
@@ -469,7 +469,7 @@ Void TEncSampleAdaptiveOffset::deriveOffsets(ComponentID compIdx, const Int chan
     quantOffsets[classIdx] = (Int) xRoundIbdi(bitDepth, (Double)( statData.diff[classIdx]<<(bitDepth-8))
                                                                   /
                                                           (Double)( statData.count[classIdx]<< m_offsetStepLog2[compIdx])
-                                               );
+                                               );//利用统计信息计算初始补偿值　并将补偿值取整　该类像素的初始补偿值为:重建像素与原始像素的总差异值除以总像素数
     quantOffsets[classIdx] = Clip3(-offsetTh, offsetTh, quantOffsets[classIdx]);
   }
 
@@ -483,8 +483,8 @@ Void TEncSampleAdaptiveOffset::deriveOffsets(ComponentID compIdx, const Int chan
       {
         Int64 classDist;
         Double classCost;
-        for(Int classIdx=0; classIdx<NUM_SAO_EO_CLASSES; classIdx++)
-        {
+        for(Int classIdx=0; classIdx<NUM_SAO_EO_CLASSES; classIdx++)//计算EO模式下４种像素的最优补偿值
+        {//实验表明超过90%的补偿值的符号与像素类别相匹配　故限制补偿的符号(类别１２大于等于零　３４小于等于零)，解码段可直接根据像素类型推断出补偿值的符号　从而减少EO模式下的编码补偿值的比特数
           if(classIdx==SAO_CLASS_EO_FULL_VALLEY && quantOffsets[classIdx] < 0)
           {
             quantOffsets[classIdx] =0;
@@ -503,7 +503,7 @@ Void TEncSampleAdaptiveOffset::deriveOffsets(ComponentID compIdx, const Int chan
           }
 
           if( quantOffsets[classIdx] != 0 ) //iterative adjustment only when derived offset is not zero
-          {
+          {//计算EO模式下给定像素类别的最优补偿值　并保存至quantOffsets
             quantOffsets[classIdx] = estIterOffset( typeIdc, m_lambda[compIdx], quantOffsets[classIdx], statData.count[classIdx], statData.diff[classIdx], shift, m_offsetStepLog2[compIdx], classDist , classCost , offsetTh );
           }
         }
@@ -523,7 +523,7 @@ Void TEncSampleAdaptiveOffset::deriveOffsets(ComponentID compIdx, const Int chan
           {
             quantOffsets[classIdx] = estIterOffset( typeIdc, m_lambda[compIdx], quantOffsets[classIdx], statData.count[classIdx], statData.diff[classIdx], shift, m_offsetStepLog2[compIdx], distBOClasses[classIdx], costBOClasses[classIdx], offsetTh );
           }
-        }
+        }//计算每个边带的最优补偿值
 
         //decide the starting band index
         Double minCost = MAX_DOUBLE, cost;
@@ -539,7 +539,7 @@ Void TEncSampleAdaptiveOffset::deriveOffsets(ComponentID compIdx, const Int chan
             minCost = cost;
             typeAuxInfo = band;
           }
-        }
+        }//BO模式规定只能选取四个连续的边带做补偿　通过RDO遍历计算出最优的连续４个边带的位置
         //clear those unused classes
         Int clearQuantOffset[NUM_SAO_BO_CLASSES];
         ::memset(clearQuantOffset, 0, sizeof(Int)*NUM_SAO_BO_CLASSES);
@@ -610,7 +610,7 @@ Void TEncSampleAdaptiveOffset::deriveModeNewRDO(const BitDepths &bitDepths, Int 
         dist[compIdx] = getDistortion(bitDepths.recon[CHANNEL_TYPE_LUMA], testOffset[compIdx].typeIdc, testOffset[compIdx].typeAuxInfo, invQuantOffset, blkStats[ctuRsAddr][compIdx][typeIdc]);
 
         //get rate
-        m_pcRDGoOnSbacCoder->load(cabacCoderRDO[SAO_CABACSTATE_BLK_MID]);
+        m_pcRDGoOnSbacCoder->load(cabacCoderRDO[SAO_CABACSTATE_BLK_MID]);//此处的CABAC状态为编码merge flags后的状态
         m_pcRDGoOnSbacCoder->resetBits();
         m_pcRDGoOnSbacCoder->codeSAOOffsetParam(compIdx, testOffset[compIdx], sliceEnabled[compIdx], bitDepths.recon[CHANNEL_TYPE_LUMA]);
         Int rate = m_pcRDGoOnSbacCoder->getNumberOfWrittenBits();
@@ -625,7 +625,7 @@ Void TEncSampleAdaptiveOffset::deriveModeNewRDO(const BitDepths &bitDepths, Int 
       }
     }
     m_pcRDGoOnSbacCoder->load(cabacCoderRDO[SAO_CABACSTATE_BLK_TEMP]);
-    m_pcRDGoOnSbacCoder->store(cabacCoderRDO[SAO_CABACSTATE_BLK_MID]);
+    m_pcRDGoOnSbacCoder->store(cabacCoderRDO[SAO_CABACSTATE_BLK_MID]);//将编码最优的亮度SAO参数后的CABAC状态保存在cabacCoderRDO[SAO_CABACSTATE_BLK_MID]
   }
 
   //------ chroma --------//
@@ -633,7 +633,7 @@ Void TEncSampleAdaptiveOffset::deriveModeNewRDO(const BitDepths &bitDepths, Int 
   cost = 0;
   previousWrittenBits = 0;
   m_pcRDGoOnSbacCoder->resetBits();
-  for(UInt componentIndex = COMPONENT_Cb; componentIndex < numberOfComponents; componentIndex++)
+  for(UInt componentIndex = COMPONENT_Cb; componentIndex < numberOfComponents; componentIndex++)//计算Cr Cb不使用SAO时的率失真　作为初始的率失真
   {
     const ComponentID component = ComponentID(componentIndex);
 
@@ -650,9 +650,9 @@ Void TEncSampleAdaptiveOffset::deriveModeNewRDO(const BitDepths &bitDepths, Int 
 
   //doesn't need to store cabac status here since the whole CTU parameters will be re-encoded at the end of this function
 
-  for(Int typeIdc=0; typeIdc< NUM_SAO_NEW_TYPES; typeIdc++)
+  for(Int typeIdc=0; typeIdc< NUM_SAO_NEW_TYPES; typeIdc++)//计算cr cb的最优SAO参数
   {
-    m_pcRDGoOnSbacCoder->load(cabacCoderRDO[SAO_CABACSTATE_BLK_MID]);
+    m_pcRDGoOnSbacCoder->load(cabacCoderRDO[SAO_CABACSTATE_BLK_MID]);//此处CABAC状态为编码完LUMA分量的SAO参数的状态(因为chroma的sao参数是紧跟luam的sao参数后编码的)
     m_pcRDGoOnSbacCoder->resetBits();
     previousWrittenBits = 0;
     cost = 0;
@@ -695,7 +695,7 @@ Void TEncSampleAdaptiveOffset::deriveModeNewRDO(const BitDepths &bitDepths, Int 
 
   //----- re-gen rate & normalized cost----//
   modeNormCost = 0;
-  for(UInt componentIndex = COMPONENT_Y; componentIndex < numberOfComponents; componentIndex++)//所有分量的率失真
+  for(UInt componentIndex = COMPONENT_Y; componentIndex < numberOfComponents; componentIndex++)//保存所有分量的率失真
   {
     modeNormCost += (Double)modeDist[componentIndex] / m_lambda[componentIndex];
   }

@@ -919,7 +919,7 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
   //}
 }
 
-Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstreams, UInt &numBinsCoded )//编码一个SS??
+Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstreams, UInt &numBinsCoded )//编码一个SS
 {
   TComSlice *const pcSlice           = pcPic->getSlice(getSliceIdx());
 
@@ -932,8 +932,8 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
 
   // initialise entropy coder for the slice
   m_pcSbacCoder->init( (TEncBinIf*)m_pcBinCABAC );
-  m_pcEntropyCoder->setEntropyCoder ( m_pcSbacCoder );
-  m_pcEntropyCoder->resetEntropy    ( pcSlice );
+  m_pcEntropyCoder->setEntropyCoder ( m_pcSbacCoder );//设置m_pcEntropyCoder的编码器为m_pcSbacCoder
+  m_pcEntropyCoder->resetEntropy    ( pcSlice );//设置该slice的初始CABAC状态
 
   numBinsCoded = 0;
   m_pcBinCABAC->setBinCountingEnableFlag( true );
@@ -951,7 +951,7 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
 #endif
 
 
-  if (depSliceSegmentsEnabled)//若允许使用ss
+  if (depSliceSegmentsEnabled)//若允许使用依赖的ss
   {
     // modify initial contexts with previous slice segment if this is a dependent slice.
     const UInt ctuRsAddr        = pcPic->getPicSym()->getCtuTsToRsAddrMap( startCtuTsAddr );
@@ -985,10 +985,10 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
     m_pcEntropyCoder->setBitstream( &pcSubstreams[uiSubStrm] );
 
     // set up CABAC contexts' state for this CTU
-    if (ctuRsAddr == firstCtuRsAddrOfTile)//该Ctu为tile中第一个Ctu resetEntropy
+    if (ctuRsAddr == firstCtuRsAddrOfTile)//该Ctu为tile中第一个Ctu 则重置该CTU的CABAC状态为slice的初始CABAC状态
     {
       if (ctuTsAddr != startCtuTsAddr) // if it is the first CTU, then the entropy coder has already been reset
-      {
+      {//若为slice的第一个CTU则无需重置　因为CABAC初始状态已在函数开头重置过
         m_pcEntropyCoder->resetEntropy(pcSlice);
       }
     }
@@ -1097,7 +1097,7 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
 
   if (pcSlice->getPPS()->getCabacInitPresentFlag() && !pcSlice->getPPS()->getDependentSliceSegmentsEnabledFlag())
   {//
-    m_encCABACTableIdx = m_pcEntropyCoder->determineCabacInitIdx(pcSlice);//为下一个slice选择较优的cabac初始化索引 optimise cabac_init during compress slice to improve multi-slice operation
+    m_encCABACTableIdx = m_pcEntropyCoder->determineCabacInitIdx(pcSlice);//为下一个slice选择较优的cabac初始化索引入口 optimise cabac_init during compress slice to improve multi-slice operation
   }                                                                       //This index is used for the next P/B slice when cabac_init_present_flag is true
   else
   {

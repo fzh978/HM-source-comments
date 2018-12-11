@@ -102,7 +102,7 @@ TEncSbac::~TEncSbac()
 // Public member functions
 // ====================================================================================================================
 
-Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
+Void TEncSbac::resetEntropy           (const TComSlice *pSlice)//给定的slice的初始CABAC状态
 {
   Int  iQp              = pSlice->getSliceQp();
   SliceType eSliceType  = pSlice->getSliceType();
@@ -110,7 +110,7 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
   SliceType encCABACTableIdx = pSlice->getEncCABACTableIdx();
   if (!pSlice->isIntra() && (encCABACTableIdx==B_SLICE || encCABACTableIdx==P_SLICE) && pSlice->getPPS()->getCabacInitPresentFlag())
   {
-    eSliceType = encCABACTableIdx;
+    eSliceType = encCABACTableIdx;//指明上下文模型的帧类型的对应的入口
   }
 
   m_cCUSplitFlagSCModel.initBuffer                ( eSliceType, iQp, (UChar*)INIT_SPLIT_FLAG );
@@ -159,8 +159,8 @@ Void TEncSbac::resetEntropy           (const TComSlice *pSlice)
  * If current slice type is P/B then it determines the distance of initialisation type 1 and 2 from the current CABAC states and
  * stores the index of the closest table.  This index is used for the next P/B slice when cabac_init_present_flag is true.
  */
-SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)
-{
+SliceType TEncSbac::determineCabacInitIdx(const TComSlice *pSlice)//P帧和B帧可以从Ｐ帧和Ｂ的CABAC状态中选择(P帧既可以选择P帧的初始化状态入口也可以选择B帧的初始化状态入口　B帧同理)　
+{//计算选出二者中较优的状态入口　并用cabac_init_flag标识
   Int  qp              = pSlice->getSliceQp();
 
   if (!pSlice->isIntra())
@@ -1545,7 +1545,7 @@ Void TEncSbac::codeSAOSign( UInt code )
   m_pcBinIf->encodeBinEP( code );
 }
 
-Void TEncSbac::codeSaoMaxUvlc    ( UInt code, UInt maxSymbol )
+Void TEncSbac::codeSaoMaxUvlc    ( UInt code, UInt maxSymbol )//编码SAO补偿值的绝对值　Tru二元化　旁路等概率编码
 {
   if (maxSymbol == 0)
   {
@@ -1582,14 +1582,14 @@ Void TEncSbac::codeSaoUflc       ( UInt uiLength, UInt uiCode )
 
 /** Code SAO merge flags
  */
-Void TEncSbac::codeSaoMerge       ( UInt uiCode )
+Void TEncSbac::codeSaoMerge       ( UInt uiCode )//常规编码
 {
   m_pcBinIf->encodeBin(((uiCode == 0) ? 0 : 1),  m_cSaoMergeSCModel.get( 0, 0, 0 ));
 }
 
 /** Code SAO type index
  */
-Void TEncSbac::codeSaoTypeIdx       ( UInt uiCode)
+Void TEncSbac::codeSaoTypeIdx       ( UInt uiCode)//将二元化和编码过程放在了一起
 {
   if (uiCode == 0)
   {
@@ -1661,13 +1661,13 @@ Void TEncSbac::codeSAOOffsetParam(ComponentID compIdx, SAOOffset& ctbParam, Bool
       {
         if(offset[i] != 0)
         {
-          codeSAOSign((offset[i]< 0)?1:0);
+          codeSAOSign((offset[i]< 0)?1:0);//BO模式需要编码补偿值的符号
         }
       }
 
-      codeSaoUflc(NUM_SAO_BO_CLASSES_LOG2, ctbParam.typeAuxInfo ); //sao_band_position
+      codeSaoUflc(NUM_SAO_BO_CLASSES_LOG2, ctbParam.typeAuxInfo ); //sao_band_position//编码BO下边带的位置
     }
-    else //EO
+    else //EO//EO模式下编码EO模式的类别(不同角度的EO模式)
     {
       if(bIsFirstCompOfChType)
       {

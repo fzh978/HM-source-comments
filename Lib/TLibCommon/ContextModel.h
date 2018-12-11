@@ -54,7 +54,7 @@
 // ====================================================================================================================
 
 /// context model class
-class ContextModel
+class ContextModel//m_ucState的６bit对应63个LPS概率状态　1bit对应MPS的值
 {
 public:
   ContextModel  ()                        { m_ucState = 0; m_binsCoded = 0; }
@@ -91,7 +91,7 @@ public:
 
 private:
   UChar         m_ucState;                                                                  ///< internal state variable
-
+　//静态成员变量
   static const  UInt  m_totalStates = (1 << CONTEXT_STATE_BITS) * 2; //*2 for MPS = [0|1]
   static const  UChar m_aucNextStateMPS[m_totalStates];
   static const  UChar m_aucNextStateLPS[m_totalStates];
