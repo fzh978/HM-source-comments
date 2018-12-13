@@ -54,7 +54,7 @@
 // Constructor / destructor / create / destroy
 // ====================================================================================================================
 
-TEncSbac::TEncSbac()
+TEncSbac::TEncSbac()//TEncSbac构造函数　依次初始化每个语法元素的上下文模型　并依次放在m_contextModelsp[MAX_NUM_CTX_MOD]数组中
 // new structure here
 : m_pcBitIf                            ( NULL )
 , m_pcBinIf                            ( NULL )
@@ -1597,7 +1597,7 @@ Void TEncSbac::codeSaoTypeIdx       ( UInt uiCode)//将二元化和编码过程�
   }
   else
   {
-    m_pcBinIf->encodeBin( 1, m_cSaoTypeIdxSCModel.get( 0, 0, 0 ) );
+    m_pcBinIf->encodeBin( 1, m_cSaoTypeIdxSCModel.get( 0, 0, 0 ) );//只有一个bin用常规编码
     m_pcBinIf->encodeBinEP( uiCode == 1 ? 0 : 1 );
   }
 }
@@ -1630,7 +1630,7 @@ Void TEncSbac::codeSAOOffsetParam(ComponentID compIdx, SAOOffset& ctbParam, Bool
       uiSymbol = 2;
     }
     codeSaoTypeIdx(uiSymbol);
-  }
+  }//编码SAO模式类型
 
   if(ctbParam.modeIdc == SAO_MODE_NEW)
   {
@@ -1665,7 +1665,7 @@ Void TEncSbac::codeSAOOffsetParam(ComponentID compIdx, SAOOffset& ctbParam, Bool
         }
       }
 
-      codeSaoUflc(NUM_SAO_BO_CLASSES_LOG2, ctbParam.typeAuxInfo ); //sao_band_position//编码BO下边带的位置
+      codeSaoUflc(NUM_SAO_BO_CLASSES_LOG2, ctbParam.typeAuxInfo ); //sao_band_position//编码BO模式下边带的位置
     }
     else //EO//EO模式下编码EO模式的类别(不同角度的EO模式)
     {
@@ -1685,7 +1685,7 @@ Void TEncSbac::codeSAOBlkParam(SAOBlkParam& saoBlkParam, const BitDepths &bitDep
                               , Bool leftMergeAvail
                               , Bool aboveMergeAvail
                               , Bool onlyEstMergeInfo // = false
-                              )
+                              )//编码SAO参数
 {
 
   Bool isLeftMerge = false;
@@ -1710,7 +1710,7 @@ Void TEncSbac::codeSAOBlkParam(SAOBlkParam& saoBlkParam, const BitDepths &bitDep
 
   if(!isLeftMerge && !isAboveMerge) //not merge mode
   {
-    for(Int compIdx=0; compIdx < MAX_NUM_COMPONENT; compIdx++)
+    for(Int compIdx=0; compIdx < MAX_NUM_COMPONENT; compIdx++)//编码SAO的补偿值(包括与补偿值相关的参数)
     {
       codeSAOOffsetParam(ComponentID(compIdx), saoBlkParam[compIdx], sliceEnabled[compIdx], bitDepths.recon[toChannelType(ComponentID(compIdx))]);
     }
@@ -1719,12 +1719,12 @@ Void TEncSbac::codeSAOBlkParam(SAOBlkParam& saoBlkParam, const BitDepths &bitDep
 
 /*!
  ****************************************************************************
- * \brief
+ * \brief//通过固定概率状态　估计编码bins码所需的比特数(由编码一位bin的比特数(由look-up表得到)乘上对应的bin个数　从而只需统计bins中0/1的个数就可得到近似的编码比特数　　从而在RDO阶段无需真正进行CABCA常规编码)　研究表明可提高吞吐量降低编码耗时而对编码效率基本没有影响　
  *   estimate bit cost for CBP, significant map and significant coefficients
  ****************************************************************************
  */
-Void TEncSbac::estBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType )
-{
+Void TEncSbac::estBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, ChannelType chType )//通过查阅表估计不同语法元素的在不同CABCA编码器(不同编码器之间概率状态不共享　单独的某一编码器概率状态固定不变)编码一位bin所需的比特数(保存在pcEstBitsSbac结构体中以便后续直接使用)
+{//该函数以Tu为单位执行　 width, height为Tu的宽和高
   estCBFBit( pcEstBitsSbac );
 
   estSignificantCoeffGroupMapBit( pcEstBitsSbac, chType );
@@ -1736,7 +1736,7 @@ Void TEncSbac::estBit( estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, 
   estLastSignificantPositionBit( pcEstBitsSbac, width, height, chType );
 
   // encode significant coefficients
-  estSignificantCoefficientsBit( pcEstBitsSbac, chType );
+  estSignificantCoefficientsBit( pcEstBitsSbac, chType );//以上五个函数建立不同语法元素分别对应的不同概率状态模型的bin-to-bits表　五个函数执行过程相似　不再细述
 
   memcpy(pcEstBitsSbac->golombRiceAdaptationStatistics, m_golombRiceAdaptationStatistics, (sizeof(UInt) * RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS));
 }
@@ -1751,15 +1751,15 @@ Void TEncSbac::estCBFBit( estBitsSbacStruct* pcEstBitsSbac )
 {
   ContextModel *pCtx = m_cCUQtCbfSCModel.get( 0 );
 
-  for( UInt uiCtxInc = 0; uiCtxInc < (NUM_QT_CBF_CTX_SETS * NUM_QT_CBF_CTX_PER_SET); uiCtxInc++ )
+  for( UInt uiCtxInc = 0; uiCtxInc < (NUM_QT_CBF_CTX_SETS * NUM_QT_CBF_CTX_PER_SET); uiCtxInc++ )//查表得到CUQtCbf各个概率状态模型下(一个概率状态模型对应一个CABAC)的编码一位bin的比特数
   {
-    pcEstBitsSbac->blockCbpBits[ uiCtxInc ][ 0 ] = pCtx[ uiCtxInc ].getEntropyBits( 0 );
-    pcEstBitsSbac->blockCbpBits[ uiCtxInc ][ 1 ] = pCtx[ uiCtxInc ].getEntropyBits( 1 );
+    pcEstBitsSbac->blockCbpBits[ uiCtxInc ][ 0 ] = pCtx[ uiCtxInc ].getEntropyBits( 0 );//bin为０时
+    pcEstBitsSbac->blockCbpBits[ uiCtxInc ][ 1 ] = pCtx[ uiCtxInc ].getEntropyBits( 1 );//bin为０时
   }
 
   pCtx = m_cCUQtRootCbfSCModel.get( 0 );
 
-  for( UInt uiCtxInc = 0; uiCtxInc < 4; uiCtxInc++ )
+  for( UInt uiCtxInc = 0; uiCtxInc < 4; uiCtxInc++ )//CUQtRootCbft同上
   {
     pcEstBitsSbac->blockRootCbpBits[ uiCtxInc ][ 0 ] = pCtx[ uiCtxInc ].getEntropyBits( 0 );
     pcEstBitsSbac->blockRootCbpBits[ uiCtxInc ][ 1 ] = pCtx[ uiCtxInc ].getEntropyBits( 1 );
@@ -1777,9 +1777,9 @@ Void TEncSbac::estSignificantCoeffGroupMapBit( estBitsSbacStruct* pcEstBitsSbac,
 {
   Int firstCtx = 0, numCtx = NUM_SIG_CG_FLAG_CTX;
 
-  for ( Int ctxIdx = firstCtx; ctxIdx < firstCtx + numCtx; ctxIdx++ )
+  for ( Int ctxIdx = firstCtx; ctxIdx < firstCtx + numCtx; ctxIdx++ )//各个概率状态模型
   {
-    for( UInt uiBin = 0; uiBin < 2; uiBin++ )
+    for( UInt uiBin = 0; uiBin < 2; uiBin++ )//bin分别为0,1时
     {
       pcEstBitsSbac->significantCoeffGroupBits[ ctxIdx ][ uiBin ] = m_cCUSigCoeffGroupSCModel.get(  0, chType, ctxIdx ).getEntropyBits( uiBin );
     }
@@ -1806,7 +1806,7 @@ Void TEncSbac::estSignificantMapBit( estBitsSbacStruct* pcEstBitsSbac, Int width
 
   Int firstCtx = MAX_INT;
   Int numCtx   = MAX_INT;
-
+  //SignificantMap　不同大小的TB块使用不同概率状态模型
   if      ((width == 4) && (height == 4))
   {
     firstCtx = significanceMapContextSetStart[chType][CONTEXT_TYPE_4x4];
@@ -1817,7 +1817,7 @@ Void TEncSbac::estSignificantMapBit( estBitsSbacStruct* pcEstBitsSbac, Int width
     firstCtx = significanceMapContextSetStart[chType][CONTEXT_TYPE_8x8];
     numCtx   = significanceMapContextSetSize [chType][CONTEXT_TYPE_8x8];
   }
-  else
+  else//16*16和32*32共享概率状态模型
   {
     firstCtx = significanceMapContextSetStart[chType][CONTEXT_TYPE_NxN];
     numCtx   = significanceMapContextSetSize [chType][CONTEXT_TYPE_NxN];
@@ -1833,7 +1833,7 @@ Void TEncSbac::estSignificantMapBit( estBitsSbacStruct* pcEstBitsSbac, Int width
 
     if (firstCtx > 0)
     {
-      for( UInt bin = 0; bin < 2; bin++ ) //always get the DC
+      for( UInt bin = 0; bin < 2; bin++ ) //always get the DC//( 0, 0, contextOffset )为DC对应的概率状态模型的索引
       {
         pcEstBitsSbac->significantBits[ contextOffset ][ bin ] = m_cCUSigSCModel.get( 0, 0, contextOffset ).getEntropyBits( bin );
       }
@@ -1841,13 +1841,13 @@ Void TEncSbac::estSignificantMapBit( estBitsSbacStruct* pcEstBitsSbac, Int width
 
     // This could be made optional, but would require this function to have knowledge of whether the
     // TU is transform-skipped or transquant-bypassed and whether the SPS flag is set
-    for( UInt bin = 0; bin < 2; bin++ )
+    for( UInt bin = 0; bin < 2; bin++ )//transform-skipped or transquant-bypassed
     {
       const Int ctxIdx = significanceMapContextSetStart[chType][CONTEXT_TYPE_SINGLE];
       pcEstBitsSbac->significantBits[ contextOffset + ctxIdx ][ bin ] = m_cCUSigSCModel.get( 0, 0, (contextOffset + ctxIdx) ).getEntropyBits( bin );
     }
 
-    for ( Int ctxIdx = firstCtx; ctxIdx < firstCtx + numCtx; ctxIdx++ )
+    for ( Int ctxIdx = firstCtx; ctxIdx < firstCtx + numCtx; ctxIdx++ )//该TB块对应的不同概率状态模型
     {
       for( UInt uiBin = 0; uiBin < 2; uiBin++ )
       {

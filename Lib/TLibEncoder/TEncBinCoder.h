@@ -46,7 +46,7 @@
 
 class TEncBinCABAC;
 
-class TEncBinIf
+class TEncBinIf//CABAC编码器抽象接口
 {
 public:
   virtual Void  init              ( TComBitIf* pcTComBitIf )                  = 0;

@@ -89,7 +89,7 @@ private:
   Void testAndWriteOut();
   Void writeOut();
 
-  TComBitIf*          m_pcTComBitIf;
+  TComBitIf*          m_pcTComBitIf;//处理编码后的bits
   UInt                m_uiLow;
   UInt                m_uiRange;
   UInt                m_bufferedByte;

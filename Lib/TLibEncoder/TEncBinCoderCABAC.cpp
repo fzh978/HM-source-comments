@@ -205,7 +205,7 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )//while�
   UInt  uiLPS   = TComCABACTables::sm_aucLPSTable[ rcCtxModel.getState() ][ ( m_uiRange >> 6 ) & 3 ];
   m_uiRange    -= uiLPS;
 
-  if( binValue != rcCtxModel.getMps() )//当前编码值为MSP
+  if( binValue != rcCtxModel.getMps() )//当前编码值为LSP
   {
     Int numBits = TComCABACTables::sm_aucRenormTable[ uiLPS >> 3 ];
     m_uiLow     = ( m_uiLow + m_uiRange ) << numBits;
@@ -214,7 +214,7 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )//while�
     m_bitsLeft -= numBits;
     testAndWriteOut();
   }
-  else//为LPS
+  else//为MPS
   {
     rcCtxModel.updateMPS();
 
@@ -307,7 +307,7 @@ Void TEncBinCABAC::encodeBinsEP( UInt binValues, Int numBins )//对应定长二�
     return;//!!!方法直接结束
   }
 
-  while ( numBins > 8 )//以位为单位处理
+  while ( numBins > 8 )//以8位为单位处理
   {
     numBins -= 8;
     UInt pattern = binValues >> numBins;

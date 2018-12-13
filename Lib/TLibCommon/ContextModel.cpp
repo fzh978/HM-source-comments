@@ -64,8 +64,8 @@ Void ContextModel::init( Int qp, Int initValue )//在编码第一个二进制符
   m_ucState       = ( (mpState? (initState - 64):(63 - initState)) <<1) + mpState;//当前状态
 }
 /**
- * 原本正常的概率状态数为64 但程序的实现中将当前状态的MPS信息也包含到了概率状态中
- * 所以总共有128中概率状态 实际的当前状态为 m_ucState >> 1 当前MPS为 m_ucState & 1！！！
+ * 原本正常的概率状态数为64 但程序的实现中将可能的MPS(存在0 1两种情况)也包含到了概率状态中
+ * 所以总共有128种概率状态 实际的当前状态为 m_ucState >> 1 当前MPS为 m_ucState & 1！！！
  */
 const UChar ContextModel::m_aucNextStateMPS[ ContextModel::m_totalStates ] =//下一字符为MPS时的概率转移表
 {
@@ -89,7 +89,7 @@ const UChar ContextModel::m_aucNextStateLPS[ ContextModel::m_totalStates ] =//�
   58, 59, 60, 61, 60, 61, 60, 61, 62, 63, 64, 65, 64, 65, 66, 67,
   66, 67, 66, 67, 68, 69, 68, 69, 70, 71, 70, 71, 70, 71, 72, 73,
   72, 73, 72, 73, 74, 75, 74, 75, 74, 75, 76, 77, 76, 77, 126, 127
-};
+};//该两表很容易由64状态索引的概率更新表得到　注意m_aucNextStateLPS表中若概率模型为0　若再出现LPS　MSP和LPS须交换　即对应m_aucNextState[0]和m_aucNextState[1]
 
 #if FAST_BIT_EST
 UChar ContextModel::m_nextState[ ContextModel::m_totalStates ][2 /*MPS = [0|1]*/];
@@ -106,10 +106,10 @@ Void ContextModel::buildNextStateTable()//建立概率转移表m_nextState[i][j]
 }
 #endif
 
-const Int ContextModel::m_entropyBits[ ContextModel::m_totalStates ] =
-{
+const Int ContextModel::m_entropyBits[ ContextModel::m_totalStates ] =//在对应的(固定的)上下文状态下编码一个bin（0或1两种情况）所需的比特数
+{//为了避免引入小数　　实际的编码一位bin的所需的比特数右移了15位　即*32768取整得到该表 其范围为[0x0010c, 0x3bfbb]即CABAC编码一位bin的比特数范围为[0.008,7.497]　　　(编码一位bin(0/1)所需的bit数接近其对应的上下文模型下该bin(0/1)的信息熵(信息量) －log2(p) p为该bin出现的概率　只能是接近，越接近说明编码器编码效率越高　参见香农第一定律)
 #if FAST_BIT_EST
-  // Corrected table, most notably for last state
+  // Corrected table, most notably for last state//从起始位置每相邻的两值分别代表在该概率状态下　bin为MPS LPS的编码比特数
   0x07b23, 0x085f9, 0x074a0, 0x08cbc, 0x06ee4, 0x09354, 0x067f4, 0x09c1b, 0x060b0, 0x0a62a, 0x05a9c, 0x0af5b, 0x0548d, 0x0b955, 0x04f56, 0x0c2a9,
   0x04a87, 0x0cbf7, 0x045d6, 0x0d5c3, 0x04144, 0x0e01b, 0x03d88, 0x0e937, 0x039e0, 0x0f2cd, 0x03663, 0x0fc9e, 0x03347, 0x10600, 0x03050, 0x10f95,
   0x02d4d, 0x11a02, 0x02ad3, 0x12333, 0x0286e, 0x12cad, 0x02604, 0x136df, 0x02425, 0x13f48, 0x021f4, 0x149c4, 0x0203e, 0x1527b, 0x01e4d, 0x15d00,

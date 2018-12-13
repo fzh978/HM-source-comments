@@ -55,7 +55,7 @@
 // ====================================================================================================================
 
 /// pure virtual class for basic bit handling
-class TComBitIf
+class TComBitIf//抽象接口　处理经编码器编码后的bits
 {
 public:
   virtual Void        writeAlignOne         () {};
@@ -80,7 +80,7 @@ class TComOutputBitstream : public TComBitIf//TComOutputBitstream类表示需实
    *  - &fifo.front() to get a pointer to the data array.
    *    NB, this pointer is only valid until the next push_back()/clear()
    */
-  std::vector<uint8_t> m_fifo;
+  std::vector<uint8_t> m_fifo;//无符号8位!!　即一次向输出流写入8 bits 
 
   UInt m_num_held_bits; /// number of bits not flushed to bytestream.
   UChar m_held_bits; /// the bits held and not flushed to bytestream.

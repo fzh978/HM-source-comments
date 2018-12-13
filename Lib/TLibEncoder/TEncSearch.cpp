@@ -2563,7 +2563,7 @@ TEncSearch::estIntraPredLumaQT(TComDataCU* pcCU,
   }
 
   //===== reset context models =====
-  m_pcRDGoOnSbacCoder->load(m_pppcRDSbacCoder[uiDepth][CI_CURR_BEST]);
+  m_pcRDGoOnSbacCoder->load(m_pppcRDSbacCoder[uiDepth][CI_CURR_BEST]);//一个TEncSbac对象包含所有使用CABCA常规编码的语法元素(一种语法元素往往对应多个上下文模型)的所有上下文模型
 
   //===== set distortion (rate and r-d costs are determined later) =====
   pcCU->getTotalDistortion() = uiOverallDistY;//该Cu的总失真

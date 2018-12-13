@@ -75,8 +75,8 @@ public:
   {
     m_ucState = m_aucNextStateMPS[ m_ucState ];
   }
-
-  Int getEntropyBits(Short val) { return m_entropyBits[m_ucState ^ val]; }
+                                                                                                                                                             //m_entropyBits[(m_ucState >> 1) << 1 + 0]                      m_entropyBits[(m_ucState >> 1) << 1 + 1]       
+  Int getEntropyBits(Short val) { return m_entropyBits[m_ucState ^ val]; }//下个bin为val时的编码比特数　异或　概率状态不变　若当前MPS与给定bin值相同(异或后为０)则取m_entropyBits表中编码MPS的比特数(正好对应表中一个状态中位置为０的值)　若不同则取表中编码LPS的比特数(表中一个状态中位置为1的值)　　
 
 #if FAST_BIT_EST
   Void update( Int binVal )

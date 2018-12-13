@@ -56,14 +56,14 @@
 class TEncTop;
 
 //! \ingroup TLibEncoder
-//! \{
-
+//! \{　　　　　　　　　　 | 注意!!二元化后未经编码器编码的01序列称为bins!!bins经编码器编码后输出的01序列称为bits!!    |
+//                     |  不采用算数编码的参数(如VPS等)二元化后的bins即为bits可直接由TComBitIf类对象写到输出流(文件)|
 // ====================================================================================================================
-// Class definition
+// Class definition//一个TEncSbac对象包含所有使用CABCA常规编码的语法元素(一种语法元素往往对应多个上下文模型)的所有上下文模型
 // ====================================================================================================================
 
 /// SBAC encoder class
-class TEncSbac : public TEncEntropyIf//TEncSbac类继承TEncEntropyIf抽象接口　完成对特定的语法元素的编码(二元化＋编码)
+class TEncSbac : public TEncEntropyIf//TEncSbac类继承TEncEntropyIf抽象接口　完成对所有低层的语法元素(所有使用CABCA常规编码的语法元素)的编码(二元化＋编码)
 {
 public:
   TEncSbac();
@@ -75,8 +75,8 @@ public:
   //  Virtual list
   Void  resetEntropy           (const TComSlice *pSlice);
   SliceType determineCabacInitIdx  (const TComSlice *pSlice);
-  Void  setBitstream           ( TComBitIf* p )  { m_pcBitIf = p; m_pcBinIf->init( p ); }
-
+  Void  setBitstream           ( TComBitIf* p )  { m_pcBitIf = p; m_pcBinIf->init( p ); }//设置比特流输出(类型)　比特流输出有两种　一种为TComBitCounter 该类比特流输出并不真的将bits写入到输出流进行保存　而只是统计要写入的比特流的比特数　用于RDO过程!! 
+                                                                                         //另一种为TComOutputBitstream　该类将待输出的比特流写入到输出流进行保存并统计比特数 RDO结束计算出最优参数后　将最优参数的bits写入输出流(文件)　(设置输出比特流之前要求已经初始化m_pcBinIf　及先设置bin编码器对象再设置bits流处理对象)                                                                                                                                                                                                            
   Void  load                   ( const TEncSbac* pSrc  );
   Void  loadIntraDirMode       ( const TEncSbac* pScr, const ChannelType chType  );
   Void  store                  ( TEncSbac* pDest ) const;
@@ -116,8 +116,8 @@ private:
   Void  xCopyContextsFrom    ( const TEncSbac* pSrc );
 
 protected:
-  TComBitIf*    m_pcBitIf;
-  TEncBinIf*    m_pcBinIf;
+  TComBitIf*    m_pcBitIf;//处理编码器输出的bits　　　　　注意!!二元化后未经编码器编码的01序列称为bins!!bins经编码器编码后输出的01序列称为bits!!
+  TEncBinIf*    m_pcBinIf;//CABAC编码器
 
   //--Adaptive loop filter
 

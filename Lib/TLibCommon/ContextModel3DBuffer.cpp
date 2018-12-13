@@ -51,7 +51,7 @@ ContextModel3DBuffer::ContextModel3DBuffer( UInt uiSizeZ, UInt uiSizeY, UInt uiS
 {
   // allocate 3D buffer
   m_contextModel = basePtr;//上下文模型起始位置
-  count += m_sizeXYZ;//计算总的上下文模型数(加上该语法元素的上下文模型数)
+  count += m_sizeXYZ;//累计上下文模型数(加上该语法元素的上下文模型数)
 }
 
 // ====================================================================================================================
@@ -111,7 +111,7 @@ UInt ContextModel3DBuffer::calcCost( SliceType sliceType, Int qp, UChar* ctxMode
 
     if (m_contextModel[ n ].getBinsCoded()>0)
     {
-      cost += (UInt) (prob0 * tmpContextModel.getEntropyBits( 0 ) + prob1 * tmpContextModel.getEntropyBits( 1 ));//加上该上下文模型下一字符的平均编码比特
+      cost += (UInt) (prob0 * tmpContextModel.getEntropyBits( 0 ) + prob1 * tmpContextModel.getEntropyBits( 1 ));//加上该上下文模型下一字符的平均编码比特(信息熵)
     }
   }
 

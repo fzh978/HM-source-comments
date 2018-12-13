@@ -114,7 +114,7 @@ public:
 };
 
 /// entropy encoder class
-class TEncEntropy//TEncEntropy为CABAC编码器，用于编码属于slice的语法元素(区别于VPS SPS PPS等)　　含有一个TEncSbac类对象　该类利用TEncSbac对象从更高层的概念上进行编码　例如TU块　PU块
+class TEncEntropy//TEncEntropy为CABAC编码器，用于编码属于slice的低层语法元素(区别于VPS SPS PPS等)　　含有一个TEncSbac类对象　该类利用TEncSbac对象从更高层的概念上进行编码　例如TU块　PU块
 {
 public:
   Void    setEntropyCoder           ( TEncEntropyIf* e );
@@ -128,7 +128,7 @@ public:
   Void    encodeTilesWPPEntryPoint( TComSlice* pSlice );
   Void    encodeTerminatingBit      ( UInt uiIsLast );
   Void    encodeSliceFinish         ();
-  TEncEntropyIf*      m_pcEntropyCoderIf;
+  TEncEntropyIf*      m_pcEntropyCoderIf;//初始的实际对象类型为TEncSbac
 
 public:
   Void encodeVPS               ( const TComVPS* pcVPS);
