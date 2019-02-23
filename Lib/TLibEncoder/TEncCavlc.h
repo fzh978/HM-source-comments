@@ -59,7 +59,7 @@ class TEncTop;
 
 /// CAVLC encoder class
 class TEncCavlc : public SyntaxElementWriter, public TEncEntropyIf//CAVLC熵编码类　使用零阶哥伦布编码和定长编码　用来编码高层语法元素如VPS SPS PPS等
-{
+{//TComBitIf对象继承自SyntaxElementWriter类
 public:
   TEncCavlc();
   virtual ~TEncCavlc();
@@ -73,7 +73,7 @@ public:
   Void  resetEntropy          (const TComSlice *pSlice);
   SliceType determineCabacInitIdx  (const TComSlice* /*pSlice*/) { assert(0); return I_SLICE; };
 
-  Void  setBitstream          ( TComBitIf* p )  { m_pcBitIf = p;  }
+  Void  setBitstream          ( TComBitIf* p )  { m_pcBitIf = p;  }//设置比特数的输出对象
   Void  resetBits             ()                { m_pcBitIf->resetBits(); }
   UInt  getNumberOfWrittenBits()                { return  m_pcBitIf->getNumberOfWrittenBits();  }
   Void  codeVPS                 ( const TComVPS* pcVPS );

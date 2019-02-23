@@ -822,9 +822,9 @@ Void TEncSlice::compressSlice( TComPic* pcPic, const Bool bCompressEntireSlice, 
 
     m_pcEntropyCoder->setEntropyCoder ( m_pppcRDSbacCoder[0][CI_CURR_BEST] );
     m_pcEntropyCoder->setBitstream( &tempBitCounter );
-    pRDSbacCoder->setBinCountingEnableFlag( true );
+    pRDSbacCoder->setBinCountingEnableFlag( true );////对经CABAC编码(包括常规编码和旁路编码)的开始bins计数
     m_pppcRDSbacCoder[0][CI_CURR_BEST]->resetBits();
-    pRDSbacCoder->setBinsCoded( 0 );
+    pRDSbacCoder->setBinsCoded( 0 );//初始化已编码的bins数为零
 
     // encode CTU and calculate the true bit counters.
     m_pcCuEncoder->encodeCtu( pCtu );//编码该Ctu
@@ -936,8 +936,8 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
   m_pcEntropyCoder->resetEntropy    ( pcSlice );//设置该slice的初始CABAC状态
 
   numBinsCoded = 0;
-  m_pcBinCABAC->setBinCountingEnableFlag( true );
-  m_pcBinCABAC->setBinsCoded(0);
+  m_pcBinCABAC->setBinCountingEnableFlag( true );//对经CABAC编码(包括常规编码和旁路编码)的bins计数
+  m_pcBinCABAC->setBinsCoded(0);//初始CABAC编码的bins为零
 
 #if ENC_DEC_TRACE
   g_bJustDoIt = g_bEncDecTraceEnable;
@@ -1104,7 +1104,7 @@ Void TEncSlice::encodeSlice   ( TComPic* pcPic, TComOutputBitstream* pcSubstream
     m_encCABACTableIdx = pcSlice->getSliceType();
   }
   
-  numBinsCoded = m_pcBinCABAC->getBinsCoded();//已编码的二进制位数
+  numBinsCoded = m_pcBinCABAC->getBinsCoded();//已编码的bins
 }
 
 Void TEncSlice::calculateBoundingCtuTsAddrForSlice(UInt &startCtuTSAddrSlice, UInt &boundingCtuTSAddrSlice, Bool &haveReachedTileBoundary,

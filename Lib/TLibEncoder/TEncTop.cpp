@@ -113,7 +113,7 @@ Void TEncTop::create ()
         m_maxCUWidth, m_maxCUHeight, m_RCKeepHierarchicalBit, m_RCUseLCUSeparateModel, m_GOPList );
   }
 
-  m_pppcRDSbacCoder = new TEncSbac** [m_maxTotalCUDepth+1];
+  m_pppcRDSbacCoder = new TEncSbac** [m_maxTotalCUDepth+1];//m_pppcRDSbacCoder[iDepth][iCIIdx][0]用于率失真计算的暂时的熵编码器
 #if FAST_BIT_EST
   m_pppcBinCoderCABAC = new TEncBinCABACCounter** [m_maxTotalCUDepth+1];
 #else

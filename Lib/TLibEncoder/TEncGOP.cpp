@@ -1567,7 +1567,7 @@ Void TEncGOP::compressGOP( Int iPOCLast, Int iNumPicRcvd, TComList<TComPic*>& rc
       {
         UInt numBinsCoded = 0;
         m_pcSliceEncoder->encodeSlice(pcPic, &(substreamsOut[0]), numBinsCoded);//编码该slice(写入比特流) 将该slice的比特流写入vector<TComOutputBitstream> substreamsOut(numSubstreams)中的对应子流
-        binCountsInNalUnits+=numBinsCoded;//总的编码二进制数
+        binCountsInNalUnits+=numBinsCoded;//总的已编码的bins
       }
 
       {

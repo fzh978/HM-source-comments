@@ -69,13 +69,13 @@ public:
   TEncSbac();
   virtual ~TEncSbac();
 
-  Void  init                   ( TEncBinIf* p )  { m_pcBinIf = p; }
+  Void  init                   ( TEncBinIf* p )  { m_pcBinIf = p; }//设置CABAC编码类型(是否进行实际的编码) 分类两种类型　一种为TEncBinCoderCABAC　该类进行实际的bins->bits的编码过程并得到编码后的比特数　一种为TEncBinCoderCABACCouter 该类不进行实际的bins编码　只是近似计算编码后的比特数(RDO时的快速算法)
   Void  uninit                 ()                { m_pcBinIf = 0; }
 
   //  Virtual list
   Void  resetEntropy           (const TComSlice *pSlice);
   SliceType determineCabacInitIdx  (const TComSlice *pSlice);
-  Void  setBitstream           ( TComBitIf* p )  { m_pcBitIf = p; m_pcBinIf->init( p ); }//设置比特流输出(类型)　比特流输出有两种　一种为TComBitCounter 该类比特流输出并不真的将bits写入到输出流进行保存　而只是统计要写入的比特流的比特数　用于RDO过程!! 
+  Void  setBitstream           ( TComBitIf* p )  { m_pcBitIf = p; m_pcBinIf->init( p ); }//设置从bins编码好的比特流输出去向(类型)　比特流输出有两种　一种为TComBitCounter 该类比特流输出并不真的将bits写入到输出流进行保存　而只是统计要写入的比特流的比特数　用于RDO过程!! 
                                                                                          //另一种为TComOutputBitstream　该类将待输出的比特流写入到输出流进行保存并统计比特数 RDO结束计算出最优参数后　将最优参数的bits写入输出流(文件)　(设置输出比特流之前要求已经初始化m_pcBinIf　及先设置bin编码器对象再设置bits流处理对象)                                                                                                                                                                                                            
   Void  load                   ( const TEncSbac* pSrc  );
   Void  loadIntraDirMode       ( const TEncSbac* pScr, const ChannelType chType  );

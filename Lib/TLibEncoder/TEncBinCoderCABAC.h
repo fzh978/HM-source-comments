@@ -89,7 +89,7 @@ private:
   Void testAndWriteOut();
   Void writeOut();
 
-  TComBitIf*          m_pcTComBitIf;//处理编码后的bits
+  TComBitIf*          m_pcTComBitIf;//TEncBinCoderCABAC中包含一个处理编码后的bits的TComBitIf对象
   UInt                m_uiLow;
   UInt                m_uiRange;
   UInt                m_bufferedByte;

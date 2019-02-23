@@ -199,7 +199,7 @@ Void TEncBinCABAC::encodeBin( UInt binValue, ContextModel &rcCtxModel )//while�
   const UInt startingRange = m_uiRange;
 #endif
 
-  m_uiBinsCoded += m_binCountIncrement;
+  m_uiBinsCoded += m_binCountIncrement;//m_uiBinsCoded统计已编码的bins数目　m_binCountIncrement为0或1
   rcCtxModel.setBinsCoded( 1 );//待编码的bin为一位
 
   UInt  uiLPS   = TComCABACTables::sm_aucLPSTable[ rcCtxModel.getState() ][ ( m_uiRange >> 6 ) & 3 ];
@@ -288,7 +288,7 @@ Void TEncBinCABAC::encodeBinEP( UInt binValue )//旁路编码一位bin
  */
 Void TEncBinCABAC::encodeBinsEP( UInt binValues, Int numBins )//对应定长二元化bins的等概率编码!!numBins指定定长二元化的长度
 {//numBins为编码位数 对应定长二元化bins的等概率编码　　
-  m_uiBinsCoded += numBins & -m_binCountIncrement;
+  m_uiBinsCoded += numBins & -m_binCountIncrement;//位操作　等价于m_uiBinsCoded +=　m_binCountIncrement ? numsBits:０ 位操作效率更高　表达简洁
 
   if (false)
   {
@@ -412,7 +412,7 @@ Void TEncBinCABAC::testAndWriteOut()
 Void TEncBinCABAC::writeOut()
 {
   UInt leadByte = m_uiLow >> (24 - m_bitsLeft);
-  m_bitsLeft += 8;
+  m_bitsLeft += 8;//对齐32位
   m_uiLow &= 0xffffffffu >> m_bitsLeft;
 
   if ( leadByte == 0xff )

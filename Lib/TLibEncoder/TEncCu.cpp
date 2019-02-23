@@ -1035,7 +1035,7 @@ Void TEncCu::xEncodeCU( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth )//编
   setdQPFlag( bCodeDQP );//还原标志
 
   // --- write terminating bit ---
-  finishCU(pcCU,uiAbsPartIdx);////该Cu编码结束
+  finishCU(pcCU,uiAbsPartIdx);////该Cu编码结束 写入结束位　告诉编码器停下来(算数编码需要结束位)
 }
 
 Int xCalcHADs8x8_ISlice(Pel *piOrg, Int iStrideOrg)//计算8×8的HAD变换系数绝对值(减去(0,0)处系数)之和
